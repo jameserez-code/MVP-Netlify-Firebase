@@ -69,17 +69,16 @@
       const val = gateInput.value;
       if (val === CODE) {
         document.cookie = 'gate=true; path=/; max-age=31536000';
-        gate.style.display = 'none';
-        content.style.display = 'block';
+        // Redirect to the admin portal for the actual UI after gating
+        window.location.href = '/admin-portal.html';
       } else {
         gateError.style.display = 'block';
       }
     });
 
-    // Persist gate across reloads
+    // Persist gate across reloads by redirecting if already gated
     if (document.cookie.includes('gate=true')) {
-      gate.style.display = 'none';
-      content.style.display = 'block';
+      window.location.href = '/admin-portal.html';
     }
   })();
   </script>

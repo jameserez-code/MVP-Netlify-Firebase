@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passport Agent MVP - Admin Login</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Arial, sans-serif; background: #f7f7f7; display: grid; place-items: center; min-height: 100vh; }
+    .card { width: 100%; max-width: 420px; padding: 24px; background: #fff; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+    .field { margin-bottom: 12px; }
+    input { width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #ddd; }
+    button { width: 100%; padding: 12px; border-radius: 6px; border: none; background: #1e88e5; color: white; font-weight: 600; cursor: pointer; }
+    .error { color: #b00020; margin-top: 8px; }
+  </style>
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-app-compat.js"></script>
+  <!-- Firebase Auth SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+  <div class="card" role="main" aria-label="Admin login form">
+    <h2 style="margin:0 0 12px 0; font-size:1.25rem;">Admin Portal Login</h2>
+    <div class="field"><input id="email" type="email" placeholder="Email" required /></div>
+    <div class="field"><input id="password" type="password" placeholder="Password" required /></div>
+    <button id="loginBtn">Sign In</button>
+    <div id="error" class="error" style="display:none;"></div>
+  </div>
+  <script>
+    // TODO: Replace with your real Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    if (!window.firebaseInitialized) {
+      firebase.initializeApp(firebaseConfig);
+      window.firebaseInitialized = true;
+    }
+    const auth = firebase.auth();
+    const ALLOW_LIST = [
+      // 'admin@example.com'
+    ];
+    const loginBtn = document.getElementById('loginBtn');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const errorDiv = document.getElementById('error');
+    loginBtn.addEventListener('click', async () => {
+      errorDiv.style.display = 'none';
+      try {
+        await auth.signInWithEmailAndPassword(emailInput.value, passwordInput.value);
+      } catch (e) {
+        errorDiv.textContent = e.message;
+        errorDiv.style.display = 'block';
+      }
+    });
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        const email = user.email || '';
+        if (ALLOW_LIST.length === 0 || ALLOW_LIST.includes(email)) {
+          window.location.href = '/admin-portal.html';
+        } else {
+          auth.signOut();
+          errorDiv.textContent = 'Not authorized to access this surface.';
+          errorDiv.style.display = 'block';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
