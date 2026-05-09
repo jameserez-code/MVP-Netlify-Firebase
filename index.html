@@ -23,12 +23,75 @@
       },
     };
   </script>
+  <style>
+    #passwordGate {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #F7F7F7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      visibility: visible !important;
+    }
+    .gate-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .gate-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .gate-input:focus { border-color: #1E88E5; }
+    .gate-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #1E88E5;
+      color: white;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .gate-btn:hover { background: #1565C0; }
+    .gate-error {
+      color: #EF4444;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+  </style>
   <!-- Firebase App (the core Firebase SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-app-compat.js"></script>
   <!-- Firebase Auth SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-auth-compat.js"></script>
 </head>
-<body class="bg-background text-gray-900 font-sans min-h-screen flex flex-col">
+<body class="bg-background text-gray-900 font-sans min-h-screen flex flex-col" style="visibility: hidden;">
+  <div id="passwordGate">
+    <div class="gate-card">
+      <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-50 text-primary rounded-full mb-4">
+        <span class="material-symbols-outlined">lock</span>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900">Private Surface</h2>
+      <p class="text-gray-500 text-sm mt-1">Enter password to access the site.</p>
+      <input type="password" id="gatePass" class="gate-input" placeholder="Password" />
+      <button id="gateSubmit" class="gate-btn">Unlock</button>
+      <p id="gateMsg" class="gate-error">Incorrect password. Please try again.</p>
+    </div>
+  </div>
+
   <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center shadow-sm">
     <div class="flex items-center space-x-2">
       <span class="material-symbols-outlined text-primary text-3xl">verified_user</span>
@@ -36,13 +99,13 @@
     </div>
   </header>
 
-  <div id="gate" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+  <div id="authContent" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
     <div class="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100">
       <div class="mb-6 text-center">
         <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-primary rounded-full mb-4">
-          <span class="material-symbols-outlined text-3xl">lock</span>
+          <span class="material-symbols-outlined text-3xl">person</span>
         </div>
-        <h2 class="text-2xl font-bold text-gray-900">Protected Access</h2>
+        <h2 class="text-2xl font-bold text-gray-900">Admin Login</h2>
         <p class="text-gray-500 mt-2">Sign in to enter the private admin surface.</p>
       </div>
 
@@ -72,16 +135,9 @@
           <span>Sign In</span>
           <span id="loader" class="material-symbols-outlined animate-spin text-lg hidden">refresh</span>
         </button>
-        <p id="gateError" class="text-red-500 text-sm text-center hidden flex items-center justify-center space-x-1">
+        <p id="authError" class="text-red-500 text-sm text-center hidden flex items-center justify-center space-x-1">
           <span class="material-symbols-outlined text-sm">error</span>
           <span id="errorMsg">Authentication failed. Please try again.</span>
-        </p>
-      </div>
-
-      <div class="mt-6 pt-6 border-t border-gray-100 text-center">
-        <p class="text-xs text-gray-400">
-          This portal is for authorized personnel only.
-          Unauthorized access attempts are logged.
         </p>
       </div>
     </div>
@@ -100,6 +156,36 @@
   </footer>
 
   <script>
+    (function() {
+      const gate = document.getElementById('passwordGate');
+      const input = document.getElementById('gatePass');
+      const btn = document.getElementById('gateSubmit');
+      const msg = document.getElementById('gateMsg');
+      const pass = 'Thegreatwave';
+
+      function unlock() {
+        gate.style.display = 'none';
+        document.body.style.visibility = 'visible';
+        localStorage.setItem('site_auth', 'true');
+      }
+
+      if (localStorage.getItem('site_auth') === 'true') {
+        unlock();
+      }
+
+      btn.addEventListener('click', () => {
+        if (input.value === pass) {
+          unlock();
+        } else {
+          msg.style.display = 'block';
+        }
+      });
+
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') btn.click();
+      });
+    })();
+
     // --- Firebase Placeholder Config ---
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
@@ -120,9 +206,9 @@
     const passwordInput = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
     const loader = document.getElementById('loader');
-    const gateError = document.getElementById('gateError');
+    const authError = document.getElementById('authError');
     const errorMsg = document.getElementById('errorMsg');
-    const gate = document.getElementById('gate');
+    const authContent = document.getElementById('authContent');
     const content = document.getElementById('content');
 
     // Handle Login
@@ -134,15 +220,14 @@
 
       loginBtn.disabled = true;
       loader.classList.remove('hidden');
-      gateError.classList.add('hidden');
+      authError.classList.add('hidden');
 
       try {
         await auth.signInWithEmailAndPassword(email, password);
-        // Auth state change will handle redirection
       } catch (error) {
         console.error("Login error:", error);
         errorMsg.textContent = error.message;
-        gateError.classList.remove('hidden');
+        authError.classList.remove('hidden');
         loginBtn.disabled = false;
         loader.classList.add('hidden');
       }
@@ -151,14 +236,14 @@
     // Handle Auth State
     auth.onAuthStateChanged((user) => {
       if (user) {
-        gate.classList.add('hidden');
+        authContent.classList.add('hidden');
         content.classList.remove('hidden');
-        // We still keep the gate cookie for simple server-side/middleware logic if needed,
-        // but the main auth is now handled by Firebase.
         document.cookie = 'gate=true; path=/; max-age=31536000';
         setTimeout(() => {
           window.location.href = '/admin-portal.html';
         }, 500);
+      } else {
+        authContent.classList.remove('hidden');
       }
     });
 

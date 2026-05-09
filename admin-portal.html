@@ -23,17 +23,78 @@
       },
     };
   </script>
+  <style>
+    #passwordGate {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #F7F7F7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      visibility: visible !important;
+    }
+    .gate-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .gate-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .gate-input:focus { border-color: #1E88E5; }
+    .gate-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #1E88E5;
+      color: white;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .gate-btn:hover { background: #1565C0; }
+    .gate-error {
+      color: #EF4444;
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    .sidebar-item-active { background-color: #E3F2FD; color: #1E88E5; border-right: 4px solid #1E88E5; }
+    [v-cloak] { display: none; }
+  </style>
   <!-- Firebase App (the core Firebase SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-app-compat.js"></script>
   <!-- Firebase Auth & Firestore SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.26.0/firebase-firestore-compat.js"></script>
-  <style>
-    .sidebar-item-active { background-color: #E3F2FD; color: #1E88E5; border-right: 4px solid #1E88E5; }
-    [v-cloak] { display: none; }
-  </style>
 </head>
-<body class="bg-background text-gray-900 font-sans min-h-screen flex">
+<body class="bg-background text-gray-900 font-sans min-h-screen flex" style="visibility: hidden;">
+  <div id="passwordGate">
+    <div class="gate-card">
+      <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-50 text-primary rounded-full mb-4">
+        <span class="material-symbols-outlined">lock</span>
+      </div>
+      <h2 class="text-xl font-bold text-gray-900">Private Surface</h2>
+      <p class="text-gray-500 text-sm mt-1">Enter password to access the site.</p>
+      <input type="password" id="gatePass" class="gate-input" placeholder="Password" />
+      <button id="gateSubmit" class="gate-btn">Unlock</button>
+      <p id="gateMsg" class="gate-error">Incorrect password. Please try again.</p>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <aside class="w-64 bg-white border-r border-gray-200 hidden md:flex flex-col">
     <div class="p-6 flex items-center space-x-2">
@@ -255,8 +316,8 @@
                 <span class="material-symbols-outlined text-2xl">person</span>
               </div>
               <div>
-                <div class="font-bold">Admin User</div>
-                <div class="text-blue-100 text-xs">admin@passport-mvp.io</div>
+                <div id="userNameLabel" class="font-bold">Admin User</div>
+                <div id="userEmailLabel" class="text-blue-100 text-xs">admin@passport-mvp.io</div>
               </div>
             </div>
             <div class="space-y-3">
@@ -279,6 +340,36 @@
   </div>
 
   <script>
+    (function() {
+      const gate = document.getElementById('passwordGate');
+      const input = document.getElementById('gatePass');
+      const btn = document.getElementById('gateSubmit');
+      const msg = document.getElementById('gateMsg');
+      const pass = 'Thegreatwave';
+
+      function unlock() {
+        gate.style.display = 'none';
+        document.body.style.visibility = 'visible';
+        localStorage.setItem('site_auth', 'true');
+      }
+
+      if (localStorage.getItem('site_auth') === 'true') {
+        unlock();
+      }
+
+      btn.addEventListener('click', () => {
+        if (input.value === pass) {
+          unlock();
+        } else {
+          msg.style.display = 'block';
+        }
+      });
+
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') btn.click();
+      });
+    })();
+
     // --- Firebase Placeholder Config ---
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
@@ -297,8 +388,8 @@
     const db = firebase.firestore();
 
     // --- Auth Check & User Sync ---
-    const userEmailLabel = document.querySelector('.text-blue-100.text-xs');
-    const userNameLabel = document.querySelector('.font-bold.text-white'); // Fix: actual selector for Admin User text
+    const userEmailLabel = document.getElementById('userEmailLabel');
+    const userNameLabel = document.getElementById('userNameLabel');
 
     auth.onAuthStateChanged((user) => {
       if (!user) {
