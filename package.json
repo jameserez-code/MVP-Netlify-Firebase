@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "This repository contains the MVP scaffolding for a password-protected, Netlify-hosted UI gated by Netlify Identity with per-user memory stored in Firebase Firestore. It also includes a serverless API surface via Netlify Functions (Visa, Passport, Wallet, Health, Waitlist).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jameserez-code/MVP-Netlify-Firebase.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jameserez-code/MVP-Netlify-Firebase/issues"
+  },
+  "homepage": "https://github.com/jameserez-code/MVP-Netlify-Firebase#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.2"
+  }
+}
