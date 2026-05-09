@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Passport Agent MVP</title>
+  <style>
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f7f7f7; color:#111; }
+    header { padding: 1rem; text-align:center; background:#1a1a1a; color:white; }
+    main { padding: 2rem; max-width: 800px; margin: 0 auto; }
+    /* gate styles */
+    #gate { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
+    #gateCard { background:white; padding:2rem; border-radius:8px; width: min(420px, 92%); box-shadow:0 6px 20px rgba(0,0,0,.25); text-align:left; }
+    .input { width:100%; padding:.75rem; font-size:1rem; border:1px solid #ccc; border-radius:6px; }
+    .btn { padding:.6rem 1rem; background:#0070f3; color:white; border:none; border-radius:6px; cursor:pointer; margin-top:.5rem; }
+    .btn:disabled { opacity:.5; cursor:not-allowed; }
+    #gateError { color:#d00; margin-top:.5rem; display:none; }
+    #content { display:none; }
+    @media (prefers-color-scheme: dark) {
+      body { background:#0f0f12; color:#eaeaf0; }
+      header { background:#111; }
+      #gateCard { background:#1a1a1a; color:#eaeaf0; border:1px solid #333; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Passport Agent MVP</h1>
+  </header>
+
+  <div id="gate" role="dialog" aria-label="Password gate" aria-modal="true">
+    <div id="gateCard">
+      <h2>Enter access code</h2>
+      <p>Enter the access code to view the API endpoints.</p>
+      <input id="gateInput" class="input" type="password" placeholder="Access code" />
+      <button id="gateBtn" class="btn" disabled>Unlock</button>
+      <p id="gateError">Incorrect code. Please try again.</p>
+    </div>
+  </div>
+
+  <main id="content" aria-label="Private content">
+    <section>
+      <p>Endpoints available behind the access gate:</p>
+      <ul>
+        <li>/api/health</li>
+        <li>/api/visas</li>
+        <li>/api/passport</li>
+        <li>/api/wallet</li>
+        <li>/api/waitlist</li>
+      </ul>
+      <p>Gate status: private surface</p>
+    </section>
+  </main>
+
+  <script>
+  (function(){
+    const CODE = 'Thegreatwave'; // gate code for demo purposes; can be moved to a secure env later
+    const gateInput = document.getElementById('gateInput');
+    const gateBtn = document.getElementById('gateBtn');
+    const gate = document.getElementById('gate');
+    const content = document.getElementById('content');
+    const gateError = document.getElementById('gateError');
+
+    gateInput.addEventListener('input', () => {
+      gateBtn.disabled = gateInput.value.length === 0;
+    });
+
+    gateBtn.addEventListener('click', () => {
+      const val = gateInput.value;
+      if (val === CODE) {
+        document.cookie = 'gate=true; path=/; max-age=31536000';
+        gate.style.display = 'none';
+        content.style.display = 'block';
+      } else {
+        gateError.style.display = 'block';
+      }
+    });
+
+    // Persist gate across reloads
+    if (document.cookie.includes('gate=true')) {
+      gate.style.display = 'none';
+      content.style.display = 'block';
+    }
+  })();
+  </script>
+</body>
+</html>
