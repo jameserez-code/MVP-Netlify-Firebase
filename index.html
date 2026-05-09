@@ -1,87 +1,475 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html class="light" lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Passport Agent MVP</title>
-  <style>
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f7f7f7; color:#111; }
-    header { padding: 1rem; text-align:center; background:#1a1a1a; color:white; }
-    main { padding: 2rem; max-width: 800px; margin: 0 auto; }
-    /* gate styles */
-    #gate { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
-    #gateCard { background:white; padding:2rem; border-radius:8px; width: min(420px, 92%); box-shadow:0 6px 20px rgba(0,0,0,.25); text-align:left; }
-    .input { width:100%; padding:.75rem; font-size:1rem; border:1px solid #ccc; border-radius:6px; }
-    .btn { padding:.6rem 1rem; background:#0070f3; color:white; border:none; border-radius:6px; cursor:pointer; margin-top:.5rem; }
-    .btn:disabled { opacity:.5; cursor:not-allowed; }
-    #gateError { color:#d00; margin-top:.5rem; display:none; }
-    #content { display:none; }
-    @media (prefers-color-scheme: dark) {
-      body { background:#0f0f12; color:#eaeaf0; }
-      header { background:#111; }
-      #gateCard { background:#1a1a1a; color:#eaeaf0; border:1px solid #333; }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Passport Agent MVP</h1>
-  </header>
-
-  <div id="gate" role="dialog" aria-label="Password gate" aria-modal="true">
-    <div id="gateCard">
-      <h2>Enter access code</h2>
-      <p>Enter the access code to view the API endpoints.</p>
-      <input id="gateInput" class="input" type="password" placeholder="Access code" />
-      <button id="gateBtn" class="btn" disabled>Unlock</button>
-      <p id="gateError">Incorrect code. Please try again.</p>
-    </div>
-  </div>
-
-  <main id="content" aria-label="Private content">
-    <section>
-      <p>Endpoints available behind the access gate:</p>
-      <ul>
-        <li>/api/health</li>
-        <li>/api/visas</li>
-        <li>/api/passport</li>
-        <li>/api/wallet</li>
-        <li>/api/waitlist</li>
-      </ul>
-      <p>Gate status: private surface</p>
-    </section>
-  </main>
-
-  <script>
-  (function(){
-    const CODE = 'Thegreatwave'; // gate code for demo purposes; can be moved to a secure env later
-    const gateInput = document.getElementById('gateInput');
-    const gateBtn = document.getElementById('gateBtn');
-    const gate = document.getElementById('gate');
-    const content = document.getElementById('content');
-    const gateError = document.getElementById('gateError');
-
-    gateInput.addEventListener('input', () => {
-      gateBtn.disabled = gateInput.value.length === 0;
-    });
-
-    gateBtn.addEventListener('click', () => {
-      const val = gateInput.value;
-      if (val === CODE) {
-        document.cookie = 'gate=true; path=/; max-age=31536000';
-        gate.style.display = 'none';
-        content.style.display = 'block';
-      } else {
-        gateError.style.display = 'block';
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Passport Agency - Admin Portal</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#e0e2ea",
+                    "primary": "#005ea4",
+                    "on-surface": "#181c22",
+                    "secondary-fixed-dim": "#c0c7d6",
+                    "inverse-primary": "#a2c9ff",
+                    "on-background": "#181c22",
+                    "on-tertiary-fixed": "#2f1400",
+                    "on-tertiary-container": "#fffbff",
+                    "background": "#F7F7F7",
+                    "surface-container": "#ebeef6",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#6f3800",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#ffdcc4",
+                    "surface-container-high": "#e5e8f0",
+                    "on-secondary-fixed": "#151c27",
+                    "primary-on": "#FFFFFF",
+                    "tertiary": "#8f4a00",
+                    "on-secondary-container": "#5e6572",
+                    "surface-bright": "#f8f9ff",
+                    "surface-container-lowest": "#ffffff",
+                    "text-muted": "#6B7280",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f1f3fc",
+                    "on-primary-fixed-variant": "#004881",
+                    "surface-tint": "#0060a8",
+                    "outline-variant": "#c0c7d4",
+                    "tertiary-fixed-dim": "#ffb780",
+                    "inverse-surface": "#2d3137",
+                    "secondary-container": "#dce2f3",
+                    "outline": "#707783",
+                    "secondary": "#585f6c",
+                    "on-primary-container": "#fdfcff",
+                    "surface-variant": "#e0e2ea",
+                    "secondary-fixed": "#dce2f3",
+                    "on-error": "#ffffff",
+                    "on-primary-fixed": "#001c38",
+                    "primary-fixed-dim": "#a2c9ff",
+                    "surface-dim": "#d7dae2",
+                    "on-secondary-fixed-variant": "#404754",
+                    "on-error-container": "#93000a",
+                    "primary-container": "#0077ce",
+                    "text-primary": "#1F2937",
+                    "inverse-on-surface": "#eef0f9",
+                    "surface": "#FFFFFF",
+                    "on-surface-variant": "#404752",
+                    "primary-fixed": "#d3e4ff",
+                    "error-container": "#ffdad6",
+                    "tertiary-container": "#b35e00",
+                    "on-primary": "#ffffff",
+                    "gate-overlay": "rgba(0,0,0,0.6)"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "8px",
+                    "xxl": "48px",
+                    "margin-mobile": "16px",
+                    "xl": "32px",
+                    "margin-desktop": "32px",
+                    "lg": "24px",
+                    "gutter": "16px",
+                    "xs": "4px",
+                    "md": "16px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["18px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-sm": ["10px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["22px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "headline-lg": ["28px", {"lineHeight": "1.2", "fontWeight": "700"}]
+            }
+          },
+        },
       }
-    });
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F7F7F7;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
 
-    // Persist gate across reloads
-    if (document.cookie.includes('gate=true')) {
+<div id="gate" class="fixed inset-0 bg-gate-overlay flex items-center justify-center z-[9999]" role="dialog" aria-label="Password gate" aria-modal="true">
+    <div class="bg-surface p-xl rounded-xl shadow-xl w-full max-w-md border border-outline-variant">
+        <h2 class="text-headline-md font-bold text-on-surface mb-sm">Enter access code</h2>
+        <p class="text-body-lg text-on-surface-variant mb-lg">Enter the access code to view the Admin Portal.</p>
+        <div class="space-y-md">
+            <input id="gateInput" class="w-full px-md py-sm bg-surface-container-low border border-outline-variant rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all" type="password" placeholder="Access code" />
+            <button id="gateBtn" class="w-full py-sm bg-primary text-primary-on text-headline-sm font-bold rounded-lg hover:shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none" disabled>Unlock</button>
+            <p id="gateError" class="text-error text-label-md font-medium hidden">Incorrect code. Please try again.</p>
+        </div>
+    </div>
+</div>
+
+<div id="content" style="display: none;">
+    <!-- SideNavBar Shell -->
+    <aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant shadow-sm dark:shadow-none flex flex-col py-lg gap-md z-50">
+        <div class="px-md mb-lg">
+            <h1 class="text-headline-sm font-bold text-primary dark:text-inverse-primary">Passport Agency</h1>
+            <p class="text-label-md text-on-surface-variant font-medium">Admin Portal</p>
+        </div>
+        <nav class="flex-1 flex flex-col gap-xs">
+            <a class="flex items-center gap-md px-md py-sm text-primary dark:text-primary-fixed-dim font-bold border-r-4 border-primary hover:bg-surface-container-highest transition-all duration-180 active:scale-95" href="#">
+                <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                <span class="font-headline-sm text-headline-sm">Dashboard</span>
+            </a>
+            <a class="flex items-center gap-md px-md py-sm text-on-surface-variant dark:text-secondary-fixed-dim font-medium hover:bg-surface-container-highest transition-all duration-180 active:scale-95" href="#">
+                <span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+                <span class="font-headline-sm text-headline-sm">Applications</span>
+            </a>
+            <a class="flex items-center gap-md px-md py-sm text-on-surface-variant dark:text-secondary-fixed-dim font-medium hover:bg-surface-container-highest transition-all duration-180 active:scale-95" href="#">
+                <span class="material-symbols-outlined" data-icon="calendar_today">calendar_today</span>
+                <span class="font-headline-sm text-headline-sm">Appointments</span>
+            </a>
+            <a class="flex items-center gap-md px-md py-sm text-on-surface-variant dark:text-secondary-fixed-dim font-medium hover:bg-surface-container-highest transition-all duration-180 active:scale-95" href="#">
+                <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                <span class="font-headline-sm text-headline-sm">Settings</span>
+            </a>
+        </nav>
+        <div class="px-md mt-auto pt-lg">
+            <div class="flex items-center gap-sm p-sm rounded-lg bg-surface-container-high">
+                <img alt="Agency Logo" class="w-8 h-8 rounded-full bg-primary-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvdda6WfMBv62VB-9SWd97AHrtOndETp2EN16RZWnuwzGvVngLO28Zcz97POydiOaOvilwH5tphra_W-Q4RbpRZOpkyQgDIWRKefj6nbx9HRlvBxkx8rDBDvrw92vuinFEitV4neHe1WLr31LaQJJFbwLXbvqHK9ntKrMBhF7GIZ7-uNJUYlL1ubXD9fSY-0l-txqLTqZVsIqyDIKZplaMQQ8mN1zYuKhv2HTm_hkSePA-9ZeaPMg6_dB7WjAP4UcOFMwlDFeAX16P"/>
+                <div>
+                    <p class="text-label-md font-bold text-on-surface">Admin User</p>
+                    <p class="text-label-sm text-on-surface-variant">System Lead</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- TopNavBar Shell -->
+    <header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface dark:bg-on-surface border-b border-outline-variant shadow-sm dark:shadow-none flex justify-between items-center px-margin-desktop h-16">
+        <div class="flex items-center flex-1 max-w-xl">
+            <div class="relative w-full focus-within:ring-2 focus-within:ring-primary rounded-lg transition-all duration-200">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+                <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-0" placeholder="Search application IDs, names..." type="text"/>
+            </div>
+        </div>
+        <div class="flex items-center gap-lg">
+            <div class="flex items-center gap-md">
+                <button class="relative text-on-surface-variant hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+                </button>
+                <button class="text-on-surface-variant hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+                </button>
+            </div>
+            <div class="h-8 w-px bg-outline-variant"></div>
+            <div class="flex items-center gap-sm">
+                <span class="font-label-md text-label-md font-bold text-on-surface">Administrator Profile</span>
+                <img alt="Administrator Profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNpukx58Ve_GIc690xqd3fJZRmRdM8gOjiH3G-gAnWO0St6jy87-y2oFtnCVeVsX2KEm6lee5reYKb82FJGG25bKogFhzahK858QRsSUy6D7F0ZXtg3K3dnGIEGqe-N2SJwLmj2izvtehzNg3bITjgVuk6MxfQ5V8ZGdzIRj4eqjDgqM3MEzfiesKca0yHJAOs-yOtcakUiKVnUCNiARWxLi0EtrmWRlC3hK4ZX2zRZ1-Yx9Aw6da5PMpckqfAYO_kpObEaUN2V5Bd"/>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Canvas -->
+    <main class="ml-64 pt-24 px-margin-desktop pb-xl min-h-screen">
+        <!-- Summary Section / Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg mb-xxl">
+            <!-- Card 1 -->
+            <div class="bg-surface p-lg rounded-xl shadow-sm border border-transparent hover:shadow-md transition-all duration-180 group">
+                <div class="flex justify-between items-start mb-md">
+                    <div class="p-sm bg-primary-fixed rounded-lg text-primary">
+                        <span class="material-symbols-outlined" data-icon="folder_shared">folder_shared</span>
+                    </div>
+                    <span class="text-label-sm font-bold text-primary px-sm py-xs bg-primary-container rounded-full">+4%</span>
+                </div>
+                <h3 class="text-label-md font-medium text-on-surface-variant mb-xs">Total Applications</h3>
+                <p class="text-headline-lg font-bold text-on-surface">1,240</p>
+            </div>
+            <!-- Card 2 -->
+            <div class="bg-surface p-lg rounded-xl shadow-sm border border-transparent hover:shadow-md transition-all duration-180">
+                <div class="flex justify-between items-start mb-md">
+                    <div class="p-sm bg-secondary-fixed rounded-lg text-secondary">
+                        <span class="material-symbols-outlined" data-icon="pending_actions">pending_actions</span>
+                    </div>
+                </div>
+                <h3 class="text-label-md font-medium text-on-surface-variant mb-xs">Pending Review</h3>
+                <p class="text-headline-lg font-bold text-on-surface">85</p>
+            </div>
+            <!-- Card 3 -->
+            <div class="bg-surface p-lg rounded-xl shadow-sm border border-transparent hover:shadow-md transition-all duration-180">
+                <div class="flex justify-between items-start mb-md">
+                    <div class="p-sm bg-tertiary-fixed rounded-lg text-tertiary">
+                        <span class="material-symbols-outlined" data-icon="verified">verified</span>
+                    </div>
+                </div>
+                <h3 class="text-label-md font-medium text-on-surface-variant mb-xs">Approved Today</h3>
+                <p class="text-headline-lg font-bold text-on-surface">42</p>
+            </div>
+            <!-- Card 4 -->
+            <div class="bg-surface p-lg rounded-xl shadow-sm border border-transparent hover:shadow-md transition-all duration-180">
+                <div class="flex justify-between items-start mb-md">
+                    <div class="p-sm bg-error-container rounded-lg text-error">
+                        <span class="material-symbols-outlined" data-icon="error_outline">error_outline</span>
+                    </div>
+                </div>
+                <h3 class="text-label-md font-medium text-on-surface-variant mb-xs">Urgent Issues</h3>
+                <p class="text-headline-lg font-bold text-error">12</p>
+            </div>
+        </div>
+
+        <!-- Main Content Area: Recent Applications -->
+        <div class="bg-surface rounded-xl shadow-sm overflow-hidden border border-outline-variant">
+            <div class="px-lg py-md border-b border-outline-variant flex justify-between items-center">
+                <h2 class="text-headline-md font-bold text-on-surface">Recent Applications</h2>
+                <div class="flex gap-sm">
+                    <button class="flex items-center gap-xs px-md py-sm border border-outline text-label-md font-bold rounded-lg hover:bg-surface-container-low transition-all">
+                        <span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                        Filter
+                    </button>
+                    <button class="flex items-center gap-xs px-md py-sm bg-primary text-primary-on text-label-md font-bold rounded-lg hover:shadow-md transition-all active:scale-95">
+                        <span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                        New Entry
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-surface-container-low border-b border-outline-variant">
+                        <tr>
+                            <th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Applicant Name</th>
+                            <th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Passport Type</th>
+                            <th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Submission Date</th>
+                            <th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+                            <th class="px-lg py-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-outline-variant">
+                        <tr class="hover:bg-surface-container-lowest transition-colors">
+                            <td class="px-lg py-md">
+                                <div class="flex items-center gap-md">
+                                    <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary">JS</div>
+                                    <div>
+                                        <p class="font-headline-sm text-body-lg font-semibold">James Sterling</p>
+                                        <p class="text-label-md text-on-surface-variant">ID: #APP-2024-0012</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-lg py-md">
+                                <span class="px-sm py-xs bg-surface-container-high text-on-surface-variant text-label-md font-bold rounded-lg">Standard</span>
+                            </td>
+                            <td class="px-lg py-md font-body-sm text-on-surface-variant">Oct 24, 2023</td>
+                            <td class="px-lg py-md">
+                                <span class="flex items-center gap-xs text-tertiary font-bold text-label-md">
+                                    <span class="w-2 h-2 rounded-full bg-tertiary"></span>
+                                    Pending
+                                </span>
+                            </td>
+                            <td class="px-lg py-md text-right">
+                                <button class="text-primary font-bold text-label-md hover:underline">Review</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-surface-container-lowest transition-colors">
+                            <td class="px-lg py-md">
+                                <div class="flex items-center gap-md">
+                                    <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary">EM</div>
+                                    <div>
+                                        <p class="font-headline-sm text-body-lg font-semibold">Elena Martinez</p>
+                                        <p class="text-label-md text-on-surface-variant">ID: #APP-2024-0015</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-lg py-md">
+                                <span class="px-sm py-xs bg-primary-container text-primary-on text-label-md font-bold rounded-lg">Expedited</span>
+                            </td>
+                            <td class="px-lg py-md font-body-sm text-on-surface-variant">Oct 25, 2023</td>
+                            <td class="px-lg py-md">
+                                <span class="flex items-center gap-xs text-primary font-bold text-label-md">
+                                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                                    In Review
+                                </span>
+                            </td>
+                            <td class="px-lg py-md text-right">
+                                <button class="text-primary font-bold text-label-md hover:underline">View</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-surface-container-lowest transition-colors">
+                            <td class="px-lg py-md">
+                                <div class="flex items-center gap-md">
+                                    <div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary">RW</div>
+                                    <div>
+                                        <p class="font-headline-sm text-body-lg font-semibold">Robert Wilson</p>
+                                        <p class="text-label-md text-on-surface-variant">ID: #APP-2024-0018</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-lg py-md">
+                                <span class="px-sm py-xs bg-surface-container-high text-on-surface-variant text-label-md font-bold rounded-lg">Standard</span>
+                            </td>
+                            <td class="px-lg py-md font-body-sm text-on-surface-variant">Oct 25, 2023</td>
+                            <td class="px-lg py-md">
+                                <span class="flex items-center gap-xs text-secondary font-bold text-label-md">
+                                    <span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                    Approved
+                                </span>
+                            </td>
+                            <td class="px-lg py-md text-right">
+                                <button class="text-primary font-bold text-label-md hover:underline">Print</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-surface-container-lowest transition-colors">
+                            <td class="px-lg py-md">
+                                <div class="flex items-center gap-md">
+                                    <div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center font-bold text-error">AK</div>
+                                    <div>
+                                        <p class="font-headline-sm text-body-lg font-semibold">Amara Kalu</p>
+                                        <p class="text-label-md text-on-surface-variant">ID: #APP-2024-0021</p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-lg py-md">
+                                <span class="px-sm py-xs bg-primary-container text-primary-on text-label-md font-bold rounded-lg">Expedited</span>
+                            </td>
+                            <td class="px-lg py-md font-body-sm text-on-surface-variant">Oct 26, 2023</td>
+                            <td class="px-lg py-md">
+                                <span class="flex items-center gap-xs text-error font-bold text-label-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="warning">warning</span>
+                                    Urgent
+                                </span>
+                            </td>
+                            <td class="px-lg py-md text-right">
+                                <button class="text-error font-bold text-label-md hover:underline">Action Required</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-lg py-md bg-surface-container-low border-t border-outline-variant flex justify-between items-center">
+                <p class="text-label-md text-on-surface-variant">Showing 4 of 1,240 applications</p>
+                <div class="flex gap-xs">
+                    <button class="p-xs rounded hover:bg-surface-container-highest transition-colors disabled:opacity-30" disabled="">
+                        <span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+                    </button>
+                    <button class="px-sm py-xs bg-primary text-primary-on rounded text-label-md font-bold">1</button>
+                    <button class="px-sm py-xs hover:bg-surface-container-highest rounded text-label-md font-bold">2</button>
+                    <button class="px-sm py-xs hover:bg-surface-container-highest rounded text-label-md font-bold">3</button>
+                    <button class="p-xs rounded hover:bg-surface-container-highest transition-colors">
+                        <span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status / Security Log (Asymmetric Component) -->
+        <div class="mt-xl grid grid-cols-1 lg:grid-cols-3 gap-lg">
+            <div class="lg:col-span-2 bg-surface p-lg rounded-xl shadow-sm border border-outline-variant">
+                <div class="flex items-center justify-between mb-lg">
+                    <h3 class="text-headline-sm font-bold text-on-surface">Weekly Processing Volume</h3>
+                    <select class="bg-surface-container-low border-none rounded-lg text-label-md font-bold focus:ring-primary">
+                        <option>Last 7 Days</option>
+                        <option>Last 30 Days</option>
+                    </select>
+                </div>
+                <div class="h-48 flex items-end gap-sm">
+                    <div class="flex-1 bg-primary-container opacity-20 rounded-t-lg h-[40%]"></div>
+                    <div class="flex-1 bg-primary-container opacity-40 rounded-t-lg h-[65%]"></div>
+                    <div class="flex-1 bg-primary-container opacity-60 rounded-t-lg h-[55%]"></div>
+                    <div class="flex-1 bg-primary-container opacity-80 rounded-t-lg h-[90%]"></div>
+                    <div class="flex-1 bg-primary rounded-t-lg h-[75%]"></div>
+                    <div class="flex-1 bg-primary-container opacity-50 rounded-t-lg h-[60%]"></div>
+                    <div class="flex-1 bg-primary-container opacity-30 rounded-t-lg h-[45%]"></div>
+                </div>
+                <div class="flex justify-between mt-md text-label-sm text-on-surface-variant font-bold">
+                    <span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+                </div>
+            </div>
+            <div class="bg-surface p-lg rounded-xl shadow-sm border border-outline-variant">
+                <h3 class="text-headline-sm font-bold text-on-surface mb-lg">Live Security Feed</h3>
+                <div class="space-y-md">
+                    <div class="flex gap-md">
+                        <span class="material-symbols-outlined text-tertiary" data-icon="lock_open">lock_open</span>
+                        <div>
+                            <p class="text-body-sm font-semibold">Vault A-12 Accessed</p>
+                            <p class="text-label-sm text-on-surface-variant">2 mins ago • Agent ID: 4492</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-md">
+                        <span class="material-symbols-outlined text-primary" data-icon="sync">sync</span>
+                        <div>
+                            <p class="text-body-sm font-semibold">Database Sync Complete</p>
+                            <p class="text-label-sm text-on-surface-variant">15 mins ago • System Auto</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-md">
+                        <span class="material-symbols-outlined text-error" data-icon="gpp_maybe">gpp_maybe</span>
+                        <div>
+                            <p class="text-body-sm font-semibold">Login Attempt Denied</p>
+                            <p class="text-label-sm text-on-surface-variant">1 hour ago • IP: 192.168.1.4</p>
+                        </div>
+                    </div>
+                    <button class="w-full mt-lg py-sm text-primary font-bold text-label-md border border-primary/20 rounded-lg hover:bg-primary/5 transition-all">
+                        Audit Logs
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Contextual FAB (Only for main screens) -->
+    <button class="fixed bottom-lg right-lg w-14 h-14 bg-primary text-primary-on rounded-full shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-180 z-50">
+        <span class="material-symbols-outlined text-[32px]" data-icon="add">add</span>
+    </button>
+</div>
+
+<script>
+(function(){
+  const CODE = 'Thegreatwave';
+  const gateInput = document.getElementById('gateInput');
+  const gateBtn = document.getElementById('gateBtn');
+  const gate = document.getElementById('gate');
+  const content = document.getElementById('content');
+  const gateError = document.getElementById('gateError');
+
+  gateInput.addEventListener('input', () => {
+    gateBtn.disabled = gateInput.value.length === 0;
+  });
+
+  gateBtn.addEventListener('click', () => {
+    const val = gateInput.value;
+    if (val === CODE) {
+      document.cookie = 'gate=true; path=/; max-age=31536000';
       gate.style.display = 'none';
       content.style.display = 'block';
+    } else {
+      gateError.classList.remove('hidden');
     }
-  })();
-  </script>
+  });
+
+  // Persist gate across reloads
+  if (document.cookie.includes('gate=true')) {
+    gate.style.display = 'none';
+    content.style.display = 'block';
+  }
+})();
+</script>
 </body>
 </html>
