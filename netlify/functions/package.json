@@ -1,0 +1,19 @@
+{
+  "name": "passport-agent-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for Passport Agent MVP",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "dependencies": {
+    "firebase": "^11.0.0",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,84 +1,402 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Passport Agent MVP</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Passport Agent - AI-powered passport and visa issuance platform" />
+  <title>Passport Agent</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#1e88e5",
+            "primary-dark": "#1565c0",
+            surface: "#ffffff",
+            background: "#f7f7f7",
+            "text-primary": "#1f2937",
+            "text-muted": "#6b7280",
+            error: "#dc2626",
+            success: "#16a34a",
+          },
+          fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+
   <style>
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#f7f7f7; color:#111; }
-    header { padding: 1rem; text-align:center; background:#1a1a1a; color:white; }
-    main { padding: 2rem; max-width: 800px; margin: 0 auto; }
-    /* gate styles */
-    #gate { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:9999; }
-    #gateCard { background:white; padding:2rem; border-radius:8px; width: min(420px, 92%); box-shadow:0 6px 20px rgba(0,0,0,.25); text-align:left; }
-    .input { width:100%; padding:.75rem; font-size:1rem; border:1px solid #ccc; border-radius:6px; }
-    .btn { padding:.6rem 1rem; background:#0070f3; color:white; border:none; border-radius:6px; cursor:pointer; margin-top:.5rem; }
-    .btn:disabled { opacity:.5; cursor:not-allowed; }
-    #gateError { color:#d00; margin-top:.5rem; display:none; }
-    #content { display:none; }
-    @media (prefers-color-scheme: dark) {
-      body { background:#0f0f12; color:#eaeaf0; }
-      header { background:#111; }
-      #gateCard { background:#1a1a1a; color:#eaeaf0; border:1px solid #333; }
-    }
+    body { font-family: "Inter", system-ui, sans-serif; }
+    .chip { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 2px solid #d1d5db; cursor: pointer; transition: all 2ms ease; user-select: none; background: #fff; color: #4b5563; }
+    .chip.selected { border-color: #1e88e5; background: #eff6ff; color: #1e88e5; box-shadow: 0 0 0 1px #1e88e5; }
+    .chip:focus-visible { outline: 2px solid #1e88e5; outline-offset: 2px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1px solid #e5e7eb; margin-bottom: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-issued { background: #d1fae5; color: #065f46; }
+    .status-error { background: #fee2e2; color: #991b1b; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 2ms ease; font-size: 14px; }
+    .btn-primary { background: #1e88e5; color: #fff; }
+    .btn-primary:hover { background: #1565c0; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: border-color 2ms ease; }
+    .input:focus { outline: none; border-color: #1e88e5; box-shadow: 0 0 0 3px rgba(30,136,229,.15); }
+    .input-error { border-color: #dc2626; }
+    .spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body>
-  <header>
-    <h1>Passport Agent MVP</h1>
-  </header>
-
-  <div id="gate" role="dialog" aria-label="Password gate" aria-modal="true">
-    <div id="gateCard">
-      <h2>Enter access code</h2>
-      <p>Enter the access code to view the API endpoints.</p>
-      <input id="gateInput" class="input" type="password" placeholder="Access code" />
-      <button id="gateBtn" class="btn" disabled>Unlock</button>
-      <p id="gateError">Incorrect code. Please try again.</p>
+<body class="min-h-screen" style="background:#f7f7f7;">
+  <!-- Gate Overlay -->
+  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.55);">
+    <div class="w-full max-w-sm bg-white rounded-xl p-8 shadow-2xl border border-gray-100">
+      <h2 class="text-xl font-bold mb-2 text-center">Passport Agent</h2>
+      <p class="text-sm text-gray-500 text-center mb-6">Enter your access code to continue</p>
+      <input id="gateInput" type="password" placeholder="Access code" class="input mb-3" />
+      <button id="gateBtn" class="btn btn-primary w-full" disabled>Unlock</button>
+      <p id="gateError" class="text-xs text-red-600 mt-3 text-center hidden">Incorrect code. Please try again.</p>
     </div>
   </div>
 
-  <main id="content" aria-label="Private content">
-    <section>
-      <p>Endpoints available behind the access gate:</p>
-      <ul>
-        <li>/api/health</li>
-        <li>/api/visas</li>
-        <li>/api/passport</li>
-        <li>/api/wallet</li>
-        <li>/api/waitlist</li>
-      </ul>
-      <p>Gate status: private surface</p>
-    </section>
-  </main>
+  <!-- Main App -->
+  <div id="app" class="hidden">
+    <!-- Auth Section -->
+    <div id="unauth" class="min-h-screen flex items-center justify-center p-6">
+      <div class="card w-full max-w-md">
+        <h1 class="text-2xl font-bold mb-1">Passport Agent</h1>
+        <p class="text-sm text-gray-500 mb-6">Sign in to manage passports and visas</p>
+        <form id="loginForm">
+          <label class="block text-sm font-semibold mb-1">Email</label>
+          <input id="loginEmail" type="email" required class="input mb-3" placeholder="you@example.com" />
+          <label class="block text-sm font-semibold mb-1">Password</label>
+          <input id="loginPassword" type="password" required class="input mb-4" placeholder="Your password" />
+          <button type="submit" class="btn btn-primary w-full mb-2">Sign In</button>
+          <p id="loginError" class="text-sm text-red-600 text-center hidden"></p>
+        </form>
+        <div class="mt-4 text-center text-xs text-gray-400">Powered by Netlify Functions &amp; Firebase</div>
+      </div>
+    </div>
+
+    <!-- Authenticated Section -->
+    <div id="authed" class="hidden">
+      <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 class="text-lg font-bold">Passport Agent</h1>
+            <p id="userDisplay" class="text-xs text-gray-500"></p>
+          </div>
+          <button id="signOutBtn" class="btn btn-secondary text-sm">Sign Out</button>
+        </div>
+      </header>
+
+      <main class="max-w-5xl mx-auto p-6 space-y-6">
+        <!-- Create Visa -->
+        <div class="card">
+          <h3 class="text-base font-bold mb-3">Apply for Visa</h3>
+          <p class="text-sm text-gray-500 mb-3">Select the scopes you need for your visa authorization.</p>
+          <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
+          <button id="applyVisaBtn" class="btn btn-primary" disabled>Submit Visa Application</button>
+          <p id="visaResult" class="text-sm mt-3 hidden"></p>
+          <div id="visaSpinner" class="hidden mt-2 text-sm text-gray-500">
+            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+            Processing...
+          </div>
+        </div>
+
+        <!-- Create Passport -->
+        <div class="card">
+          <h3 class="text-base font-bold mb-3">Issue Passport</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1">Full Name</label>
+              <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Passport Number</label>
+              <input id="passportNumInput" class="input" placeholder="e.g. PS789012" />
+            </div>
+          </div>
+          <button id="issuePassportBtn" class="btn btn-primary" disabled>Issue Passport</button>
+          <p id="passportResult" class="text-sm mt-3 hidden"></p>
+          <div id="passportSpinner" class="hidden mt-2 text-sm text-gray-500">
+            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+            Issuing...
+          </div>
+        </div>
+
+        <!-- Pending Applications -->
+        <div class="card" id="applicationsSection">
+          <h3 class="text-base font-bold mb-3">Your Applications</h3>
+          <div id="appList"><p class="text-sm text-gray-400">Loading...</p></div>
+        </div>
+      </main>
+    </div>
+  </div>
 
   <script>
-  (function(){
-    const CODE = 'Thegreatwave'; // gate code for demo purposes; can be moved to a secure env later
-    const gateInput = document.getElementById('gateInput');
-    const gateBtn = document.getElementById('gateBtn');
-    const gate = document.getElementById('gate');
-    const content = document.getElementById('content');
-    const gateError = document.getElementById('gateError');
+  (function() {
+    const GATE_CODE = "Thegreatwave";
+    const gate = document.getElementById("gate");
+    const gateInput = document.getElementById("gateInput");
+    const gateBtn = document.getElementById("gateBtn");
+    const gateError = document.getElementById("gateError");
+    const app = document.getElementById("app");
+    const unauth = document.getElementById("unauth");
+    const authed = document.getElementById("authed");
 
-    gateInput.addEventListener('input', () => {
+    // ===== Gate Logic =====
+    function checkGateCookie() {
+      return document.cookie.split(";").some(c => c.trim().startsWith("gate=true"));
+    }
+
+    if (checkGateCookie()) {
+      gate.style.display = "none";
+      app.classList.remove("hidden");
+    }
+
+    gateInput.addEventListener("input", () => {
       gateBtn.disabled = gateInput.value.length === 0;
     });
 
-    gateBtn.addEventListener('click', () => {
-      const val = gateInput.value;
-      if (val === CODE) {
-        document.cookie = 'gate=true; path=/; max-age=31536000';
-        // Redirect to the admin portal for the actual UI after gating
-        window.location.href = '/admin-portal.html';
+    gateBtn.addEventListener("click", () => {
+      if (gateInput.value === GATE_CODE) {
+        document.cookie = "gate=true; path=/; max-age=" + (365 * 24 * 60 * 60);
+        gate.style.display = "none";
+        app.classList.remove("hidden");
+        gateError.classList.add("hidden");
       } else {
-        gateError.style.display = 'block';
+        gateError.classList.remove("hidden");
       }
     });
 
-    // Persist gate across reloads by redirecting if already gated
-    if (document.cookie.includes('gate=true')) {
-      window.location.href = '/admin-portal.html';
+    gateInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
+    });
+
+    // ===== Firebase Init =====
+    const firebaseConfig = {
+      apiKey: window.FIREBASE_API_KEY || "YOUR_API_KEY",
+      authDomain: window.FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT.firebaseapp.com",
+      projectId: window.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+      storageBucket: window.FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT.appspot.com",
+      messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID || "YOUR_SENDER_ID",
+      appId: window.FIREBASE_APP_ID || "YOUR_APP_ID",
+    };
+
+    let auth, db, currentUser = null;
+
+    try {
+      const fa = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.firestore();
+    } catch (e) {
+      console.warn("Firebase init skipped (demo mode):", e.message);
+    }
+
+    // ===== Auth =====
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("loginError");
+      try {
+        if (auth) {
+          await auth.signInWithEmailAndPassword(email, password);
+        }
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("signOutBtn").addEventListener("click", () => {
+      if (auth) auth.signOut();
+    });
+
+    if (auth) {
+      auth.onAuthStateChanged((user) => {
+        currentUser = user;
+        if (user) {
+          unauth.classList.add("hidden");
+          authed.classList.remove("hidden");
+          document.getElementById("userDisplay").textContent = user.email;
+          loadApplications();
+        } else {
+          unauth.classList.remove("hidden");
+          authed.classList.add("hidden");
+        }
+      });
+    }
+
+    // ===== Scope Chips =====
+    const SCOPE_OPTIONS = [
+      { value: "api:read", label: "API Read" },
+      { value: "api:write", label: "API Write" },
+      { value: "data:share", label: "Data Share" },
+      { value: "config:view", label: "Config View" },
+      { value: "config:admin", label: "Config Admin" },
+    ];
+
+    const scopeContainer = document.getElementById("scopeChips");
+    const selectedScopes = new Set();
+
+    SCOPE_OPTIONS.forEach((s) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = s.label;
+      chip.dataset.value = s.value;
+      chip.tabIndex = 0;
+      chip.addEventListener("click", () => {
+        if (selectedScopes.has(s.value)) {
+          selectedScopes.delete(s.value);
+          chip.classList.remove("selected");
+        } else {
+          selectedScopes.add(s.value);
+          chip.classList.add("selected");
+        }
+        document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      });
+      scopeContainer.appendChild(chip);
+    });
+
+    // ===== Visa Application =====
+    document.getElementById("applyVisaBtn").addEventListener("click", async () => {
+      const resultEl = document.getElementById("visaResult");
+      const spinnerEl = document.getElementById("visaSpinner");
+      resultEl.classList.add("hidden");
+      spinnerEl.classList.remove("hidden");
+
+      try {
+        const payload = { scopes: Array.from(selectedScopes), uid: currentUser?.uid || "demo_user" };
+
+        let response;
+        try {
+          response = await fetch("/api/apply-visa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          response = await response.json();
+        } catch {
+          response = { success: true, message: "Visa application submitted (demo mode)", applicationId: `visa_${Date.now()}` };
+        }
+
+        resultEl.textContent = response.message || "Application submitted!";
+        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.classList.remove("hidden");
+        loadApplications();
+      } catch (err) {
+        resultEl.textContent = "Error: " + err.message;
+        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.classList.remove("hidden");
+      } finally {
+        spinnerEl.classList.add("hidden");
+      }
+    });
+
+    // ===== Passport Issuance =====
+    const fullNameInput = document.getElementById("fullNameInput");
+    const passportNumInput = document.getElementById("passportNumInput");
+    const issuePassportBtn = document.getElementById("issuePassportBtn");
+
+    function togglePassportBtn() {
+      issuePassportBtn.disabled = !fullNameInput.value.trim() || !passportNumInput.value.trim();
+    }
+    fullNameInput.addEventListener("input", togglePassportBtn);
+    passportNumInput.addEventListener("input", togglePassportBtn);
+
+    issuePassportBtn.addEventListener("click", async () => {
+      const resultEl = document.getElementById("passportResult");
+      const spinnerEl = document.getElementById("passportSpinner");
+      resultEl.classList.add("hidden");
+      spinnerEl.classList.remove("hidden");
+
+      try {
+        const payload = {
+          fullName: fullNameInput.value.trim(),
+          passportNumber: passportNumInput.value.trim().toUpperCase(),
+          uid: currentUser?.uid || "demo_user",
+        };
+
+        let response;
+        try {
+          const res = await fetch("/api/apply-passport", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          response = await res.json();
+        } catch {
+          response = { success: true, message: "Passport issued (demo mode)", passport: { id: `pass_${Date.now()}` } };
+        }
+
+        resultEl.textContent = response.message || "Passport issued successfully!";
+        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.classList.remove("hidden");
+        fullNameInput.value = "";
+        passportNumInput.value = "";
+        issuePassportBtn.disabled = true;
+        loadApplications();
+      } catch (err) {
+        resultEl.textContent = "Error: " + err.message;
+        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.classList.remove("hidden");
+      } finally {
+        spinnerEl.classList.add("hidden");
+      }
+    });
+
+    // ===== Load Applications =====
+    async function loadApplications() {
+      const container = document.getElementById("appList");
+      try {
+        let data = [];
+        try {
+          const res = await fetch(`/api/list-pending?uid=${currentUser?.uid || "demo_user"}`);
+          const json = await res.json();
+          data = json.data || [];
+        } catch {
+          data = [];
+        }
+
+        if (data.length === 0) {
+          container.innerHTML = '<p class="text-sm text-gray-400">No applications yet. Create a visa or passport above.</p>';
+          return;
+        }
+
+        container.innerHTML = data
+          .map(
+            (a) => `
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">${a.type === "visa" ? "🛂" : "📕"}</span>
+              <div>
+                <p class="text-sm font-semibold">${a.type === "passport" ? a.fullName : "Visa Application #" + a.id}</p>
+                <p class="text-xs text-gray-500">${a.type === "visa" ? "Scopes: " + (a.scopes || []).join(", ") : "Passport #" + a.passportNumber}</p>
+              </div>
+            </div>
+            <span class="status-badge status-${a.status === 'issued' ? 'issued' : 'pending'}">${a.status}</span>
+          </div>`
+          )
+          .join("");
+      } catch (err) {
+        container.innerHTML = '<p class="text-sm text-red-500">Failed to load applications.</p>';
+      }
     }
   })();
   </script>

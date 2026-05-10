@@ -1,0 +1,33 @@
+# Node dependencies
+node_modules/
+
+# Environment files (never commit real secrets)
+.env
+.env.local
+.env.production
+
+# Firebase config (contains real keys - use env vars instead)
+firebase.config.js
+
+# Netlify build artifacts
+.netlify/
+netlify-dev-cache/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build outputs
+dist/
+build/
+.cache/
+
+# Patch files
+*.diff
+*.patch
