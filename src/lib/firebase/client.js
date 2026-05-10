@@ -40,11 +40,12 @@ class FirebaseClient {
   }
 
   // Authentication methods
-  async signIn(email, password) {
+  async signInWithGoogle() {
     if (!this.initialized) throw new Error("Firebase not initialized");
     
-    const { signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js");
-    return signInWithEmailAndPassword(this.auth, email, password);
+    const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js");
+    const provider = new GoogleAuthProvider();
+    return signInWithPopup(this.auth, provider);
   }
 
   async signOut() {
