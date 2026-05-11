@@ -1,16 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Passport Agent - AI-powered passport and visa issuance platform" />
   <title>Passport Agent</title>
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <script>
     tailwind.config = {
@@ -18,131 +16,310 @@
       theme: {
         extend: {
           colors: {
-            primary: "#1e88e5",
-            "primary-dark": "#1565c0",
-            surface: "#ffffff",
-            background: "#f7f7f7",
-            "text-primary": "#1f2937",
-            "text-muted": "#6b7280",
-            error: "#dc2626",
-            success: "#16a34a",
+            neon:  "#00ff41",
+            "neon-dim": "#00cc33",
+            "neon-glow": "rgba(0,255,65,.15)",
+            void:  "#0a0a0a",
+            "void-raised": "#111118",
+            surface: "#16161e",
+            border: "#222233",
+            muted: "#6b7280",
+            error: "#ff4444",
+            success: "#00ff41",
           },
-          fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+          fontFamily: { sans: ["JetBrains Mono", "monospace"], mono: ["JetBrains Mono", "monospace"] },
         },
       },
     };
   </script>
 
   <style>
-    body { font-family: "Inter", system-ui, sans-serif; }
-    .chip { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 2px solid #d1d5db; cursor: pointer; transition: all 2ms ease; user-select: none; background: #fff; color: #4b5563; }
-    .chip.selected { border-color: #1e88e5; background: #eff6ff; color: #1e88e5; box-shadow: 0 0 0 1px #1e88e5; }
-    .chip:focus-visible { outline: 2px solid #1e88e5; outline-offset: 2px; }
-    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1px solid #e5e7eb; margin-bottom: 16px; }
-    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-issued { background: #d1fae5; color: #065f46; }
-    .status-error { background: #fee2e2; color: #991b1b; }
-    .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 2ms ease; font-size: 14px; }
-    .btn-primary { background: #1e88e5; color: #fff; }
-    .btn-primary:hover { background: #1565c0; }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
-    .btn-secondary:hover { background: #e5e7eb; }
-    .input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: border-color 2ms ease; }
-    .input:focus { outline: none; border-color: #1e88e5; box-shadow: 0 0 0 3px rgba(30,136,229,.15); }
-    .input-error { border-color: #dc2626; }
-    .spinner { animation: spin 1s linear infinite; }
+    * { font-family: "JetBrains Mono", monospace; }
+    body {
+      background: #0a0a0a;
+      color: #c0c0cc;
+      min-height: 100vh;
+    }
+
+    /* Scan line overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,.015) 2px, rgba(0,255,65,.015) 3px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* Glow keyframes */
+    @keyframes glow-pulse {
+      0%, 100% { box-shadow: 0 0 4px rgba(0,255,65,.2), 0 0 12px rgba(0,255,65,.05); }
+      50%      { box-shadow: 0 0 8px rgba(0,255,65,.35), 0 0 20px rgba(0,255,65,.1); }
+    }
+    @keyframes text-glow {
+      0%, 100% { text-shadow: 0 0 4px rgba(0,255,65,.4); }
+      50%      { text-shadow: 0 0 10px rgba(0,255,65,.7); }
+    }
+    @keyframes cursor-blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Cards */
+    .card {
+      background: #111118;
+      border: 1px solid #222233;
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 16px;
+      animation: slide-in .3s ease;
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: rgba(0,255,65,.25); }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 20px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all .15s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .btn-primary {
+      background: rgba(0,255,65,.1);
+      color: #00ff41;
+      border-color: rgba(0,255,65,.3);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: rgba(0,255,65,.2);
+      box-shadow: 0 0 12px rgba(0,255,65,.25);
+    }
+    .btn-primary:disabled {
+      opacity: .35;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #888;
+      border-color: #333;
+    }
+    .btn-secondary:hover {
+      color: #ccc;
+      border-color: #555;
+    }
+    .btn-danger {
+      background: rgba(255,68,68,.1);
+      color: #ff4444;
+      border-color: rgba(255,68,68,.3);
+    }
+    .btn-danger:hover {
+      background: rgba(255,68,68,.2);
+      box-shadow: 0 0 12px rgba(255,68,68,.25);
+    }
+
+    /* Inputs */
+    .input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d0d15;
+      border: 1px solid #333;
+      border-radius: 3px;
+      font-size: 13px;
+      color: #c0c0cc;
+      font-family: "JetBrains Mono", monospace;
+      transition: border-color .15s;
+    }
+    .input:focus {
+      outline: none;
+      border-color: #00ff41;
+      box-shadow: 0 0 8px rgba(0,255,65,.1);
+    }
+    .input::placeholder { color: #444; }
+    .input-error { border-color: #ff4444; }
+
+    /* Chips */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: "JetBrains Mono", monospace;
+      border: 1px solid #333;
+      background: #111118;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+      transition: all .12s ease;
+      clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+    }
+    .chip:hover { border-color: #00ff41; color: #00ff41; }
+    .chip.selected {
+      border-color: #00ff41;
+      background: rgba(0,255,65,.08);
+      color: #00ff41;
+      box-shadow: 0 0 8px rgba(0,255,65,.15);
+    }
+    .chip:focus-visible { outline: 2px solid #00ff41; outline-offset: 2px; }
+
+    /* Status badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .status-pending {
+      background: rgba(255,196,0,.1);
+      color: #ffc400;
+      border: 1px solid rgba(255,196,0,.2);
+    }
+    .status-issued {
+      background: rgba(0,255,65,.1);
+      color: #00ff41;
+      border: 1px solid rgba(0,255,65,.2);
+    }
+    .status-error {
+      background: rgba(255,68,68,.1);
+      color: #ff4444;
+      border: 1px solid rgba(255,68,68,.2);
+    }
+
+    /* Spinner */
+    .spinner { animation: spin 1s linear infinite; }
+
+    /* Terminal-style prompt */
+    .prompt::before {
+      content: ">";
+      color: #00ff41;
+      margin-right: 8px;
+      animation: cursor-blink 1.2s step-end infinite;
+    }
+
+    /* Section title */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #00ff41;
+      margin-bottom: 12px;
+      animation: text-glow 3s ease-in-out infinite;
+    }
+
+    .section-title::before {
+      content: "// ";
+      color: #444;
+    }
   </style>
 </head>
-<body class="min-h-screen" style="background:#f7f7f7;">
+<body>
   <!-- Gate Overlay -->
-  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.55);">
-    <div class="w-full max-w-sm bg-white rounded-xl p-8 shadow-2xl border border-gray-100">
-      <h2 class="text-xl font-bold mb-2 text-center">Passport Agent</h2>
-      <p class="text-sm text-gray-500 text-center mb-6">Enter your access code to continue</p>
-      <input id="gateInput" type="password" placeholder="Access code" class="input mb-3" />
-      <button id="gateBtn" class="btn btn-primary w-full" disabled>Unlock</button>
-      <p id="gateError" class="text-xs text-red-600 mt-3 text-center hidden">Incorrect code. Please try again.</p>
+  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.85);">
+    <div class="w-full max-w-sm bg-[#111118] border border-[#222233] p-8" style="box-shadow:0 0 40px rgba(0,255,65,.05);">
+      <div class="text-center mb-6">
+        <div class="text-neon text-3xl mb-2" style="animation: text-glow 3s ease-in-out infinite;">[ ]</div>
+        <h2 class="text-sm font-bold uppercase tracking-[4px] text-neon mb-1" style="animation: text-glow 3s ease-in-out infinite;">Passport Agent</h2>
+        <p class="text-xs text-muted">v2.0 // secure terminal</p>
+      </div>
+      <div class="mb-4">
+        <p class="text-[10px] text-muted uppercase tracking-[2px] mb-2">Access Code</p>
+        <input id="gateInput" type="password" placeholder="Enter code..." class="input" />
+      </div>
+      <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
+      <p id="gateError" class="text-xs text-error mt-3 text-center hidden">ACCESS DENIED</p>
     </div>
   </div>
 
   <!-- Main App -->
   <div id="app" class="hidden">
-    <!-- Dashboard -->
     <div id="authed">
-      <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header class="bg-[#0d0d15] border-b border-[#222233] sticky top-0 z-40">
         <div id="headerRow" class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 class="text-lg font-bold">Passport Agent</h1>
-            <p id="userDisplay" class="text-xs text-gray-500"></p>
+            <h1 class="text-sm font-bold uppercase tracking-[4px] text-neon" style="animation: text-glow 3s ease-in-out infinite;">Passport Agent</h1>
+            <p id="userDisplay" class="text-[10px] text-muted tracking-[2px] mt-0.5"></p>
           </div>
         </div>
       </header>
 
       <!-- Login / Register -->
-      <div id="authView" class="max-w-md mx-auto mt-12 p-6">
-        <div class="card">
-          <h2 id="authTitle" class="text-xl font-bold mb-4">Sign In</h2>
+      <div id="authView" class="max-w-md mx-auto mt-16 p-6">
+        <div class="card" style="animation: glow-pulse 4s ease-in-out infinite;">
+          <h2 id="authTitle" class="section-title">Sign In</h2>
           <div id="authFields">
-            <label class="block text-sm font-semibold mb-1">Email</label>
+            <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Email</label>
             <input id="authEmail" type="email" class="input mb-3" placeholder="you@example.com" required />
-            <label class="block text-sm font-semibold mb-1">Password</label>
-            <input id="authPassword" type="password" class="input mb-4" placeholder="Password" required />
+            <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Password</label>
+            <input id="authPassword" type="password" class="input mb-4" placeholder="••••••••" required />
             <button id="authSubmitBtn" class="btn btn-primary w-full mb-2">Sign In</button>
-            <p id="authError" class="text-sm text-red-600 text-center hidden"></p>
+            <p id="authError" class="text-xs text-error text-center hidden"></p>
           </div>
-          <p class="text-sm text-center text-gray-500 mt-3">
+          <div class="text-xs text-center text-muted mt-4 border-t border-[#222233] pt-4">
             <span id="authToggleText">Don't have an account?</span>
-            <button id="authToggleBtn" class="text-blue-600 font-semibold underline">Create one</button>
-          </p>
+            <button id="authToggleBtn" class="text-neon font-semibold underline ml-1">Create one</button>
+          </div>
         </div>
       </div>
 
-      <!-- Dashboard (hidden until login) -->
+      <!-- Dashboard -->
       <div id="dashboardView" class="hidden">
-      <main class="max-w-5xl mx-auto p-6 space-y-6">
-        <!-- Create Visa -->
-        <div class="card">
-          <h3 class="text-base font-bold mb-3">Apply for Visa</h3>
-          <p class="text-sm text-gray-500 mb-3">Select the scopes you need for your visa authorization.</p>
-          <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
-          <button id="applyVisaBtn" class="btn btn-primary" disabled>Submit Visa Application</button>
-          <p id="visaResult" class="text-sm mt-3 hidden"></p>
-          <div id="visaSpinner" class="hidden mt-2 text-sm text-gray-500">
-            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
-            Processing...
-          </div>
-        </div>
-
-        <!-- Create Passport -->
-        <div class="card">
-          <h3 class="text-base font-bold mb-3">Issue Passport</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-semibold mb-1">Full Name</label>
-              <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
-            </div>
-            <div>
-              <label class="block text-sm font-semibold mb-1">Passport Number</label>
-              <input id="passportNumInput" class="input" placeholder="e.g. PS789012" />
+        <main class="max-w-5xl mx-auto p-6 space-y-6">
+          <!-- Create Visa -->
+          <div class="card">
+            <h3 class="section-title">Apply for Visa</h3>
+            <p class="text-xs text-muted mb-4">Select authorization scopes for the target system.</p>
+            <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
+            <button id="applyVisaBtn" class="btn btn-primary" disabled>Submit Visa Request</button>
+            <p id="visaResult" class="text-xs mt-3 hidden"></p>
+            <div id="visaSpinner" class="hidden mt-2 text-xs text-muted">
+              <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+              Processing request...
             </div>
           </div>
-          <button id="issuePassportBtn" class="btn btn-primary" disabled>Issue Passport</button>
-          <p id="passportResult" class="text-sm mt-3 hidden"></p>
-          <div id="passportSpinner" class="hidden mt-2 text-sm text-gray-500">
-            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
-            Issuing...
-          </div>
-        </div>
 
-        <!-- Pending Applications -->
-        <div class="card" id="applicationsSection">
-          <h3 class="text-base font-bold mb-3">Your Applications</h3>
-          <div id="appList"><p class="text-sm text-gray-400">Loading...</p></div>
-        </div>
-      </main>
+          <!-- Create Passport -->
+          <div class="card">
+            <h3 class="section-title">Issue Passport</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Full Name</label>
+                <input id="fullNameInput" class="input" placeholder="Full legal name" />
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Passport Number</label>
+                <input id="passportNumInput" class="input" placeholder="PS789012" />
+              </div>
+            </div>
+            <button id="issuePassportBtn" class="btn btn-primary" disabled>Issue Passport</button>
+            <p id="passportResult" class="text-xs mt-3 hidden"></p>
+            <div id="passportSpinner" class="hidden mt-2 text-xs text-muted">
+              <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+              Issuing passport...
+            </div>
+          </div>
+
+          <!-- Pending Applications -->
+          <div class="card" id="applicationsSection">
+            <h3 class="section-title">Active Sessions</h3>
+            <div id="appList"><p class="text-xs text-muted prompt">Loading session data...</p></div>
+          </div>
+        </main>
+      </div>
     </div>
   </div>
 
@@ -298,7 +475,7 @@ gateInput.addEventListener("keydown", (e) => {
     if (currentUser) userDisplay.textContent = currentUser.email;
     const headerRow = document.getElementById("headerRow");
     const signOutBtn = document.createElement("button");
-    signOutBtn.className = "btn btn-secondary text-sm";
+    signOutBtn.className = "btn btn-danger text-sm";
     signOutBtn.textContent = "Sign Out";
     signOutBtn.addEventListener("click", logout);
     headerRow.appendChild(signOutBtn);
@@ -353,16 +530,16 @@ gateInput.addEventListener("keydown", (e) => {
           });
           response = await response.json();
         } catch {
-          response = { success: true, message: "Visa application submitted (demo mode)", applicationId: `visa_${Date.now()}` };
+          response = { success: true, message: "Visa request submitted (offline/demo mode)", applicationId: `visa_${Date.now()}` };
         }
 
         resultEl.textContent = response.message || "Application submitted!";
-        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
         loadApplications();
       } catch (err) {
-        resultEl.textContent = "Error: " + err.message;
-        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.textContent = "ERR: " + err.message;
+        resultEl.className = "text-xs mt-3 text-error";
         resultEl.classList.remove("hidden");
       } finally {
         spinnerEl.classList.add("hidden");
@@ -406,15 +583,15 @@ gateInput.addEventListener("keydown", (e) => {
         }
 
         resultEl.textContent = response.message || "Passport issued successfully!";
-        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
         fullNameInput.value = "";
         passportNumInput.value = "";
         issuePassportBtn.disabled = true;
         loadApplications();
       } catch (err) {
-        resultEl.textContent = "Error: " + err.message;
-        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.textContent = "ERR: " + err.message;
+        resultEl.className = "text-xs mt-3 text-error";
         resultEl.classList.remove("hidden");
       } finally {
         spinnerEl.classList.add("hidden");
@@ -435,19 +612,19 @@ gateInput.addEventListener("keydown", (e) => {
         }
 
         if (data.length === 0) {
-          container.innerHTML = '<p class="text-sm text-gray-400">No applications yet. Create a visa or passport above.</p>';
+          container.innerHTML = '<p class="text-xs text-muted prompt">No active sessions. Submit a visa or passport request to begin.</p>';
           return;
         }
 
         container.innerHTML = data
           .map(
             (a) => `
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+          <div class="flex items-center justify-between py-3 border-b border-[#222233]">
             <div class="flex items-center gap-3">
-              <span class="text-lg">${a.type === "visa" ? "🛂" : "📕"}</span>
+              <span class="text-sm text-muted">${a.type === "visa" ? "visa:" : "pprt:"}</span>
               <div>
-                <p class="text-sm font-semibold">${a.type === "passport" ? a.fullName : "Visa Application #" + a.id}</p>
-                <p class="text-xs text-gray-500">${a.type === "visa" ? "Scopes: " + (a.scopes || []).join(", ") : "Passport #" + a.passportNumber}</p>
+                <p class="text-xs font-semibold text-[#c0c0cc]">${a.type === "passport" ? a.fullName : "VISA-" + a.id}</p>
+                <p class="text-[10px] text-muted tracking-[1px] uppercase">${a.type === "visa" ? "SCOPES: " + (a.scopes || []).join(", ") : "PASSPORT #" + a.passportNumber}</p>
               </div>
             </div>
             <span class="status-badge status-${a.status === 'issued' ? 'issued' : 'pending'}">${a.status}</span>
@@ -455,7 +632,7 @@ gateInput.addEventListener("keydown", (e) => {
           )
           .join("");
       } catch (err) {
-        container.innerHTML = '<p class="text-sm text-red-500">Failed to load applications.</p>';
+        container.innerHTML = '<p class="text-xs text-error">CONNECTION FAILED: unable to load sessions.</p>';
       }
     }
   })();
