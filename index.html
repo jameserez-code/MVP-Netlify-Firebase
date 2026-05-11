@@ -10,11 +10,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
-
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <script>
@@ -75,32 +70,11 @@
 
   <!-- Main App -->
   <div id="app" class="hidden">
-    <!-- Auth Section -->
-    <div id="unauth" class="min-h-screen flex items-center justify-center p-6">
-      <div class="card w-full max-w-md">
-        <h1 class="text-2xl font-bold mb-1">Passport Agent</h1>
-        <p class="text-sm text-gray-500 mb-6">Sign in to manage passports and visas</p>
-        <form id="loginForm">
-          <label class="block text-sm font-semibold mb-1">Email</label>
-          <input id="loginEmail" type="email" required class="input mb-3" placeholder="you@example.com" />
-          <label class="block text-sm font-semibold mb-1">Password</label>
-          <input id="loginPassword" type="password" required class="input mb-4" placeholder="Your password" />
-          <button type="submit" class="btn btn-primary w-full mb-2">Sign In</button>
-          <p id="loginError" class="text-sm text-red-600 text-center hidden"></p>
-        </form>
-        <div class="mt-4 text-center text-xs text-gray-400">Powered by Netlify Functions &amp; Firebase</div>
-      </div>
-    </div>
-
-    <!-- Authenticated Section -->
-    <div id="authed" class="hidden">
+    <!-- Dashboard -->
+    <div id="authed">
       <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 class="text-lg font-bold">Passport Agent</h1>
-            <p id="userDisplay" class="text-xs text-gray-500"></p>
-          </div>
-          <button id="signOutBtn" class="btn btn-secondary text-sm">Sign Out</button>
+        <div class="max-w-5xl mx-auto px-6 py-4">
+          <h1 class="text-lg font-bold">Passport Agent</h1>
         </div>
       </header>
 
@@ -156,8 +130,6 @@
     const gateBtn = document.getElementById("gateBtn");
     const gateError = document.getElementById("gateError");
     const app = document.getElementById("app");
-    const unauth = document.getElementById("unauth");
-    const authed = document.getElementById("authed");
 
     // ===== Gate Logic =====
     function checkGateCookie() {
@@ -188,60 +160,8 @@
       if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
     });
 
-    // ===== Firebase Init =====
-    const firebaseConfig = {
-      apiKey: window.FIREBASE_API_KEY || "YOUR_API_KEY",
-      authDomain: window.FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT.firebaseapp.com",
-      projectId: window.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-      storageBucket: window.FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT.appspot.com",
-      messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID || "YOUR_SENDER_ID",
-      appId: window.FIREBASE_APP_ID || "YOUR_APP_ID",
-    };
-
-    let auth, db, currentUser = null;
-
-    try {
-      const fa = firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
-    } catch (e) {
-      console.warn("Firebase init skipped (demo mode):", e.message);
-    }
-
-    // ===== Auth =====
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("loginEmail").value;
-      const password = document.getElementById("loginPassword").value;
-      const errEl = document.getElementById("loginError");
-      try {
-        if (auth) {
-          await auth.signInWithEmailAndPassword(email, password);
-        }
-      } catch (err) {
-        errEl.textContent = err.message;
-        errEl.classList.remove("hidden");
-      }
-    });
-
-    document.getElementById("signOutBtn").addEventListener("click", () => {
-      if (auth) auth.signOut();
-    });
-
-    if (auth) {
-      auth.onAuthStateChanged((user) => {
-        currentUser = user;
-        if (user) {
-          unauth.classList.add("hidden");
-          authed.classList.remove("hidden");
-          document.getElementById("userDisplay").textContent = user.email;
-          loadApplications();
-        } else {
-          unauth.classList.remove("hidden");
-          authed.classList.add("hidden");
-        }
-      });
-    }
+    // ===== Gate unlocks directly to app - no Firebase auth required =====
+    loadApplications();
 
     // ===== Scope Chips =====
     const SCOPE_OPTIONS = [
@@ -282,7 +202,7 @@
       spinnerEl.classList.remove("hidden");
 
       try {
-        const payload = { scopes: Array.from(selectedScopes), uid: currentUser?.uid || "demo_user" };
+        const payload = { scopes: Array.from(selectedScopes), uid: "demo_user" };
 
         let response;
         try {
@@ -330,7 +250,7 @@
         const payload = {
           fullName: fullNameInput.value.trim(),
           passportNumber: passportNumInput.value.trim().toUpperCase(),
-          uid: currentUser?.uid || "demo_user",
+          uid: "demo_user",
         };
 
         let response;
@@ -367,7 +287,7 @@
       try {
         let data = [];
         try {
-          const res = await fetch(`/api/list-pending?uid=${currentUser?.uid || "demo_user"}`);
+          const res = await fetch(`/api/list-pending?uid=demo_user`);
           const json = await res.json();
           data = json.data || [];
         } catch {
