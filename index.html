@@ -247,7 +247,7 @@
         <p class="text-xs text-muted">v2.0 // secure terminal</p>
       </div>
       <div class="mb-4">
-        <p class="text-[10px] text-muted uppercase tracking-[2px] mb-2">Access Code</p>
+        <label for="gateInput" class="block text-[10px] text-muted uppercase tracking-[2px] mb-2">Access Code</label>
         <input id="gateInput" type="password" placeholder="Enter code..." class="input" />
       </div>
       <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
@@ -526,15 +526,29 @@ gateInput.addEventListener("keydown", (e) => {
       chip.textContent = s.label;
       chip.dataset.value = s.value;
       chip.tabIndex = 0;
-      chip.addEventListener("click", () => {
-        if (selectedScopes.has(s.value)) {
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", "false");
+
+      const toggleChip = () => {
+        const isSelected = selectedScopes.has(s.value);
+        if (isSelected) {
           selectedScopes.delete(s.value);
           chip.classList.remove("selected");
+          chip.setAttribute("aria-checked", "false");
         } else {
           selectedScopes.add(s.value);
           chip.classList.add("selected");
+          chip.setAttribute("aria-checked", "true");
         }
         document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      };
+
+      chip.addEventListener("click", toggleChip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          toggleChip();
+        }
       });
       scopeContainer.appendChild(chip);
     });
