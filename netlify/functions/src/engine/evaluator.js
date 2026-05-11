@@ -180,7 +180,21 @@ function evaluateIntent({
     };
   }
 
-  // --- STEP 3: DOMAIN CHECK (HTTP tools — MUST be before param constraints for SSRF) ---
+  // --- STEP 2.5: MODIFY TRANSFORMATIONS (pre-domain, pre-params)
+  // Apply modifyParameters rewrites BEFORE domain/param checks
+  // so that security-enforced rewrites (like forcing method to GET)
+  // take effect before those checks run.
+  let workingParams = { ...params };
+  const modifications = [];
+
+  if (matchedToolPolicy.modifyParameters) {
+    for (const [paramName, forcedValue] of Object.entries(matchedToolPolicy.modifyParameters)) {
+      if (workingParams[paramName] !== forcedValue) {
+        modifications.push(paramName + ': "' + workingParams[paramName] + '" → "' + forcedValue + '"');
+        workingParams[paramName] = forcedValue;
+      }
+    }
+  }
   if (tool === 'http_request' && params.url) {
     const domain = extractDomain(params.url);
 
@@ -202,7 +216,7 @@ function evaluateIntent({
       let domainAllowed = false;
       for (const allowed of allowedDomains) {
         if (domainMatches(allowed.pattern, domain)) {
-          if (params.method && allowed.methods && !allowed.methods.includes(params.method)) {
+          if (workingParams.method && allowed.methods && !allowed.methods.includes(workingParams.method)) {
             return {
               decision: 'deny',
               reason: 'method_not_permitted',
@@ -223,11 +237,10 @@ function evaluateIntent({
     }
   }
 
-  // --- STEP 4: PARAMETER CONSTRAINTS ---
-  // For HTTP tools: skip the url parameterConstraint if the domain check above already passed
+  // --- STEP 4: PARAMETER CONSTRAINTS (use workingParams, post-modify) ---
   const constraints = matchedToolPolicy.parameterConstraints || {};
   for (const [paramName, constraint] of Object.entries(constraints)) {
-    const paramValue = params[paramName];
+    const paramValue = workingParams[paramName];
     if (!matchesConstraint(paramValue, constraint)) {
       return {
         decision: 'deny',
@@ -239,7 +252,7 @@ function evaluateIntent({
 
   // --- STEP 5: DATA RESTRICTIONS ---
   if (matchedPolicy.rules.dataRestrictions) {
-    const issues = scanParams(params, matchedPolicy.rules.dataRestrictions);
+    const issues = scanParams(workingParams, matchedPolicy.rules.dataRestrictions);
     if (issues.length > 0) {
       return {
         decision: 'deny',
@@ -268,28 +281,15 @@ function evaluateIntent({
     }
   }
 
-  // --- STEP 7: MODIFY TRANSFORMATIONS ---
-  let modifiedParams = { ...params };
-  const modifications = [];
-
-  if (matchedToolPolicy.modifyParameters) {
-    for (const [paramName, forcedValue] of Object.entries(matchedToolPolicy.modifyParameters)) {
-      if (modifiedParams[paramName] !== forcedValue) {
-        modifications.push(`${paramName}: "${modifiedParams[paramName]}" → "${forcedValue}"`);
-        modifiedParams[paramName] = forcedValue;
-      }
-    }
-  }
-
+  // --- STEP 7: RETURN DECISION ---
   if (modifications.length > 0) {
     return {
       decision: 'modify',
-      modifiedParameters: modifiedParams,
+      modifiedParameters: workingParams,
       modifications,
     };
   }
 
-  // --- ALL CHECKS PASSED ---
   return { decision: 'allow' };
 }
 

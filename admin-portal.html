@@ -286,8 +286,53 @@
               </tbody>
             </table>
           </div>
+        <!-- Agent Monitor -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="section-title mb-0">Agent Activity Feed</h3>
+            <div class="flex items-center gap-3">
+              <select id="actionFilter" class="input" style="width:140px;padding:4px 8px;font-size:11px;">
+                <option value="">All decisions</option>
+                <option value="allow">ALLOW</option>
+                <option value="deny">DENY</option>
+                <option value="modify">MODIFY</option>
+              </select>
+              <button id="refreshActionsBtn" class="btn btn-primary" style="font-size:11px;padding:4px 12px;">Refresh</button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-[#222233] text-muted text-[10px] uppercase tracking-[2px]">
+                  <th class="p-3 text-left">Intent</th>
+                  <th class="p-3 text-left">Agent</th>
+                  <th class="p-3 text-left">Tool</th>
+                  <th class="p-3 text-left">Decision</th>
+                  <th class="p-3 text-left">Reason</th>
+                  <th class="p-3 text-left">Time</th>
+                </tr>
+              </thead>
+              <tbody id="actionListBody">
+                <tr><td colspan="6" class="p-6 text-center text-muted">API not connected — run demo for simulation</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 pt-3 border-t border-[#222233] flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background:#00ff41;"></span>
+              <span id="actionAllowCount" class="text-[10px] text-muted">0 allowed</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background:#ff4444;"></span>
+              <span id="actionDenyCount" class="text-[10px] text-muted">0 denied</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background:#ffc400;"></span>
+              <span id="actionModifyCount" class="text-[10px] text-muted">0 modified</span>
+            </div>
+            <span class="text-[9px] text-[#444] ml-auto">// Agent Control Plane v1.0</span>
+          </div>
         </div>
-      </main>
     </div>
   </div>
 
@@ -530,6 +575,89 @@ function renderStats() {
     }
 
     document.getElementById("refreshBtn").addEventListener("click", renderAll);
+
+    // ===== Agent Activity Feed =====
+    document.getElementById("refreshActionsBtn").addEventListener("click", loadActions);
+
+    const actionFilter = document.getElementById("actionFilter");
+    if (actionFilter) actionFilter.addEventListener("change", loadActions);
+
+    // Load actions from /api/audit — with fallback to demo data
+    function loadActions() {
+      const tbody = document.getElementById("actionListBody");
+      const filter = (actionFilter && actionFilter.value) || "";
+
+      // Try API first
+      fetch("/api/audit?limit=20" + (filter ? "&decision=" + filter : ""), {
+        headers: { "Authorization": "Bearer " + (localStorage.getItem("org_api_key") || "demo") }
+      })
+        .then(r => r.json())
+        .then(json => {
+          const data = (json && json.data) || [];
+          if (data.length > 0) {
+            renderActionRows(tbody, data);
+            updateActionCounts(data, true);
+            return;
+          }
+          loadDemoActionData();
+        })
+        .catch(() => loadDemoActionData());
+    }
+
+    function loadDemoActionData() {
+      const tbody = document.getElementById("actionListBody");
+      const now = new Date().toISOString();
+      const demoActions = [
+        { id: "int_demo01", agentId: "agent_cs_bot_v2", tool: "lookup_order", decision: "allow", decisionReason: null, decidedAt: new Date(Date.now() - 5000).toISOString() },
+        { id: "int_demo02", agentId: "agent_cs_bot_v2", tool: "send_email", decision: "deny", decisionReason: "tool_explicitly_blocked", decidedAt: new Date(Date.now() - 4000).toISOString() },
+        { id: "int_demo03", agentId: "agent_cs_bot_v2", tool: "http_request", decision: "deny", decisionReason: "domain_not_permitted", decidedAt: new Date(Date.now() - 3000).toISOString() },
+        { id: "int_demo04", agentId: "agent_cs_bot_v2", tool: "http_request", decision: "deny", decisionReason: "domain_blocked", decidedAt: new Date(Date.now() - 2000).toISOString() },
+        { id: "int_demo05", agentId: "agent_cs_bot_v2", tool: "lookup_order", decision: "deny", decisionReason: "pii_detected", decidedAt: new Date(Date.now() - 1000).toISOString() },
+        { id: "int_demo06", agentId: "agent_cs_bot_v2", tool: "http_request", decision: "modify", decisionReason: null, decidedAt: new Date(Date.now()).toISOString() },
+      ];
+      const filter = (actionFilter && actionFilter.value) || "";
+      const filtered = filter ? demoActions.filter(a => a.decision === filter) : demoActions;
+      renderActionRows(tbody, filtered);
+      updateActionCounts(filtered, false);
+    }
+
+    function renderActionRows(tbody, actions) {
+      if (!tbody) return;
+      if (actions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-muted">// no actions recorded</td></tr>';
+        return;
+      }
+      const nowTs = Date.now();
+      tbody.innerHTML = actions.map(a => {
+        const msAgo = nowTs - new Date(a.decidedAt).getTime();
+        const timeAgo = msAgo < 60000 ? Math.round(msAgo / 1000) + 's ago'
+                      : msAgo < 3600000 ? Math.round(msAgo / 60000) + 'm ago'
+                      : Math.round(msAgo / 3600000) + 'h ago';
+        const decisionColor = a.decision === 'allow' ? 'text-neon'
+                            : a.decision === 'deny' ? 'text-error'
+                            : 'text-[#ffc400]';
+        return '<tr class="border-b border-[#222233] hover:bg-[#16161e]">'
+          + '<td class="p-3 font-mono text-[10px] text-muted">' + (a.id || '').substring(0, 14) + '</td>'
+          + '<td class="p-3 text-[11px]">' + (a.agentId || '—') + '</td>'
+          + '<td class="p-3 text-[11px] uppercase tracking-[1px]">' + (a.tool || '—') + '</td>'
+          + '<td class="p-3"><span class="' + decisionColor + ' text-[11px] font-bold uppercase tracking-[1px]">' + a.decision.toUpperCase() + '</span></td>'
+          + '<td class="p-3 text-[10px] text-muted">' + (a.decisionReason || (a.reason || '—')) + '</td>'
+          + '<td class="p-3 text-[10px] text-muted">' + timeAgo + '</td>'
+          + '</tr>';
+      }).join("");
+    }
+
+    function updateActionCounts(actions, isLive) {
+      const allow = document.getElementById("actionAllowCount");
+      const deny = document.getElementById("actionDenyCount");
+      const modify = document.getElementById("actionModifyCount");
+      if (allow) allow.textContent = actions.filter(a => a.decision === 'allow').length + ' allowed' + (isLive ? ' (live)' : ' (demo)');
+      if (deny) deny.textContent = actions.filter(a => a.decision === 'deny').length + ' denied' + (isLive ? ' (live)' : ' (demo)');
+      if (modify) modify.textContent = actions.filter(a => a.decision === 'modify').length + ' modified' + (isLive ? ' (live)' : ' (demo)');
+    }
+
+    // Load on init
+    loadActions();
   })();
   </script>
 </body>
