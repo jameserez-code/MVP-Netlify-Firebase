@@ -440,6 +440,68 @@
     </button>
 </div>
 
+<!-- Secure Passport Modal -->
+<div id="passportModal" class="fixed inset-0 bg-gate-overlay flex items-center justify-center z-[100] hidden" role="dialog" aria-modal="true">
+    <div class="bg-surface p-xl rounded-xl shadow-2xl w-full max-w-2xl border border-outline-variant overflow-hidden">
+        <div class="flex justify-between items-center mb-lg border-b border-outline-variant pb-md">
+            <div>
+                <h2 class="text-headline-md font-bold text-on-surface">Secure Blockchain Passport</h2>
+                <p class="text-label-md text-primary font-bold">Verified & Encrypted</p>
+            </div>
+            <button id="closeModal" class="text-on-surface-variant hover:text-error transition-colors">
+                <span class="material-symbols-outlined text-[32px]">close</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-xl">
+            <div class="flex flex-col items-center justify-center bg-surface-container-low p-lg rounded-xl border border-dashed border-outline">
+                <img id="modalQR" src="" alt="Passport QR Code" class="w-48 h-48 bg-white p-sm rounded-lg shadow-sm mb-md">
+                <p class="text-label-sm text-on-surface-variant text-center">Scan to verify authenticity on the decentralized ledger</p>
+            </div>
+
+            <div class="space-y-lg">
+                <div class="grid grid-cols-2 gap-md">
+                    <div>
+                        <p class="text-label-sm text-on-surface-variant uppercase font-bold">Applicant</p>
+                        <p id="modalName" class="font-headline-sm text-on-surface">-</p>
+                    </div>
+                    <div>
+                        <p class="text-label-sm text-on-surface-variant uppercase font-bold">Passport ID</p>
+                        <p id="modalID" class="font-headline-sm text-on-surface">-</p>
+                    </div>
+                    <div>
+                        <p class="text-label-sm text-on-surface-variant uppercase font-bold">Status</p>
+                        <span id="modalStatus" class="inline-flex items-center gap-xs text-primary font-bold text-label-md">
+                            <span class="w-2 h-2 rounded-full bg-primary"></span>
+                            -
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-label-sm text-on-surface-variant uppercase font-bold">Security Level</p>
+                        <p id="modalSecurity" class="text-label-md font-bold text-tertiary">Very High</p>
+                    </div>
+                </div>
+
+                <div class="p-md bg-on-surface text-surface rounded-lg font-mono text-[10px] break-all border border-outline-variant shadow-inner">
+                    <p class="text-primary-fixed-dim mb-xs uppercase font-bold tracking-widest">Blockchain Transaction Hash</p>
+                    <p id="modalHash" class="opacity-80">-</p>
+                </div>
+
+                <div class="flex gap-sm">
+                    <button class="flex-1 py-sm bg-primary text-primary-on text-label-md font-bold rounded-lg hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-xs">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        Download
+                    </button>
+                    <button class="flex-1 py-sm border border-outline text-label-md font-bold rounded-lg hover:bg-surface-container-low transition-all flex items-center justify-center gap-xs">
+                        <span class="material-symbols-outlined text-[18px]">share</span>
+                        Share
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 (function(){
   const CODE = 'Thegreatwave';
@@ -469,6 +531,49 @@
     gate.style.display = 'none';
     content.style.display = 'block';
   }
+
+  // Modal logic
+  const modal = document.getElementById('passportModal');
+  const closeModal = document.getElementById('closeModal');
+
+  const openModal = async (applicantName, applicantID) => {
+    try {
+      // In a real app, we might pass the ID to the API
+      const response = await fetch('/.netlify/functions/passport');
+      const data = await response.json();
+      const p = data.passport;
+
+      document.getElementById('modalName').textContent = applicantName || p.name;
+      document.getElementById('modalID').textContent = applicantID || p.id;
+      document.getElementById('modalStatus').innerHTML = `<span class="w-2 h-2 rounded-full bg-primary"></span> ${p.status}`;
+      document.getElementById('modalQR').src = p.qrCodeUrl;
+      document.getElementById('modalHash').textContent = p.blockchainHash;
+
+      modal.classList.remove('hidden');
+    } catch (err) {
+      console.error('Failed to fetch passport details', err);
+    }
+  };
+
+  closeModal.addEventListener('click', () => {
+    modal.classList.add('hidden');
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.classList.add('hidden');
+  });
+
+  // Attach listeners to all Review/View buttons
+  document.querySelectorAll('button').forEach(btn => {
+    if (btn.textContent.trim() === 'Review' || btn.textContent.trim() === 'View') {
+      btn.addEventListener('click', (e) => {
+        const row = e.target.closest('tr');
+        const name = row.querySelector('.font-body-lg').textContent;
+        const id = row.querySelector('.text-on-surface-variant').textContent.replace('ID: ', '');
+        openModal(name, id);
+      });
+    }
+  });
 })();
 </script>
 </body>
