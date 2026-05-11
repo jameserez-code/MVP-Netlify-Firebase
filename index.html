@@ -73,11 +73,35 @@
     <!-- Dashboard -->
     <div id="authed">
       <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div class="max-w-5xl mx-auto px-6 py-4">
-          <h1 class="text-lg font-bold">Passport Agent</h1>
+        <div id="headerRow" class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 class="text-lg font-bold">Passport Agent</h1>
+            <p id="userDisplay" class="text-xs text-gray-500"></p>
+          </div>
         </div>
       </header>
 
+      <!-- Login / Register -->
+      <div id="authView" class="max-w-md mx-auto mt-12 p-6">
+        <div class="card">
+          <h2 id="authTitle" class="text-xl font-bold mb-4">Sign In</h2>
+          <div id="authFields">
+            <label class="block text-sm font-semibold mb-1">Email</label>
+            <input id="authEmail" type="email" class="input mb-3" placeholder="you@example.com" required />
+            <label class="block text-sm font-semibold mb-1">Password</label>
+            <input id="authPassword" type="password" class="input mb-4" placeholder="Password" required />
+            <button id="authSubmitBtn" class="btn btn-primary w-full mb-2">Sign In</button>
+            <p id="authError" class="text-sm text-red-600 text-center hidden"></p>
+          </div>
+          <p class="text-sm text-center text-gray-500 mt-3">
+            <span id="authToggleText">Don't have an account?</span>
+            <button id="authToggleBtn" class="text-blue-600 font-semibold underline">Create one</button>
+          </p>
+        </div>
+      </div>
+
+      <!-- Dashboard (hidden until login) -->
+      <div id="dashboardView" class="hidden">
       <main class="max-w-5xl mx-auto p-6 space-y-6">
         <!-- Create Visa -->
         <div class="card">
@@ -156,12 +180,128 @@
       }
     });
 
-    gateInput.addEventListener("keydown", (e) => {
+gateInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
     });
 
-    // ===== Gate unlocks directly to app - no Firebase auth required =====
-    loadApplications();
+    // ===== Auth (localStorage-based, no Firebase) =====
+    let currentUser = JSON.parse(localStorage.getItem("passport_user") || "null");
+
+    const authView = document.getElementById("authView");
+    const dashboardView = document.getElementById("dashboardView");
+    const authTitle = document.getElementById("authTitle");
+    const authEmail = document.getElementById("authEmail");
+    const authPassword = document.getElementById("authPassword");
+    const authSubmitBtn = document.getElementById("authSubmitBtn");
+    const authError = document.getElementById("authError");
+    const authToggleBtn = document.getElementById("authToggleBtn");
+    const authToggleText = document.getElementById("authToggleText");
+    let authMode = "login"; // "login" or "register"
+
+    function updateAuthUI() {
+      if (authMode === "login") {
+        authTitle.textContent = "Sign In";
+        authSubmitBtn.textContent = "Sign In";
+        authToggleText.textContent = "Don't have an account?";
+        authToggleBtn.textContent = "Create one";
+      } else {
+        authTitle.textContent = "Create Account";
+        authSubmitBtn.textContent = "Create Account";
+        authToggleText.textContent = "Already have an account?";
+        authToggleBtn.textContent = "Sign in";
+      }
+      authError.classList.add("hidden");
+    }
+
+    authToggleBtn.addEventListener("click", () => {
+      authMode = authMode === "login" ? "register" : "login";
+      updateAuthUI();
+    });
+
+    function saveUser(user) {
+      currentUser = user;
+      localStorage.setItem("passport_user", JSON.stringify(user));
+    }
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem("passport_users") || "{}");
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem("passport_users", JSON.stringify(users));
+    }
+
+    authSubmitBtn.addEventListener("click", () => {
+      const email = authEmail.value.trim();
+      const password = authPassword.value;
+      authError.classList.add("hidden");
+
+      if (!email || !password) {
+        authError.textContent = "Email and password are required.";
+        authError.classList.remove("hidden");
+        return;
+      }
+
+      const users = getUsers();
+
+      if (authMode === "register") {
+        if (users[email]) {
+          authError.textContent = "An account with this email already exists.";
+          authError.classList.remove("hidden");
+          return;
+        }
+        users[email] = { email, password };
+        saveUsers(users);
+        saveUser({ email });
+        showDashboard();
+      } else {
+        const stored = users[email];
+        if (!stored || stored.password !== password) {
+          authError.textContent = "Invalid email or password.";
+          authError.classList.remove("hidden");
+          return;
+        }
+        saveUser({ email });
+        showDashboard();
+      }
+    });
+
+    authPassword.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") authSubmitBtn.click();
+    });
+
+    function showDashboard() {
+      authView.classList.add("hidden");
+      dashboardView.classList.remove("hidden");
+      document.getElementById("userDisplay").textContent = currentUser?.email || "";
+      loadApplications();
+    }
+
+    function logout() {
+      localStorage.removeItem("passport_user");
+      currentUser = null;
+      authView.classList.remove("hidden");
+      dashboardView.classList.add("hidden");
+      document.getElementById("userDisplay").textContent = "";
+      authEmail.value = "";
+      authPassword.value = "";
+      updateAuthUI();
+    }
+
+    // Show dashboard if already logged in
+    if (currentUser) {
+      showDashboard();
+    }
+
+    // Add sign out to header
+    const userDisplay = document.getElementById("userDisplay");
+    if (currentUser) userDisplay.textContent = currentUser.email;
+    const headerRow = document.getElementById("headerRow");
+    const signOutBtn = document.createElement("button");
+    signOutBtn.className = "btn btn-secondary text-sm";
+    signOutBtn.textContent = "Sign Out";
+    signOutBtn.addEventListener("click", logout);
+    headerRow.appendChild(signOutBtn);
 
     // ===== Scope Chips =====
     const SCOPE_OPTIONS = [
