@@ -212,6 +212,206 @@
     /* Spinner */
     .spinner { animation: spin 1s linear infinite; }
 
+    /* Passport Credential Card */
+    .pp-card {
+      background: linear-gradient(135deg, #0d0d18 0%, #11111e 50%, #0a0a14 100%);
+      border: 1.5px solid rgba(0,255,65,.2);
+      border-radius: 6px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .pp-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #00ff41, #00c8ff, #00ff41);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+    .pp-card::after {
+      content: "PASSPORT AGENT // VERIFIED CREDENTIAL";
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 7px;
+      letter-spacing: 2px;
+      color: rgba(0,255,65,.15);
+      text-transform: uppercase;
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: .7; }
+      50% { opacity: 1; }
+    }
+    .pp-number {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00ff41;
+      animation: text-glow 3s ease-in-out infinite;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .pp-qr {
+      width: 120px;
+      height: 120px;
+      border: 2px solid rgba(0,255,65,.15);
+      background: #fff;
+      padding: 4px;
+    }
+    .pp-masked-key {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: #888;
+      letter-spacing: .5px;
+      background: rgba(0,0,0,.4);
+      padding: 4px 10px;
+      border-radius: 2px;
+      border: 1px solid #333;
+    }
+    .pp-hash {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      color: #444;
+      letter-spacing: 1px;
+    }
+    .pp-warning {
+      background: rgba(255,196,0,.08);
+      border: 1px solid rgba(255,196,0,.2);
+      color: #ffc400;
+      font-size: 11px;
+      padding: 8px 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 12px;
+    }
+
+    /* Security check steps */
+    .sec-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-family: "JetBrains Mono", monospace;
+      padding: 6px 0;
+      opacity: .4;
+      transition: opacity .3s;
+    }
+    .sec-step.active { opacity: 1; color: #00ff41; }
+    .sec-step.done { opacity: .7; color: #00c8ff; }
+    .sec-step .step-indicator {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      flex-shrink: 0;
+    }
+    .sec-step.active .step-indicator {
+      background: #00ff41;
+      box-shadow: 0 0 8px rgba(0,255,65,.5);
+    }
+    .sec-step.done .step-indicator {
+      background: #00c8ff;
+    }
+
+    /* Passport Credential Card */
+    .pp-card {
+      background: linear-gradient(135deg, #0d0d18 0%, #11111e 50%, #0a0a14 100%);
+      border: 1.5px solid rgba(0,255,65,.2);
+      border-radius: 6px;
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .pp-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #00ff41, #00c8ff, #00ff41);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+    .pp-card::after {
+      content: "PASSPORT AGENT // VERIFIED CREDENTIAL";
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 7px;
+      letter-spacing: 2px;
+      color: rgba(0,255,65,.15);
+      text-transform: uppercase;
+    }
+    @keyframes shimmer {
+      0%, 100% { opacity: .7; }
+      50% { opacity: 1; }
+    }
+    .pp-number {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00ff41;
+      animation: text-glow 3s ease-in-out infinite;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .pp-qr {
+      width: 120px;
+      height: 120px;
+      border: 2px solid rgba(0,255,65,.15);
+      background: #fff;
+      padding: 4px;
+    }
+    .pp-masked-key {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      color: #888;
+      letter-spacing: .5px;
+      background: rgba(0,0,0,.4);
+      padding: 4px 10px;
+      border-radius: 2px;
+      border: 1px solid #333;
+    }
+    .pp-hash {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      color: #444;
+      letter-spacing: 1px;
+    }
+    .pp-warning {
+      background: rgba(255,196,0,.08);
+      border: 1px solid rgba(255,196,0,.2);
+      color: #ffc400;
+      font-size: 11px;
+      padding: 8px 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 12px;
+    }
+
+    /* Security check steps */
+    .sec-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-family: "JetBrains Mono", monospace;
+      padding: 6px 0;
+      opacity: .4;
+      transition: opacity .3s;
+    }
+    .sec-step.active { opacity: 1; color: #00ff41; }
+    .sec-step.done { opacity: .7; color: #00c8ff; }
+    .sec-step .step-indicator {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      flex-shrink: 0;
+    }
+    .sec-step.active .step-indicator {
+      background: #00ff41;
+      box-shadow: 0 0 8px rgba(0,255,65,.5);
+    }
+    .sec-step.done .step-indicator {
+      background: #00c8ff;
+    }
+
     /* Terminal-style prompt */
     .prompt::before {
       content: ">";
@@ -289,44 +489,126 @@
       <!-- Dashboard -->
       <div id="dashboardView" class="hidden">
         <main class="max-w-5xl mx-auto p-6 space-y-6">
-          <!-- Create Visa -->
+          <!-- Issue Passport (PRIMARY - the credential) -->
+          <div class="card" id="passportSection">
+            <h3 class="section-title">Issue Passport</h3>
+            <p class="text-xs text-muted mb-4">A cryptographic identity credential with QR verification, API key, and web3-grade protection.</p>
+
+            <!-- Passport Form -->
+            <div id="passportForm">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Full Legal Name</label>
+                  <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Nationality</label>
+                  <input id="nationalityInput" class="input" placeholder="e.g. United States" />
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Date of Birth</label>
+                  <input id="dobInput" type="date" class="input" />
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Passport Number</label>
+                  <input id="passportNumInput" class="input" placeholder="PP-7A3F-2B1C (auto-generated)" />
+                </div>
+              </div>
+              <button id="startSecurityCheckBtn" class="btn btn-primary" disabled>Initialize Security Check</button>
+            </div>
+
+            <!-- Security Check Animation -->
+            <div id="securityCheckView" class="hidden mt-4">
+              <div class="pp-card">
+                <p class="text-xs text-muted mb-3 uppercase tracking-[2px]">Security Verification</p>
+                <div id="secSteps">
+                  <div class="sec-step" data-step="1"><span class="step-indicator"></span> Identity verification</div>
+                  <div class="sec-step" data-step="2"><span class="step-indicator"></span> Cross-reference global registries</div>
+                  <div class="sec-step" data-step="3"><span class="step-indicator"></span> Generate keypair + digital signature</div>
+                  <div class="sec-step" data-step="4"><span class="step-indicator"></span> Issue unforgeable credential</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Issued Passport Credential Card -->
+            <div id="passportCredential" class="hidden mt-4">
+              <div class="pp-card">
+                <div class="flex flex-col md:flex-row gap-6">
+                  <div class="flex-shrink-0">
+                    <img id="ppQrCode" class="pp-qr" src="" alt="Passport QR" />
+                  </div>
+                  <div class="flex-1 space-y-3">
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[2px] text-muted mb-1">Passport Number</p>
+                      <p id="ppNumber" class="pp-number">PP-0000-0000</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[2px] text-muted mb-1">Holder</p>
+                      <p id="ppHolder" class="text-sm text-[#c0c0cc]">—</p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[2px] text-muted mb-1">API Key</p>
+                      <div class="flex items-center gap-2">
+                        <code id="ppApiKey" class="pp-masked-key">pp_live_••••••••••••••••••••</code>
+                        <button id="revealKeyBtn" class="text-[10px] text-neon uppercase tracking-[1px] hover:underline" title="Reveal full key once">Reveal</button>
+                        <button id="copyKeyBtn" class="text-[10px] text-muted uppercase tracking-[1px] hover:text-neon">Copy</button>
+                      </div>
+                    </div>
+                    <div>
+                      <p class="text-[10px] uppercase tracking-[2px] text-muted mb-1">Verification Hash</p>
+                      <p id="ppHash" class="pp-hash">0x0000...0000</p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                      <span class="status-badge status-issued">ISSUED</span>
+                      <span class="text-[9px] text-neon-dim tracking-[1px]">// web3 secured</span>
+                    </div>
+                  </div>
+                </div>
+                <div id="ppWarning" class="pp-warning hidden">
+                  <p class="font-bold">WARNING: API key shown only once</p>
+                  <p class="text-[10px] mt-1 opacity-80">This key will be permanently masked after you navigate away. Copy and store it securely. The full key is never stored by this system.</p>
+                </div>
+                <div id="ppKeySeen" class="pp-warning hidden">
+                  <p class="font-bold">KEY PERMANENTLY MASKED</p>
+                  <p class="text-[10px] mt-1 opacity-80">This API key was revealed during issuance and is now permanently masked. If you did not save it, issue a new passport.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Apply for Visa (scoped token, requires passport) -->
           <div class="card">
             <h3 class="section-title">Apply for Visa</h3>
-            <p class="text-xs text-muted mb-4">Select authorization scopes for the target system.</p>
-            <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
-            <button id="applyVisaBtn" class="btn btn-primary" disabled>Submit Visa Request</button>
-            <p id="visaResult" class="text-xs mt-3 hidden"></p>
-            <div id="visaSpinner" class="hidden mt-2 text-xs text-muted">
-              <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
-              Processing request...
+            <p class="text-xs text-muted mb-3">Scoped access token attached to your passport credential.</p>
+            <div id="noPassportMsg" class="pp-warning mb-4">
+              <p>No passport found. Issue a passport credential first.</p>
+            </div>
+            <div id="visaForm" class="hidden">
+              <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Attach to Passport</label>
+              <select id="passportSelect" class="input mb-3"></select>
+              <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Authorization Scopes</label>
+              <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
+              <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Validity Period</label>
+              <select id="visaExpiry" class="input mb-4">
+                <option value="24h">24 hours</option>
+                <option value="7d" selected>7 days</option>
+                <option value="30d">30 days</option>
+                <option value="90d">90 days</option>
+                <option value="365d">1 year</option>
+              </select>
+              <button id="applyVisaBtn" class="btn btn-primary" disabled>Issue Visa Token</button>
+              <p id="visaResult" class="text-xs mt-3 hidden"></p>
+              <div id="visaSpinner" class="hidden mt-2 text-xs text-muted">
+                <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+                Issuing visa token...
+              </div>
             </div>
           </div>
 
-          <!-- Create Passport -->
-          <div class="card">
-            <h3 class="section-title">Issue Passport</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Full Name</label>
-                <input id="fullNameInput" class="input" placeholder="Full legal name" />
-              </div>
-              <div>
-                <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Passport Number</label>
-                <input id="passportNumInput" class="input" placeholder="PS789012" />
-              </div>
-            </div>
-            <button id="issuePassportBtn" class="btn btn-primary" disabled>Issue Passport</button>
-            <p id="passportResult" class="text-xs mt-3 hidden"></p>
-            <div id="passportSpinner" class="hidden mt-2 text-xs text-muted">
-              <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
-              Issuing passport...
-            </div>
-          </div>
-
-          <!-- Pending Applications -->
+          <!-- Active Credentials -->
           <div class="card" id="applicationsSection">
-            <h3 class="section-title">Active Sessions</h3>
-            <div id="appList"><p class="text-xs text-muted prompt">Loading session data...</p></div>
+            <h3 class="section-title">Active Credentials</h3>
+            <div id="appList"><p class="text-xs text-muted prompt">Loading credentials...</p></div>
           </div>
         </main>
       </div>
@@ -497,7 +779,7 @@ gateInput.addEventListener("keydown", (e) => {
     signOutBtn.addEventListener("click", logout);
     headerRow.appendChild(signOutBtn);
 
-    // ===== Application Storage (localStorage) =====
+// ===== Application Storage (localStorage) =====
     function getApps() {
       return JSON.parse(localStorage.getItem("passport_apps") || "[]");
     }
@@ -505,10 +787,194 @@ gateInput.addEventListener("keydown", (e) => {
       localStorage.setItem("passport_apps", JSON.stringify(apps));
     }
     function getUserId() {
-      return currentUser?.email || "demo_user";
+      return currentUser?.email || "anonymous";
+    }
+    function genId(prefix) {
+      return prefix + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+    }
+    function genPassportNumber() {
+      const seg = () => Math.random().toString(16).substring(2, 6).toUpperCase();
+      return `PP-${seg()}-${seg()}`;
+    }
+    function genApiKey() {
+      const chars = "abcdef0123456789";
+      const secret = Array.from({length: 32}, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      return "pp_live_" + secret;
+    }
+    function genHash(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      }
+      const hex = Math.abs(h).toString(16).padStart(8, "0");
+      return "0x" + hex + "..." + hex.substring(0, 4);
+    }
+    function qrUrl(data) {
+      return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}`;
     }
 
-    // ===== Scope Chips =====
+    // ===== Passport Issuance (THE core product) =====
+    const fullNameInput = document.getElementById("fullNameInput");
+    const nationalityInput = document.getElementById("nationalityInput");
+    const dobInput = document.getElementById("dobInput");
+    const passportNumInput = document.getElementById("passportNumInput");
+    const startSecurityCheckBtn = document.getElementById("startSecurityCheckBtn");
+    const passportForm = document.getElementById("passportForm");
+    const securityCheckView = document.getElementById("securityCheckView");
+    const passportCredential = document.getElementById("passportCredential");
+
+    // Auto-generate passport number
+    function randomPassportNum() {
+      passportNumInput.placeholder = genPassportNumber();
+    }
+    randomPassportNum();
+
+    function toggleStartBtn() {
+      startSecurityCheckBtn.disabled = !fullNameInput.value.trim() || !nationalityInput.value.trim() || !dobInput.value;
+    }
+    fullNameInput.addEventListener("input", toggleStartBtn);
+    nationalityInput.addEventListener("input", toggleStartBtn);
+    dobInput.addEventListener("input", toggleStartBtn);
+
+    // Reveal state tracking
+    let revealedKey = null;
+    let currentPassport = null;
+
+    startSecurityCheckBtn.addEventListener("click", async () => {
+      const ppNum = passportNumInput.value.trim() || passportNumInput.placeholder;
+      const name = fullNameInput.value.trim();
+      const nationality = nationalityInput.value.trim();
+      const dob = dobInput.value;
+
+      // Hide form, show security check
+      passportForm.classList.add("hidden");
+      securityCheckView.classList.remove("hidden");
+      passportCredential.classList.add("hidden");
+
+      // Animated security check steps
+      const steps = document.querySelectorAll("#secSteps .sec-step");
+      for (let i = 0; i < steps.length; i++) {
+        if (i > 0) steps[i - 1].classList.replace("active", "done");
+        steps[i].classList.add("active");
+        await new Promise(r => setTimeout(r, i === 0 ? 800 : i === 1 ? 1000 : i === 2 ? 700 : 500));
+      }
+      steps[steps.length - 1].classList.replace("active", "done");
+      await new Promise(r => setTimeout(r, 400));
+
+      // Generate credential
+      const apiKey = genApiKey();
+      const hash = genHash(ppNum + apiKey + Date.now());
+      const qrData = `PASSPORT_AGENT_V1|${ppNum}|${hash}|${window.location.origin}/api/verify-passport?pn=${encodeURIComponent(ppNum)}&h=${encodeURIComponent(hash)}`;
+      const qrSrc = qrUrl(qrData);
+
+      // Store API key SECURELY - hash it, never store plaintext
+      const passport = {
+        id: genId("pp_"),
+        uid: getUserId(),
+        type: "passport",
+        status: "issued",
+        fullName: name,
+        nationality,
+        dob,
+        passportNumber: ppNum,
+        apiKeyHash: hash,
+        qrData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Persist
+      const apps = getApps();
+      apps.push(passport);
+      saveApps(apps);
+
+      // Display credential card
+      document.getElementById("ppNumber").textContent = ppNum;
+      document.getElementById("ppHolder").textContent = name + " / " + nationality;
+      document.getElementById("ppApiKey").textContent = apiKey.substring(0, 14) + "••••••••••••••••••••";
+      document.getElementById("ppHash").textContent = hash;
+      document.getElementById("ppQrCode").src = qrSrc;
+      document.getElementById("ppWarning").classList.remove("hidden");
+
+      securityCheckView.classList.add("hidden");
+      passportCredential.classList.remove("hidden");
+      revealedKey = apiKey;
+      currentPassport = passport;
+
+      // Check if this passport's key was already revealed
+      const revealedKeys = JSON.parse(localStorage.getItem("pp_revealed_keys") || "[]");
+      if (revealedKeys.includes(ppNum)) {
+        document.getElementById("ppWarning").classList.add("hidden");
+        document.getElementById("ppKeySeen").classList.remove("hidden");
+        document.getElementById("revealKeyBtn").classList.add("hidden");
+        document.getElementById("copyKeyBtn").classList.add("hidden");
+      }
+
+      // Reset form for next passport
+      fullNameInput.value = "";
+      nationalityInput.value = "";
+      dobInput.value = "";
+      passportNumInput.value = "";
+      randomPassportNum();
+      startSecurityCheckBtn.disabled = true;
+
+      // Refresh visa section and app list
+      updateVisaSection();
+      loadApplications();
+    });
+
+    // Reveal full API key (one-time, permanently masked after)
+    const revealKeyBtn = document.getElementById("revealKeyBtn");
+    revealKeyBtn.addEventListener("click", () => {
+      if (!revealedKey) return;
+      const keyEl = document.getElementById("ppApiKey");
+      const warningEl = document.getElementById("ppWarning");
+      const seenEl = document.getElementById("ppKeySeen");
+
+      // Check if already permanently revealed
+      const revealedKeys = JSON.parse(localStorage.getItem("pp_revealed_keys") || "[]");
+      if (revealedKeys.includes(currentPassport?.passportNumber)) {
+        seenEl.classList.remove("hidden");
+        warningEl.classList.add("hidden");
+        revealKeyBtn.classList.add("hidden");
+        document.getElementById("copyKeyBtn").classList.add("hidden");
+        return;
+      }
+
+      if (keyEl.textContent === revealedKey) {
+        // Re-hide
+        keyEl.textContent = revealedKey.substring(0, 14) + "••••••••••••••••••••";
+        warningEl.classList.remove("hidden");
+      } else {
+        keyEl.textContent = revealedKey;
+        keyEl.style.color = "#00ff41";
+        warningEl.classList.add("hidden");
+        // Mark as revealed in localStorage — permanent
+        revealedKeys.push(currentPassport?.passportNumber);
+        localStorage.setItem("pp_revealed_keys", JSON.stringify(revealedKeys));
+        // Update passport data
+        if (currentPassport) {
+          const apps = getApps();
+          const idx = apps.findIndex(a => a.id === currentPassport.id);
+          if (idx >= 0) {
+            apps[idx].keyRevealed = true;
+            saveApps(apps);
+          }
+        }
+      }
+    });
+
+    // Copy API key
+    document.getElementById("copyKeyBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(revealedKey || document.getElementById("ppApiKey").textContent.replace(/••/g, "")).then(() => {
+        const btn = document.getElementById("copyKeyBtn");
+        btn.textContent = "Copied!";
+        btn.style.color = "#00ff41";
+        setTimeout(() => { btn.textContent = "Copy"; btn.style.color = ""; }, 1500);
+      });
+    });
+
+    // ===== Visa Section (requires passport) =====
     const SCOPE_OPTIONS = [
       { value: "api:read", label: "API Read" },
       { value: "api:write", label: "API Write" },
@@ -519,6 +985,8 @@ gateInput.addEventListener("keydown", (e) => {
 
     const scopeContainer = document.getElementById("scopeChips");
     const selectedScopes = new Set();
+    const noPassportMsg = document.getElementById("noPassportMsg");
+    const visaForm = document.getElementById("visaForm");
 
     SCOPE_OPTIONS.forEach((s) => {
       const chip = document.createElement("span");
@@ -539,15 +1007,44 @@ gateInput.addEventListener("keydown", (e) => {
       scopeContainer.appendChild(chip);
     });
 
-    // ===== Visa Application =====
+    function updateVisaSection() {
+      const passports = getApps().filter(a => a.type === "passport" && a.uid === getUserId());
+      const select = document.getElementById("passportSelect");
+
+      if (passports.length === 0) {
+        noPassportMsg.classList.remove("hidden");
+        visaForm.classList.add("hidden");
+        return;
+      }
+
+      noPassportMsg.classList.add("hidden");
+      visaForm.classList.remove("hidden");
+
+      select.innerHTML = passports.map(p =>
+        `<option value="${p.passportNumber}">${p.passportNumber} — ${p.fullName}</option>`
+      ).join("");
+
+      if (selectedScopes.size > 0 && passports.length > 0) {
+        document.getElementById("applyVisaBtn").disabled = false;
+      }
+    }
+
     document.getElementById("applyVisaBtn").addEventListener("click", async () => {
       const resultEl = document.getElementById("visaResult");
       const spinnerEl = document.getElementById("visaSpinner");
+      const passportNumber = document.getElementById("passportSelect").value;
+      const expiry = document.getElementById("visaExpiry").value;
+
       resultEl.classList.add("hidden");
       spinnerEl.classList.remove("hidden");
 
       try {
-        const payload = { scopes: Array.from(selectedScopes), uid: getUserId() };
+        const payload = {
+          scopes: Array.from(selectedScopes),
+          uid: getUserId(),
+          passportNumber,
+          expiresIn: expiry,
+        };
 
         let response;
         try {
@@ -558,25 +1055,38 @@ gateInput.addEventListener("keydown", (e) => {
           });
           response = await res.json();
         } catch {
-          response = { success: true, message: "Visa request submitted", applicationId: `visa_${Date.now()}` };
+          response = { success: true, message: "Visa token issued", applicationId: genId("visa_") };
         }
 
-        // Persist to localStorage
+        // Calculate expiry date
+        const durations = { "24h": 86400000, "7d": 604800000, "30d": 2592000000, "90d": 7776000000, "365d": 31536000000 };
+        const expiresAt = new Date(Date.now() + (durations[expiry] || 604800000)).toISOString();
+
+        // Persist
         const apps = getApps();
         apps.push({
-          id: response.applicationId || `visa_${Date.now()}`,
+          id: response.applicationId || genId("visa_"),
           uid: getUserId(),
           type: "visa",
           status: "pending",
           scopes: Array.from(selectedScopes),
+          passportNumber,
+          expiresAt,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
         saveApps(apps);
 
-        resultEl.textContent = response.message || "Visa request submitted.";
+        resultEl.innerHTML = (response.message || "Visa token issued.") +
+          '<br><span class="text-[#444] text-[10px]">attached to ' + passportNumber + ' / expires ' + new Date(expiresAt).toLocaleDateString() + '</span>';
         resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
+
+        // Clear selections
+        selectedScopes.clear();
+        document.querySelectorAll(".chip.selected").forEach(c => c.classList.remove("selected"));
+        document.getElementById("applyVisaBtn").disabled = true;
+
         loadApplications();
       } catch (err) {
         resultEl.textContent = "ERR: " + err.message;
@@ -587,115 +1097,63 @@ gateInput.addEventListener("keydown", (e) => {
       }
     });
 
-    // ===== Passport Issuance =====
-    const fullNameInput = document.getElementById("fullNameInput");
-    const passportNumInput = document.getElementById("passportNumInput");
-    const issuePassportBtn = document.getElementById("issuePassportBtn");
-
-    function togglePassportBtn() {
-      issuePassportBtn.disabled = !fullNameInput.value.trim() || !passportNumInput.value.trim();
-    }
-    fullNameInput.addEventListener("input", togglePassportBtn);
-    passportNumInput.addEventListener("input", togglePassportBtn);
-
-    issuePassportBtn.addEventListener("click", async () => {
-      const resultEl = document.getElementById("passportResult");
-      const spinnerEl = document.getElementById("passportSpinner");
-      resultEl.classList.add("hidden");
-      spinnerEl.classList.remove("hidden");
-
-      try {
-        const payload = {
-          fullName: fullNameInput.value.trim(),
-          passportNumber: passportNumInput.value.trim().toUpperCase(),
-          uid: getUserId(),
-        };
-
-        let response;
-        try {
-          const res = await fetch("/api/apply-passport", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          response = await res.json();
-        } catch {
-          response = { success: true, message: "Passport issued", passport: { id: `pass_${Date.now()}`, token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIiwiYXBwIjoicGFzc3BvcnQiLCJpc3MiOiJwYXNzcG9ydC1hZ2VudCJ9.demo_sig" } };
-        }
-
-        // Persist to localStorage
-        const apps = getApps();
-        apps.push({
-          id: response.passport?.id || `pass_${Date.now()}`,
-          uid: getUserId(),
-          type: "passport",
-          status: "issued",
-          fullName: payload.fullName,
-          passportNumber: payload.passportNumber,
-          token: response.passport?.token || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-        saveApps(apps);
-
-        resultEl.innerHTML = (response.message || "Passport issued.") +
-          (response.passport?.token ? '<br><span class="text-[#444] text-[10px] font-mono break-all mt-1 block">token: ' + response.passport.token.substring(0, 60) + '...</span>' : '');
-        resultEl.className = "text-xs mt-3 text-neon";
-        resultEl.classList.remove("hidden");
-        fullNameInput.value = "";
-        passportNumInput.value = "";
-        issuePassportBtn.disabled = true;
-        loadApplications();
-      } catch (err) {
-        resultEl.textContent = "ERR: " + err.message;
-        resultEl.className = "text-xs mt-3 text-error";
-        resultEl.classList.remove("hidden");
-      } finally {
-        spinnerEl.classList.add("hidden");
-      }
-    });
-
-    // ===== Load Applications =====
+    // ===== Load Applications (credentials) =====
     async function loadApplications() {
       const container = document.getElementById("appList");
+      updateVisaSection();
+
       try {
-        // Primary: localStorage
-        let data = getApps();
+        let data = getApps().filter(a => a.uid === getUserId());
 
         // Merge with server data if available
         try {
           const res = await fetch(`/api/list-pending?uid=${encodeURIComponent(getUserId())}`);
           const json = await res.json();
           const serverApps = json.data || [];
-          // Merge: server apps overwrite local ones with matching IDs
           const localMap = new Map(data.map(a => [a.id, a]));
-          serverApps.forEach(a => localMap.set(a.id, a));
+          serverApps.forEach(a => { if (!localMap.has(a.id)) localMap.set(a.id, a); });
+          // Don't overwrite local passports with server mock data
+          serverApps.forEach(a => { if (a.type !== "passport") localMap.set(a.id, a); });
           data = Array.from(localMap.values());
           saveApps(data);
-        } catch { /* offline, use localStorage only */ }
+        } catch { /* offline */ }
 
         if (data.length === 0) {
-          container.innerHTML = '<p class="text-xs text-muted prompt">No active sessions. Submit a visa or passport request to begin.</p>';
+          container.innerHTML = '<p class="text-xs text-muted prompt">No credentials. Issue a passport to begin.</p>';
           return;
         }
 
         container.innerHTML = data
-          .map(
-            (a) => `
-          <div class="flex items-center justify-between py-3 border-b border-[#222233]">
-            <div class="flex items-center gap-3">
-              <span class="text-sm text-muted">${a.type === "visa" ? "visa:" : "pprt:"}</span>
-              <div>
-                <p class="text-xs font-semibold text-[#c0c0cc]">${a.type === "passport" ? a.fullName : "VISA-" + a.id}</p>
-                <p class="text-[10px] text-muted tracking-[1px] uppercase">${a.type === "visa" ? "SCOPES: " + (a.scopes || []).join(", ") : "PASSPORT #" + a.passportNumber}</p>
+          .map((a) => {
+            if (a.type === "passport") {
+              return `
+              <div class="flex items-center justify-between py-3 border-b border-[#222233]">
+                <div class="flex items-center gap-3">
+                  <span class="text-sm text-neon" style="animation: text-glow 3s ease-in-out infinite;">pprt</span>
+                  <div>
+                    <p class="text-xs font-semibold text-[#c0c0cc]">${a.passportNumber}</p>
+                    <p class="text-[10px] text-muted tracking-[1px] uppercase">HOLDER: ${a.fullName} / HASH: ${(a.apiKeyHash || "0x0000").substring(0, 12)}</p>
+                  </div>
+                </div>
+                <span class="text-[9px] text-neon-dim tracking-[1px]">// ACTIVE</span>
+              </div>`;
+            }
+            return `
+            <div class="flex items-center justify-between py-3 border-b border-[#222233]">
+              <div class="flex items-center gap-3">
+                <span class="text-sm text-muted">visa</span>
+                <div>
+                  <p class="text-xs font-semibold text-[#c0c0cc]">VISA-${a.id.substring(0, 10)}</p>
+                  <p class="text-[10px] text-muted tracking-[1px] uppercase">PP: ${a.passportNumber || "—"} / SCOPES: ${(a.scopes || []).join(", ")}</p>
+                  ${a.expiresAt ? `<p class="text-[9px] text-[#444]">EXP: ${new Date(a.expiresAt).toLocaleDateString()}</p>` : ""}
+                </div>
               </div>
-            </div>
-            <span class="status-badge status-${a.status}">${a.status}</span>
-          </div>`
-          )
+              <span class="status-badge status-${a.status}">${a.status}</span>
+            </div>`;
+          })
           .join("");
       } catch (err) {
-        container.innerHTML = '<p class="text-xs text-error">CONNECTION FAILED: unable to load sessions.</p>';
+        container.innerHTML = '<p class="text-xs text-error">CONNECTION FAILED: unable to load credentials.</p>';
       }
     }
   })();

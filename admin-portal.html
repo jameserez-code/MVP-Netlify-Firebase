@@ -250,7 +250,7 @@
             <p id="statPending" class="text-2xl font-bold text-[#ffc400]">---</p>
           </div>
           <div class="stat-card">
-            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Approved</p>
+            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Passports Issued</p>
             <p id="statApproved" class="text-2xl font-bold text-[#00c8ff]">---</p>
           </div>
           <div class="stat-card">
@@ -414,23 +414,24 @@
     }
 
     // ===== Demo Data Seeder =====
-    function seedDemoData() {
+function seedDemoData() {
       const now = Date.now();
+      const future = new Date(now + 604800000).toISOString(); // 7 days
       const demoApps = [
-        { id: "visa_seed_001", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:read", "api:write"], createdAt: new Date(now - 1800000).toISOString(), updatedAt: new Date(now - 1800000).toISOString() },
-        { id: "visa_seed_002", uid: "bob@agency.io", type: "visa", status: "approved", scopes: ["api:read", "data:share", "config:view"], createdAt: new Date(now - 7200000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
-        { id: "pprt_seed_001", uid: "carol@agency.io", type: "passport", status: "pending", fullName: "Carol Danvers", passportNumber: "PS891234", createdAt: new Date(now - 5400000).toISOString(), updatedAt: new Date(now - 5400000).toISOString() },
-        { id: "pprt_seed_002", uid: "dave@agency.io", type: "passport", status: "issued", fullName: "Dave Chen", passportNumber: "PS456789", token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYXZlIiwiYXBwIjoicGFzc3BvcnQifQ.demo", createdAt: new Date(now - 14400000).toISOString(), updatedAt: new Date(now - 7200000).toISOString() },
-        { id: "visa_seed_003", uid: "eve@agency.io", type: "visa", status: "rejected", scopes: ["config:admin"], createdAt: new Date(now - 21600000).toISOString(), updatedAt: new Date(now - 10800000).toISOString() },
-        { id: "visa_seed_004", uid: "frank@agency.io", type: "visa", status: "pending", scopes: ["api:write", "config:view"], createdAt: new Date(now - 3600000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+        { id: "pp_seed_001", uid: "alice@agency.io", type: "passport", status: "issued", fullName: "Alice Carter", nationality: "United States", passportNumber: "PP-8A7F-2B3C", apiKeyHash: "0x7f3a2c1b...7f3a", createdAt: new Date(now - 3600000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+        { id: "pp_seed_002", uid: "bob@agency.io", type: "passport", status: "issued", fullName: "Bob Nakamura", nationality: "Japan", passportNumber: "PP-9C1D-4E5F", apiKeyHash: "0x1d9e8f2c...1d9e", createdAt: new Date(now - 7200000).toISOString(), updatedAt: new Date(now - 7200000).toISOString() },
+        { id: "pp_seed_003", uid: "carol@agency.io", type: "passport", status: "issued", fullName: "Carol Danvers", nationality: "Canada", passportNumber: "PP-2B4A-7F8C", apiKeyHash: "0xa3b7c1d4...a3b7", createdAt: new Date(now - 14400000).toISOString(), updatedAt: new Date(now - 14400000).toISOString() },
+        { id: "visa_seed_001", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:read", "api:write"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 1800000).toISOString(), updatedAt: new Date(now - 1800000).toISOString() },
+        { id: "visa_seed_002", uid: "bob@agency.io", type: "visa", status: "approved", scopes: ["api:read", "data:share", "config:view"], passportNumber: "PP-9C1D-4E5F", expiresAt: future, createdAt: new Date(now - 5400000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+        { id: "visa_seed_003", uid: "carol@agency.io", type: "visa", status: "rejected", scopes: ["config:admin"], passportNumber: "PP-2B4A-7F8C", expiresAt: future, createdAt: new Date(now - 10800000).toISOString(), updatedAt: new Date(now - 5400000).toISOString() },
+        { id: "visa_seed_004", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:write", "config:view"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 600000).toISOString(), updatedAt: new Date(now - 600000).toISOString() },
       ];
-      // Merge: don't overwrite existing apps
       const existing = getApps();
       const existingIds = new Set(existing.map(a => a.id));
       const merged = [...existing, ...demoApps.filter(a => !existingIds.has(a.id))];
       saveApps(merged);
       renderAll();
-      showToast("Seeded " + (merged.length - existing.length) + " demo applications", "success");
+      showToast("Seeded " + (merged.length - existing.length) + " demo credentials", "success");
     }
 
     document.getElementById("seedBtn").addEventListener("click", seedDemoData);
@@ -448,12 +449,14 @@
       renderTable();
     }
 
-    function renderStats() {
+function renderStats() {
       const apps = getApps();
+      const passports = apps.filter(a => a.type === "passport");
+      const visas = apps.filter(a => a.type === "visa");
       document.getElementById("statTotal").textContent = apps.length;
-      document.getElementById("statPending").textContent = apps.filter(a => a.status === "pending").length;
-      document.getElementById("statApproved").textContent = apps.filter(a => a.status === "approved" || a.status === "issued").length;
-      document.getElementById("statRejected").textContent = apps.filter(a => a.status === "rejected").length;
+      document.getElementById("statPending").textContent = visas.filter(a => a.status === "pending").length;
+      document.getElementById("statApproved").textContent = passports.length + visas.filter(a => a.status === "approved" || a.status === "issued").length;
+      document.getElementById("statRejected").textContent = visas.filter(a => a.status === "rejected").length;
     }
 
     function renderTable() {
@@ -469,6 +472,8 @@
           a.status.toLowerCase().includes(filterText) ||
           (a.fullName || "").toLowerCase().includes(filterText) ||
           (a.passportNumber || "").toLowerCase().includes(filterText) ||
+          (a.nationality || "").toLowerCase().includes(filterText) ||
+          (a.apiKeyHash || "").toLowerCase().includes(filterText) ||
           (a.scopes || []).join(" ").toLowerCase().includes(filterText)
         );
       }
@@ -483,17 +488,17 @@
 
       tbody.innerHTML = apps.map((a) => `
         <tr class="border-b border-[#222233] hover:bg-[#16161e]">
-          <td class="p-3 font-mono text-[11px] text-muted">${a.id.substring(0, 16)}</td>
+          <td class="p-3 font-mono text-[11px] text-muted">${a.id.substring(0, 14)}</td>
           <td class="p-3 text-muted">${a.uid}</td>
-          <td class="p-3 uppercase tracking-[1px] text-[11px]">${a.type}</td>
-          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.fullName + " / " + a.passportNumber + (a.token ? ' <span class="text-[#444]">[tok]</span>' : '')) : (a.scopes || []).join(", ")}</td>
+          <td class="p-3 uppercase tracking-[1px] text-[11px] ${a.type === 'passport' ? 'text-neon' : ''}">${a.type}</td>
+          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.passportNumber + " / " + a.fullName) : ((a.scopes || []).join(", ")) + (a.passportNumber ? ' <span class="text-[#444]">[' + a.passportNumber + ']</span>' : '')}</td>
           <td class="p-3"><span class="status-badge status-${a.status}">${a.status}</span></td>
-          <td class="p-3 text-muted text-[11px]">${new Date(a.createdAt).toLocaleDateString()}</td>
+          <td class="p-3 text-muted text-[11px]">${new Date(a.createdAt).toLocaleDateString()}${a.expiresAt ? '<br><span class="text-[9px] text-[#444]">exp ' + new Date(a.expiresAt).toLocaleDateString() + '</span>' : ''}</td>
           <td class="p-3 text-center">
-            ${a.status === "pending" ? `
+            ${a.type === "visa" && a.status === "pending" ? `
               <button class="btn btn-approve mr-1" data-id="${a.id}" data-action="approved">Approve</button>
               <button class="btn btn-reject" data-id="${a.id}" data-action="rejected">Reject</button>
-            ` : '<span class="text-[10px] text-muted">—</span>'}
+            ` : a.type === "passport" ? '<span class="text-[9px] text-neon-dim">// secured</span>' : '<span class="text-[10px] text-muted">—</span>'}
           </td>
         </tr>
       `).join("");
