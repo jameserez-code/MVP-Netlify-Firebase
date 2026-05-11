@@ -14,35 +14,35 @@ class FirebaseClient {
 
   initialize() {
     if (this.initialized) return this;
-    
+
     try {
       // Validate configuration
       if (!validateConfig(firebaseConfig)) {
         throw new Error("Invalid Firebase configuration");
       }
-      
+
       // Initialize Firebase app
       this.app = initializeApp(firebaseConfig);
-      
+
       // Initialize services
       this.auth = getAuth(this.app);
       this.db = getFirestore(this.app);
-      
+
       this.initialized = true;
       console.log("Firebase client initialized successfully");
-      
+
     } catch (error) {
       console.error("Firebase initialization error:", error);
       throw new Error(`Failed to initialize Firebase: ${error.message}`);
     }
-    
+
     return this;
   }
 
   // Authentication methods
   async signInWithGoogle() {
     if (!this.initialized) throw new Error("Firebase not initialized");
-    
+
     const { GoogleAuthProvider, signInWithPopup } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js");
     const provider = new GoogleAuthProvider();
     return signInWithPopup(this.auth, provider);
@@ -50,7 +50,7 @@ class FirebaseClient {
 
   async signOut() {
     if (!this.initialized) throw new Error("Firebase not initialized");
-    
+
     const { signOut } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js");
     return signOut(this.auth);
   }
@@ -68,27 +68,27 @@ class FirebaseClient {
   // Database methods
   async addDocument(collectionName, data) {
     if (!this.initialized) throw new Error("Firebase not initialized");
-    
+
     const { addDoc, collection } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js");
     const docRef = await addDoc(collection(this.db, collectionName), {
       ...data,
       createdAt: new Date().toISOString(),
       uid: this.getCurrentUser()?.uid || null
     });
-    
+
     return docRef.id;
   }
 
   async getDocuments(collectionName, uid = null) {
     if (!this.initialized) throw new Error("Firebase not initialized");
-    
+
     const { collection, getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js");
-    
+
     let q = collection(this.db, collectionName);
     if (uid) {
       q = query(q, where("uid", "==", uid));
     }
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
