@@ -1,68 +1,281 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Passport Agent - Admin Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <title>Passport Agent // Admin Console</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            neon:  "#00ff41",
+            "neon-dim": "#00cc33",
+            void:  "#0a0a0a",
+            surface: "#16161e",
+            border: "#222233",
+            muted: "#6b7280",
+            error: "#ff4444",
+            success: "#00ff41",
+          },
+          fontFamily: { sans: ["JetBrains Mono", "monospace"], mono: ["JetBrains Mono", "monospace"] },
+        },
+      },
+    };
+  </script>
+
   <style>
-    body { font-family: "Inter", system-ui, sans-serif; }
-    .stat-card { padding: 20px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    * { font-family: "JetBrains Mono", monospace; }
+    body {
+      background: #0a0a0a;
+      color: #c0c0cc;
+      min-height: 100vh;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,.015) 2px, rgba(0,255,65,.015) 3px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+    @keyframes glow-pulse {
+      0%, 100% { box-shadow: 0 0 4px rgba(0,255,65,.2); }
+      50%      { box-shadow: 0 0 8px rgba(0,255,65,.35); }
+    }
+    @keyframes text-glow {
+      0%, 100% { text-shadow: 0 0 4px rgba(0,255,65,.4); }
+      50%      { text-shadow: 0 0 10px rgba(0,255,65,.7); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .card {
+      background: #111118;
+      border: 1px solid #222233;
+      border-radius: 4px;
+      padding: 20px;
+    }
+    .card:hover { border-color: rgba(0,255,65,.25); }
+    .stat-card {
+      background: #111118;
+      border: 1px solid #222233;
+      border-radius: 4px;
+      padding: 20px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all .15s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .btn-primary {
+      background: rgba(0,255,65,.1);
+      color: #00ff41;
+      border-color: rgba(0,255,65,.3);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: rgba(0,255,65,.2);
+      box-shadow: 0 0 12px rgba(0,255,65,.25);
+    }
+    .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+    .btn-approve {
+      background: rgba(0,255,65,.08);
+      color: #00ff41;
+      border-color: rgba(0,255,65,.25);
+      font-size: 11px;
+      padding: 4px 12px;
+    }
+    .btn-approve:hover {
+      background: rgba(0,255,65,.18);
+      box-shadow: 0 0 8px rgba(0,255,65,.2);
+    }
+    .btn-reject {
+      background: rgba(255,68,68,.08);
+      color: #ff4444;
+      border-color: rgba(255,68,68,.25);
+      font-size: 11px;
+      padding: 4px 12px;
+    }
+    .btn-reject:hover {
+      background: rgba(255,68,68,.18);
+      box-shadow: 0 0 8px rgba(255,68,68,.2);
+    }
+    .btn-danger {
+      background: rgba(255,68,68,.1);
+      color: #ff4444;
+      border-color: rgba(255,68,68,.3);
+    }
+    .btn-danger:hover {
+      background: rgba(255,68,68,.2);
+      box-shadow: 0 0 12px rgba(255,68,68,.25);
+    }
+
+    .input {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d0d15;
+      border: 1px solid #333;
+      border-radius: 3px;
+      font-size: 13px;
+      color: #c0c0cc;
+      font-family: "JetBrains Mono", monospace;
+      transition: border-color .15s;
+    }
+    .input:focus {
+      outline: none;
+      border-color: #00ff41;
+      box-shadow: 0 0 8px rgba(0,255,65,.1);
+    }
+    .input::placeholder { color: #444; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #00ff41;
+      margin-bottom: 12px;
+      animation: text-glow 3s ease-in-out infinite;
+    }
+    .section-title::before { content: "// "; color: #444; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-family: "JetBrains Mono", monospace;
+    }
+    .status-pending {
+      background: rgba(255,196,0,.1);
+      color: #ffc400;
+      border: 1px solid rgba(255,196,0,.2);
+    }
+    .status-issued {
+      background: rgba(0,255,65,.1);
+      color: #00ff41;
+      border: 1px solid rgba(0,255,65,.2);
+    }
+    .status-approved {
+      background: rgba(0,200,255,.1);
+      color: #00c8ff;
+      border: 1px solid rgba(0,200,255,.2);
+    }
+    .status-rejected {
+      background: rgba(255,68,68,.1);
+      color: #ff4444;
+      border: 1px solid rgba(255,68,68,.2);
+    }
   </style>
 </head>
-<body class="min-h-screen" style="background:#f7f7f7;">
-  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.55);">
-    <div class="w-full max-w-sm bg-white rounded-xl p-8 shadow-2xl">
-      <h2 class="text-xl font-bold mb-2 text-center">Admin Access</h2>
-      <p class="text-sm text-gray-500 text-center mb-6">Enter admin code</p>
-      <input id="gateInput" type="password" placeholder="Admin code" class="w-full p-3 border rounded-lg mb-3" />
-      <button id="gateBtn" class="w-full p-3 bg-blue-600 text-white rounded-lg font-semibold" disabled>Unlock</button>
-      <p id="gateError" class="text-xs text-red-600 mt-3 text-center hidden">Incorrect code.</p>
+<body>
+  <!-- Gate -->
+  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.85);">
+    <div class="w-full max-w-sm bg-[#111118] border border-[#222233] p-8" style="box-shadow:0 0 40px rgba(0,255,65,.05);">
+      <div class="text-center mb-6">
+        <div class="text-neon text-3xl mb-2" style="animation: text-glow 3s ease-in-out infinite;">[#]</div>
+        <h2 class="text-sm font-bold uppercase tracking-[4px] text-neon mb-1" style="animation: text-glow 3s ease-in-out infinite;">Admin Console</h2>
+        <p class="text-xs text-muted">secure terminal // restricted access</p>
+      </div>
+      <div class="mb-4">
+        <p class="text-[10px] text-muted uppercase tracking-[2px] mb-2">Access Code</p>
+        <input id="gateInput" type="password" placeholder="Enter code..." class="input" />
+      </div>
+      <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
+      <p id="gateError" class="text-xs text-error mt-3 text-center hidden">ACCESS DENIED</p>
     </div>
   </div>
 
+  <!-- App -->
   <div id="app" class="hidden">
+    <!-- Admin Login -->
     <div id="loginView" class="min-h-screen flex items-center justify-center p-6">
-      <div class="w-full max-w-sm bg-white p-8 rounded-xl shadow-lg">
-        <h2 class="text-xl font-bold mb-4">Admin Sign In</h2>
-        <form id="loginForm">
-          <input id="loginEmail" type="email" placeholder="Email" class="w-full p-3 border rounded-lg mb-3" required />
-          <input id="loginPassword" type="password" placeholder="Password" class="w-full p-3 border rounded-lg mb-4" required />
-          <button type="submit" class="w-full p-3 bg-blue-600 text-white rounded-lg font-semibold">Sign In</button>
-          <p id="loginError" class="text-sm text-red-600 mt-3 text-center hidden"></p>
-        </form>
+      <div class="w-full max-w-sm card" style="animation: glow-pulse 4s ease-in-out infinite;">
+        <h2 class="section-title">Admin Sign In</h2>
+        <div>
+          <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Email</label>
+          <input id="loginEmail" type="email" class="input mb-3" placeholder="admin@example.com" required />
+          <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Password</label>
+          <input id="loginPassword" type="password" class="input mb-4" placeholder="••••••••" required />
+          <button id="loginBtn" class="btn btn-primary w-full">Sign In</button>
+          <p id="loginError" class="text-xs text-error text-center mt-3 hidden"></p>
+        </div>
       </div>
     </div>
 
+    <!-- Dashboard -->
     <div id="dashboard" class="hidden">
-      <header class="bg-white border-b sticky top-0 z-40">
+      <header class="bg-[#0d0d15] border-b border-[#222233] sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 class="text-lg font-bold">Passport Agent</h1>
-            <p class="text-xs text-gray-500">Admin Dashboard</p>
+            <h1 class="text-sm font-bold uppercase tracking-[4px] text-neon" style="animation: text-glow 3s ease-in-out infinite;">Passport Agent // Admin</h1>
+            <p id="adminUser" class="text-[10px] text-muted tracking-[2px] mt-0.5"></p>
           </div>
-          <div class="flex items-center gap-4">
-            <span id="adminUser" class="text-sm text-gray-600"></span>
-            <button id="signOutBtn" class="text-sm px-4 py-2 bg-gray-100 rounded-lg">Sign Out</button>
+          <div class="flex items-center gap-3">
+            <button id="refreshBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
+            <button id="signOutBtn" class="btn btn-danger" style="font-size:11px;padding:6px 14px;">Sign Out</button>
           </div>
         </div>
       </header>
 
       <main class="max-w-6xl mx-auto p-6 space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div class="stat-card"><h3 class="text-xs font-semibold text-gray-500 uppercase mb-1">Total Applications</h3><p id="statTotal" class="text-3xl font-bold">---</p></div>
-          <div class="stat-card"><h3 class="text-xs font-semibold text-gray-500 uppercase mb-1">Pending Review</h3><p id="statPending" class="text-3xl font-bold text-amber-600">---</p></div>
-          <div class="stat-card"><h3 class="text-xs font-semibold text-gray-500 uppercase mb-1">Issued Passports</h3><p id="statIssued" class="text-3xl font-bold text-green-600">---</p></div>
-          <div class="stat-card"><h3 class="text-xs font-semibold text-gray-500 uppercase mb-1">Active Visas</h3><p id="statVisas" class="text-3xl font-bold text-blue-600">---</p></div>
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="stat-card">
+            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Total</p>
+            <p id="statTotal" class="text-2xl font-bold text-neon">---</p>
+          </div>
+          <div class="stat-card">
+            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Pending</p>
+            <p id="statPending" class="text-2xl font-bold text-[#ffc400]">---</p>
+          </div>
+          <div class="stat-card">
+            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Approved</p>
+            <p id="statApproved" class="text-2xl font-bold text-[#00c8ff]">---</p>
+          </div>
+          <div class="stat-card">
+            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Rejected</p>
+            <p id="statRejected" class="text-2xl font-bold text-error">---</p>
+          </div>
         </div>
 
-        <div class="bg-white rounded-xl p-6 border shadow-sm">
-          <h3 class="text-base font-bold mb-4">Recent Applications</h3>
-          <div id="appTable" class="overflow-x-auto"><p class="text-sm text-gray-400">Loading...</p></div>
+        <!-- Applications Table -->
+        <div class="card">
+          <h3 class="section-title mb-4">Application Registry</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-[#222233] text-muted text-[10px] uppercase tracking-[2px]">
+                  <th class="p-3 text-left">ID</th>
+                  <th class="p-3 text-left">User</th>
+                  <th class="p-3 text-left">Type</th>
+                  <th class="p-3 text-left">Details</th>
+                  <th class="p-3 text-left">Status</th>
+                  <th class="p-3 text-left">Date</th>
+                  <th class="p-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="appTableBody">
+                <tr><td colspan="7" class="p-6 text-center text-muted">Loading registry...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
     </div>
@@ -71,13 +284,15 @@
   <script>
   (function() {
     const GATE_CODE = "Thegreatwave";
+
+    // ===== Gate =====
     const gate = document.getElementById("gate");
     const gateInput = document.getElementById("gateInput");
     const gateBtn = document.getElementById("gateBtn");
     const gateError = document.getElementById("gateError");
     const app = document.getElementById("app");
 
-    if (document.cookie.includes("admin_gate=true")) {
+    if (document.cookie.split(";").some(c => c.trim().startsWith("admin_gate=true"))) {
       gate.style.display = "none";
       app.classList.remove("hidden");
     }
@@ -90,76 +305,148 @@
         app.classList.remove("hidden");
       } else { gateError.classList.remove("hidden"); }
     });
-
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID",
-    };
-
-    let auth, db;
-    try {
-      firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
-    } catch (e) { console.warn("Firebase demo mode:", e.message); }
-
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const errEl = document.getElementById("loginError");
-      try {
-        if (auth) await auth.signInWithEmailAndPassword(document.getElementById("loginEmail").value, document.getElementById("loginPassword").value);
-      } catch (err) { errEl.textContent = err.message; errEl.classList.remove("hidden"); }
+    gateInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
     });
 
-    document.getElementById("signOutBtn").addEventListener("click", () => { if (auth) auth.signOut(); });
+    // ===== Auth (localStorage, shared with main app) =====
+    let adminUser = JSON.parse(localStorage.getItem("passport_user") || "null");
 
-    if (auth) {
-      auth.onAuthStateChanged((user) => {
-        document.getElementById("loginView").classList.toggle("hidden", !!user);
-        document.getElementById("dashboard").classList.toggle("hidden", !user);
-        if (user) {
-          document.getElementById("adminUser").textContent = user.email;
-          loadStats();
-          loadApplications();
-        }
+    const loginView = document.getElementById("loginView");
+    const dashboard = document.getElementById("dashboard");
+    const loginEmail = document.getElementById("loginEmail");
+    const loginPassword = document.getElementById("loginPassword");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginError = document.getElementById("loginError");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    function getUsers() {
+      return JSON.parse(localStorage.getItem("passport_users") || "{}");
+    }
+
+    loginBtn.addEventListener("click", () => {
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
+      loginError.classList.add("hidden");
+
+      if (!email || !password) {
+        loginError.textContent = "Email and password are required.";
+        loginError.classList.remove("hidden");
+        return;
+      }
+
+      const users = getUsers();
+      const stored = users[email];
+      if (!stored || stored.password !== password) {
+        loginError.textContent = "Invalid credentials.";
+        loginError.classList.remove("hidden");
+        return;
+      }
+
+      adminUser = { email };
+      localStorage.setItem("passport_user", JSON.stringify(adminUser));
+      showDashboard();
+    });
+
+    loginPassword.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loginBtn.click();
+    });
+
+    function showDashboard() {
+      loginView.classList.add("hidden");
+      dashboard.classList.remove("hidden");
+      document.getElementById("adminUser").textContent = adminUser.email;
+      renderAll();
+    }
+
+    function logout() {
+      localStorage.removeItem("passport_user");
+      adminUser = null;
+      loginView.classList.remove("hidden");
+      dashboard.classList.add("hidden");
+      loginEmail.value = "";
+      loginPassword.value = "";
+    }
+
+    signOutBtn.addEventListener("click", logout);
+
+    if (adminUser) showDashboard();
+
+    // ===== Data =====
+    function getApps() {
+      return JSON.parse(localStorage.getItem("passport_apps") || "[]");
+    }
+    function saveApps(apps) {
+      localStorage.setItem("passport_apps", JSON.stringify(apps));
+    }
+
+    // ===== Render =====
+    function renderAll() {
+      renderStats();
+      renderTable();
+    }
+
+    function renderStats() {
+      const apps = getApps();
+      document.getElementById("statTotal").textContent = apps.length;
+      document.getElementById("statPending").textContent = apps.filter(a => a.status === "pending").length;
+      document.getElementById("statApproved").textContent = apps.filter(a => a.status === "approved" || a.status === "issued").length;
+      document.getElementById("statRejected").textContent = apps.filter(a => a.status === "rejected").length;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("appTableBody");
+      const apps = getApps();
+
+      if (apps.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-muted">// registry empty — no applications submitted</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = apps.map((a, i) => `
+        <tr class="border-b border-[#222233] hover:bg-[#16161e]">
+          <td class="p-3 font-mono text-[11px] text-muted">${a.id.substring(0, 16)}</td>
+          <td class="p-3 text-muted">${a.uid}</td>
+          <td class="p-3 uppercase tracking-[1px] text-[11px]">${a.type}</td>
+          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.fullName + " / " + a.passportNumber) : (a.scopes || []).join(", ")}</td>
+          <td class="p-3"><span class="status-badge status-${a.status}">${a.status}</span></td>
+          <td class="p-3 text-muted text-[11px]">${new Date(a.createdAt).toLocaleDateString()}</td>
+          <td class="p-3 text-center">
+            ${a.status === "pending" ? `
+              <button class="btn btn-approve mr-1" data-idx="${i}" data-action="approved">Approve</button>
+              <button class="btn btn-reject" data-idx="${i}" data-action="rejected">Reject</button>
+            ` : '<span class="text-[10px] text-muted">—</span>'}
+          </td>
+        </tr>
+      `).join("");
+
+      // Wire up approve/reject buttons
+tbody.querySelectorAll("button[data-action]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.dataset.idx);
+          const action = btn.dataset.action;
+          const apps = getApps();
+          apps[idx].status = action;
+          apps[idx].updatedAt = new Date().toISOString();
+          saveApps(apps);
+          renderAll();
+
+          // Notify backend
+          try {
+            await fetch("/api/update-status", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: apps[idx].id, status: action }),
+            });
+          } catch { /* offline - local persistence suffices */ }
+        });
+      });
+          } catch { /* offline - local persistence suffices */ }
+        });
       });
     }
 
-    async function loadStats() {
-      try {
-        const res = await fetch("/api/list-pending");
-        const json = await res.json();
-        const apps = json.data || [];
-        document.getElementById("statTotal").textContent = apps.length;
-        document.getElementById("statPending").textContent = apps.filter(a => a.status === "pending").length;
-        document.getElementById("statIssued").textContent = apps.filter(a => a.status === "issued").length;
-        document.getElementById("statVisas").textContent = apps.filter(a => a.type === "visa").length;
-      } catch {
-        document.getElementById("statTotal").textContent = "---";
-      }
-    }
-
-    async function loadApplications() {
-      const container = document.getElementById("appTable");
-      try {
-        const res = await fetch("/api/list-pending");
-        const json = await res.json();
-        const apps = json.data || [];
-        if (!apps.length) { container.innerHTML = '<p class="text-sm text-gray-400">No applications found.</p>'; return; }
-        container.innerHTML = `<table class="w-full text-sm"><thead class="bg-gray-50"><tr>
-          <th class="p-3 text-left">ID</th><th class="p-3 text-left">Type</th><th class="p-3 text-left">Details</th><th class="p-3 text-left">Status</th><th class="p-3 text-left">Date</th></tr></thead><tbody class="divide-y">`
-          + apps.map(a => `<tr><td class="p-3 text-xs font-mono">${a.id}</td>
-            <td class="p-3">${a.type === "passport" ? "📕 Passport" : "🛂 Visa"}</td>
-            <td class="p-3">${a.type === "passport" ? a.fullName : (a.scopes||[]).join(", ")}</td>
-            <td class="p-3"><span class="px-2 py-1 rounded-full text-xs font-semibold ${a.status==='issued'?'bg-green-100 text-green-700':'bg-amber-100 text-amber-700'}">${a.status}</span></td>
-            <td class="p-3 text-gray-500">${new Date(a.createdAt).toLocaleDateString()}</td></tr>`).join("")
-          + "</tbody></table>";
-      } catch { container.innerHTML = '<p class="text-sm text-red-500">Error loading applications.</p>'; }
-    }
+    document.getElementById("refreshBtn").addEventListener("click", renderAll);
   })();
   </script>
 </body>

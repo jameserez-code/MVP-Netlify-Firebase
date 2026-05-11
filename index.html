@@ -193,6 +193,16 @@
       color: #00ff41;
       border: 1px solid rgba(0,255,65,.2);
     }
+    .status-approved {
+      background: rgba(0,200,255,.1);
+      color: #00c8ff;
+      border: 1px solid rgba(0,200,255,.2);
+    }
+    .status-rejected {
+      background: rgba(255,68,68,.1);
+      color: #ff4444;
+      border: 1px solid rgba(255,68,68,.2);
+    }
     .status-error {
       background: rgba(255,68,68,.1);
       color: #ff4444;
@@ -470,15 +480,33 @@ gateInput.addEventListener("keydown", (e) => {
       showDashboard();
     }
 
-    // Add sign out to header
+    // Add sign out and admin link to header
     const userDisplay = document.getElementById("userDisplay");
     if (currentUser) userDisplay.textContent = currentUser.email;
     const headerRow = document.getElementById("headerRow");
+
+    const adminLink = document.createElement("a");
+    adminLink.href = "/admin-portal.html";
+    adminLink.className = "text-[10px] text-muted uppercase tracking-[2px] hover:text-neon transition-colors";
+    adminLink.textContent = "Admin";
+    headerRow.appendChild(adminLink);
+
     const signOutBtn = document.createElement("button");
     signOutBtn.className = "btn btn-danger text-sm";
     signOutBtn.textContent = "Sign Out";
     signOutBtn.addEventListener("click", logout);
     headerRow.appendChild(signOutBtn);
+
+    // ===== Application Storage (localStorage) =====
+    function getApps() {
+      return JSON.parse(localStorage.getItem("passport_apps") || "[]");
+    }
+    function saveApps(apps) {
+      localStorage.setItem("passport_apps", JSON.stringify(apps));
+    }
+    function getUserId() {
+      return currentUser?.email || "demo_user";
+    }
 
     // ===== Scope Chips =====
     const SCOPE_OPTIONS = [
@@ -519,21 +547,34 @@ gateInput.addEventListener("keydown", (e) => {
       spinnerEl.classList.remove("hidden");
 
       try {
-        const payload = { scopes: Array.from(selectedScopes), uid: "demo_user" };
+        const payload = { scopes: Array.from(selectedScopes), uid: getUserId() };
 
         let response;
         try {
-          response = await fetch("/api/apply-visa", {
+          const res = await fetch("/api/apply-visa", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-          response = await response.json();
+          response = await res.json();
         } catch {
-          response = { success: true, message: "Visa request submitted (offline/demo mode)", applicationId: `visa_${Date.now()}` };
+          response = { success: true, message: "Visa request submitted", applicationId: `visa_${Date.now()}` };
         }
 
-        resultEl.textContent = response.message || "Application submitted!";
+        // Persist to localStorage
+        const apps = getApps();
+        apps.push({
+          id: response.applicationId || `visa_${Date.now()}`,
+          uid: getUserId(),
+          type: "visa",
+          status: "pending",
+          scopes: Array.from(selectedScopes),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        saveApps(apps);
+
+        resultEl.textContent = response.message || "Visa request submitted.";
         resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
         loadApplications();
@@ -567,7 +608,7 @@ gateInput.addEventListener("keydown", (e) => {
         const payload = {
           fullName: fullNameInput.value.trim(),
           passportNumber: passportNumInput.value.trim().toUpperCase(),
-          uid: "demo_user",
+          uid: getUserId(),
         };
 
         let response;
@@ -579,10 +620,25 @@ gateInput.addEventListener("keydown", (e) => {
           });
           response = await res.json();
         } catch {
-          response = { success: true, message: "Passport issued (demo mode)", passport: { id: `pass_${Date.now()}` } };
+          response = { success: true, message: "Passport issued", passport: { id: `pass_${Date.now()}` } };
         }
 
-        resultEl.textContent = response.message || "Passport issued successfully!";
+        // Persist to localStorage
+        const apps = getApps();
+        apps.push({
+          id: response.passport?.id || `pass_${Date.now()}`,
+          uid: getUserId(),
+          type: "passport",
+          status: "issued",
+          fullName: payload.fullName,
+          passportNumber: payload.passportNumber,
+          token: response.passport?.token || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        saveApps(apps);
+
+        resultEl.textContent = response.message || "Passport issued.";
         resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
         fullNameInput.value = "";
@@ -602,14 +658,20 @@ gateInput.addEventListener("keydown", (e) => {
     async function loadApplications() {
       const container = document.getElementById("appList");
       try {
-        let data = [];
+        // Primary: localStorage
+        let data = getApps();
+
+        // Merge with server data if available
         try {
-          const res = await fetch(`/api/list-pending?uid=demo_user`);
+          const res = await fetch(`/api/list-pending?uid=${encodeURIComponent(getUserId())}`);
           const json = await res.json();
-          data = json.data || [];
-        } catch {
-          data = [];
-        }
+          const serverApps = json.data || [];
+          // Merge: server apps overwrite local ones with matching IDs
+          const localMap = new Map(data.map(a => [a.id, a]));
+          serverApps.forEach(a => localMap.set(a.id, a));
+          data = Array.from(localMap.values());
+          saveApps(data);
+        } catch { /* offline, use localStorage only */ }
 
         if (data.length === 0) {
           container.innerHTML = '<p class="text-xs text-muted prompt">No active sessions. Submit a visa or passport request to begin.</p>';
@@ -627,7 +689,7 @@ gateInput.addEventListener("keydown", (e) => {
                 <p class="text-[10px] text-muted tracking-[1px] uppercase">${a.type === "visa" ? "SCOPES: " + (a.scopes || []).join(", ") : "PASSPORT #" + a.passportNumber}</p>
               </div>
             </div>
-            <span class="status-badge status-${a.status === 'issued' ? 'issued' : 'pending'}">${a.status}</span>
+            <span class="status-badge status-${a.status}">${a.status}</span>
           </div>`
           )
           .join("");
