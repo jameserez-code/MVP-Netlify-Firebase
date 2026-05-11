@@ -17,6 +17,12 @@ jobs:
         with:
           node-version: "18"
 
+      - name: Prepare public directory
+        run: |
+          mkdir -p public
+          cp index.html admin-portal.html public/
+          cp -r src public/ 2>/dev/null || true
+
       - name: Install dependencies
         run: npm ci
         working-directory: netlify/functions

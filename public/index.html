@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Passport Agent - AI-powered passport and visa issuance platform" />
+  <title>Passport Agent</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#1e88e5",
+            "primary-dark": "#1565c0",
+            surface: "#ffffff",
+            background: "#f7f7f7",
+            "text-primary": "#1f2937",
+            "text-muted": "#6b7280",
+            error: "#dc2626",
+            success: "#16a34a",
+          },
+          fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    [v-cloak] { display: none; }
+    body { font-family: "Inter", system-ui, sans-serif; }
+    .chip { display: inline-flex; align-items: center; padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; border: 2px solid #d1d5db; cursor: pointer; transition: all 2ms ease; user-select: none; background: #fff; color: #4b5563; }
+    .chip.selected { border-color: #1e88e5; background: #eff6ff; color: #1e88e5; box-shadow: 0 0 0 1px #1e88e5; }
+    .chip:focus-visible { outline: 2px solid #1e88e5; outline-offset: 2px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); border: 1px solid #e5e7eb; margin-bottom: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-issued { background: #d1fae5; color: #065f46; }
+    .status-error { background: #fee2e2; color: #991b1b; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 2ms ease; font-size: 14px; }
+    .btn-primary { background: #1e88e5; color: #fff; }
+    .btn-primary:hover { background: #1565c0; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background: #e5e7eb; }
+    .input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: border-color 2ms ease; }
+    .input:focus { outline: none; border-color: #1e88e5; box-shadow: 0 0 0 3px rgba(30,136,229,.15); }
+    .input-error { border-color: #dc2626; }
+    .spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="min-h-screen" style="background:#f7f7f7;">
+  <!-- Gate Overlay -->
+  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.55);">
+    <div class="w-full max-w-sm bg-white rounded-xl p-8 shadow-2xl border border-gray-100">
+      <h2 class="text-xl font-bold mb-2 text-center">Passport Agent</h2>
+      <p class="text-sm text-gray-500 text-center mb-6">Enter your access code to continue</p>
+      <input id="gateInput" type="password" placeholder="Access code" class="input mb-3" />
+      <button id="gateBtn" class="btn btn-primary w-full" disabled>Unlock</button>
+      <p id="gateError" class="text-xs text-red-600 mt-3 text-center hidden">Incorrect code. Please try again.</p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="hidden">
+    <!-- Auth Section -->
+    <div id="unauth" class="min-h-screen flex items-center justify-center p-6">
+      <div class="card w-full max-w-md text-center">
+        <h1 class="text-2xl font-bold mb-1">Passport Agent</h1>
+        <p class="text-sm text-gray-500 mb-8">Sign in with Google to manage passports and visas</p>
+
+        <button id="googleSignInBtn" class="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <p id="loginError" class="text-sm text-red-600 mt-4 hidden"></p>
+        <div class="mt-8 text-center text-xs text-gray-400">Powered by Netlify Functions &amp; Firebase</div>
+      </div>
+    </div>
+
+    <!-- Authenticated Section -->
+    <div id="authed" class="hidden">
+      <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 class="text-lg font-bold">Passport Agent</h1>
+            <p id="userDisplay" class="text-xs text-gray-500"></p>
+          </div>
+          <button id="signOutBtn" class="btn btn-secondary text-sm">Sign Out</button>
+        </div>
+      </header>
+
+      <main class="max-w-5xl mx-auto p-6 space-y-6">
+        <!-- Create Visa -->
+        <div class="card">
+          <h3 class="text-base font-bold mb-3">Apply for Visa</h3>
+          <p class="text-sm text-gray-500 mb-3">Select the scopes you need for your visa authorization.</p>
+          <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
+          <button id="applyVisaBtn" class="btn btn-primary" disabled>Submit Visa Application</button>
+          <p id="visaResult" class="text-sm mt-3 hidden"></p>
+          <div id="visaSpinner" class="hidden mt-2 text-sm text-gray-500">
+            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+            Processing...
+          </div>
+        </div>
+
+        <!-- Create Passport -->
+        <div class="card">
+          <h3 class="text-base font-bold mb-3">Issue Passport</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-semibold mb-1">Full Name</label>
+              <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
+            </div>
+            <div>
+              <label class="block text-sm font-semibold mb-1">Passport Number</label>
+              <input id="passportNumInput" class="input" placeholder="e.g. PS789012" />
+            </div>
+          </div>
+          <button id="issuePassportBtn" class="btn btn-primary" disabled>Issue Passport</button>
+          <p id="passportResult" class="text-sm mt-3 hidden"></p>
+          <div id="passportSpinner" class="hidden mt-2 text-sm text-gray-500">
+            <svg class="spinner inline w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+            Issuing...
+          </div>
+        </div>
+
+        <!-- Pending Applications -->
+        <div class="card" id="applicationsSection">
+          <h3 class="text-base font-bold mb-3">Your Applications</h3>
+          <div id="appList"><p class="text-sm text-gray-400">Loading...</p></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const GATE_CODE = "Thegreatwave";
+    const gate = document.getElementById("gate");
+    const gateInput = document.getElementById("gateInput");
+    const gateBtn = document.getElementById("gateBtn");
+    const gateError = document.getElementById("gateError");
+    const app = document.getElementById("app");
+    const unauth = document.getElementById("unauth");
+    const authed = document.getElementById("authed");
+
+    // ===== Gate Logic =====
+    // No persistence as per request: "enter again every visit"
+    gateInput.addEventListener("input", () => {
+      gateBtn.disabled = gateInput.value.length === 0;
+    });
+
+    gateBtn.addEventListener("click", () => {
+      if (gateInput.value === GATE_CODE) {
+        gate.style.display = "none";
+        app.classList.remove("hidden");
+        gateError.classList.add("hidden");
+      } else {
+        gateError.classList.remove("hidden");
+      }
+    });
+
+    gateInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
+    });
+
+    // ===== Firebase Init =====
+    const firebaseConfig = {
+      apiKey: window.FIREBASE_API_KEY || "YOUR_API_KEY",
+      authDomain: window.FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT.firebaseapp.com",
+      projectId: window.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+      storageBucket: window.FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT.appspot.com",
+      messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID || "YOUR_SENDER_ID",
+      appId: window.FIREBASE_APP_ID || "YOUR_APP_ID",
+    };
+
+    let auth, db, currentUser = null;
+
+    try {
+      const fa = firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      db = firebase.firestore();
+    } catch (e) {
+      console.warn("Firebase init skipped (demo mode):", e.message);
+    }
+
+    // ===== Auth =====
+    document.getElementById("googleSignInBtn").addEventListener("click", async () => {
+      const errEl = document.getElementById("loginError");
+      errEl.classList.add("hidden");
+      try {
+        if (auth) {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          await auth.signInWithPopup(provider);
+        } else {
+          throw new Error("Firebase auth not initialized");
+        }
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove("hidden");
+      }
+    });
+
+    document.getElementById("signOutBtn").addEventListener("click", () => {
+      if (auth) auth.signOut();
+    });
+
+    if (auth) {
+      auth.onAuthStateChanged((user) => {
+        currentUser = user;
+        if (user) {
+          unauth.classList.add("hidden");
+          authed.classList.remove("hidden");
+          document.getElementById("userDisplay").textContent = user.email;
+          loadApplications();
+        } else {
+          unauth.classList.remove("hidden");
+          authed.classList.add("hidden");
+        }
+      });
+    }
+
+    // ===== Scope Chips =====
+    const SCOPE_OPTIONS = [
+      { value: "api:read", label: "API Read" },
+      { value: "api:write", label: "API Write" },
+      { value: "data:share", label: "Data Share" },
+      { value: "config:view", label: "Config View" },
+      { value: "config:admin", label: "Config Admin" },
+    ];
+
+    const scopeContainer = document.getElementById("scopeChips");
+    const selectedScopes = new Set();
+
+    SCOPE_OPTIONS.forEach((s) => {
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      chip.textContent = s.label;
+      chip.dataset.value = s.value;
+      chip.tabIndex = 0;
+      chip.addEventListener("click", () => {
+        if (selectedScopes.has(s.value)) {
+          selectedScopes.delete(s.value);
+          chip.classList.remove("selected");
+        } else {
+          selectedScopes.add(s.value);
+          chip.classList.add("selected");
+        }
+        document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      });
+      scopeContainer.appendChild(chip);
+    });
+
+    // ===== Visa Application =====
+    document.getElementById("applyVisaBtn").addEventListener("click", async () => {
+      const resultEl = document.getElementById("visaResult");
+      const spinnerEl = document.getElementById("visaSpinner");
+      resultEl.classList.add("hidden");
+      spinnerEl.classList.remove("hidden");
+
+      try {
+        const payload = { scopes: Array.from(selectedScopes), uid: currentUser?.uid || "demo_user" };
+
+        let response;
+        try {
+          response = await fetch("/api/apply-visa", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          response = await response.json();
+        } catch {
+          response = { success: true, message: "Visa application submitted (demo mode)", applicationId: `visa_${Date.now()}` };
+        }
+
+        resultEl.textContent = response.message || "Application submitted!";
+        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.classList.remove("hidden");
+        loadApplications();
+      } catch (err) {
+        resultEl.textContent = "Error: " + err.message;
+        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.classList.remove("hidden");
+      } finally {
+        spinnerEl.classList.add("hidden");
+      }
+    });
+
+    // ===== Passport Issuance =====
+    const fullNameInput = document.getElementById("fullNameInput");
+    const passportNumInput = document.getElementById("passportNumInput");
+    const issuePassportBtn = document.getElementById("issuePassportBtn");
+
+    function togglePassportBtn() {
+      issuePassportBtn.disabled = !fullNameInput.value.trim() || !passportNumInput.value.trim();
+    }
+    fullNameInput.addEventListener("input", togglePassportBtn);
+    passportNumInput.addEventListener("input", togglePassportBtn);
+
+    issuePassportBtn.addEventListener("click", async () => {
+      const resultEl = document.getElementById("passportResult");
+      const spinnerEl = document.getElementById("passportSpinner");
+      resultEl.classList.add("hidden");
+      spinnerEl.classList.remove("hidden");
+
+      try {
+        const payload = {
+          fullName: fullNameInput.value.trim(),
+          passportNumber: passportNumInput.value.trim().toUpperCase(),
+          uid: currentUser?.uid || "demo_user",
+        };
+
+        let response;
+        try {
+          const res = await fetch("/api/apply-passport", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          response = await res.json();
+        } catch {
+          response = { success: true, message: "Passport issued (demo mode)", passport: { id: `pass_${Date.now()}` } };
+        }
+
+        resultEl.textContent = response.message || "Passport issued successfully!";
+        resultEl.className = "text-sm mt-3 text-green-600";
+        resultEl.classList.remove("hidden");
+        fullNameInput.value = "";
+        passportNumInput.value = "";
+        issuePassportBtn.disabled = true;
+        loadApplications();
+      } catch (err) {
+        resultEl.textContent = "Error: " + err.message;
+        resultEl.className = "text-sm mt-3 text-red-600";
+        resultEl.classList.remove("hidden");
+      } finally {
+        spinnerEl.classList.add("hidden");
+      }
+    });
+
+    // ===== Load Applications =====
+    async function loadApplications() {
+      const container = document.getElementById("appList");
+      try {
+        let data = [];
+        try {
+          const res = await fetch(`/api/list-pending?uid=${currentUser?.uid || "demo_user"}`);
+          const json = await res.json();
+          data = json.data || [];
+        } catch {
+          data = [];
+        }
+
+        if (data.length === 0) {
+          container.innerHTML = '<p class="text-sm text-gray-400">No applications yet. Create a visa or passport above.</p>';
+          return;
+        }
+
+        container.innerHTML = data
+          .map(
+            (a) => `
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">${a.type === "visa" ? "🛂" : "📕"}</span>
+              <div>
+                <p class="text-sm font-semibold">${a.type === "passport" ? a.fullName : "Visa Application #" + a.id}</p>
+                <p class="text-xs text-gray-500">${a.type === "visa" ? "Scopes: " + (a.scopes || []).join(", ") : "Passport #" + a.passportNumber}</p>
+              </div>
+            </div>
+            <span class="status-badge status-${a.status === 'issued' ? 'issued' : 'pending'}">${a.status}</span>
+          </div>`
+          )
+          .join("");
+      } catch (err) {
+        container.innerHTML = '<p class="text-sm text-red-500">Failed to load applications.</p>';
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
