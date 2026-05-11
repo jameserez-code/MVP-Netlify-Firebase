@@ -1,5 +1,5 @@
 [build]
-  command = "true"
+  command = "npm install"
   publish = "."
   functions = "netlify/functions"
 
@@ -32,6 +32,6 @@
   for = "/api/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Agent-Key"
     Cache-Control = "no-store"

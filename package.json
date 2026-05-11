@@ -1,0 +1,16 @@
+{
+  "name": "passport-agent",
+  "version": "2.0.0",
+  "description": "AI Agent Identity + Permission Control System",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "bench:crypto": "node scripts/bench-crypto.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
