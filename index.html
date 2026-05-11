@@ -620,7 +620,7 @@ gateInput.addEventListener("keydown", (e) => {
           });
           response = await res.json();
         } catch {
-          response = { success: true, message: "Passport issued", passport: { id: `pass_${Date.now()}` } };
+          response = { success: true, message: "Passport issued", passport: { id: `pass_${Date.now()}`, token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIiwiYXBwIjoicGFzc3BvcnQiLCJpc3MiOiJwYXNzcG9ydC1hZ2VudCJ9.demo_sig" } };
         }
 
         // Persist to localStorage
@@ -638,7 +638,8 @@ gateInput.addEventListener("keydown", (e) => {
         });
         saveApps(apps);
 
-        resultEl.textContent = response.message || "Passport issued.";
+        resultEl.innerHTML = (response.message || "Passport issued.") +
+          (response.passport?.token ? '<br><span class="text-[#444] text-[10px] font-mono break-all mt-1 block">token: ' + response.passport.token.substring(0, 60) + '...</span>' : '');
         resultEl.className = "text-xs mt-3 text-neon";
         resultEl.classList.remove("hidden");
         fullNameInput.value = "";

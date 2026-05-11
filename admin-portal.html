@@ -54,6 +54,10 @@
       50%      { text-shadow: 0 0 10px rgba(0,255,65,.7); }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
 
     .card {
       background: #111118;
@@ -257,7 +261,13 @@
 
         <!-- Applications Table -->
         <div class="card">
-          <h3 class="section-title mb-4">Application Registry</h3>
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+            <h3 class="section-title mb-0">Application Registry</h3>
+            <div class="flex items-center gap-3">
+              <input id="filterInput" class="input" style="width:220px;padding:6px 10px;" placeholder="Filter registry..." />
+              <button id="seedBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;" title="Populate with demo data">Seed Demo</button>
+            </div>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full text-xs">
               <thead>
@@ -280,6 +290,9 @@
       </main>
     </div>
   </div>
+
+  <!-- Toast container -->
+  <div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2" style="max-width:320px;"></div>
 
   <script>
   (function() {
@@ -372,6 +385,26 @@
 
     if (adminUser) showDashboard();
 
+    // ===== Toast System =====
+    function showToast(message, type) {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const colors = {
+        success: "border-[#00ff41] text-neon",
+        error: "border-[#ff4444] text-error",
+        info: "border-[#00c8ff] text-[#00c8ff]",
+      };
+      toast.className = `bg-[#111118] border ${colors[type] || colors.info} px-4 py-3 text-xs font-mono`;
+      toast.style.cssText = "animation: slideIn .2s ease;";
+      toast.textContent = (type === "success" ? "OK: " : type === "error" ? "ERR: " : "") + message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity .3s";
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
     // ===== Data =====
     function getApps() {
       return JSON.parse(localStorage.getItem("passport_apps") || "[]");
@@ -379,6 +412,35 @@
     function saveApps(apps) {
       localStorage.setItem("passport_apps", JSON.stringify(apps));
     }
+
+    // ===== Demo Data Seeder =====
+    function seedDemoData() {
+      const now = Date.now();
+      const demoApps = [
+        { id: "visa_seed_001", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:read", "api:write"], createdAt: new Date(now - 1800000).toISOString(), updatedAt: new Date(now - 1800000).toISOString() },
+        { id: "visa_seed_002", uid: "bob@agency.io", type: "visa", status: "approved", scopes: ["api:read", "data:share", "config:view"], createdAt: new Date(now - 7200000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+        { id: "pprt_seed_001", uid: "carol@agency.io", type: "passport", status: "pending", fullName: "Carol Danvers", passportNumber: "PS891234", createdAt: new Date(now - 5400000).toISOString(), updatedAt: new Date(now - 5400000).toISOString() },
+        { id: "pprt_seed_002", uid: "dave@agency.io", type: "passport", status: "issued", fullName: "Dave Chen", passportNumber: "PS456789", token: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkYXZlIiwiYXBwIjoicGFzc3BvcnQifQ.demo", createdAt: new Date(now - 14400000).toISOString(), updatedAt: new Date(now - 7200000).toISOString() },
+        { id: "visa_seed_003", uid: "eve@agency.io", type: "visa", status: "rejected", scopes: ["config:admin"], createdAt: new Date(now - 21600000).toISOString(), updatedAt: new Date(now - 10800000).toISOString() },
+        { id: "visa_seed_004", uid: "frank@agency.io", type: "visa", status: "pending", scopes: ["api:write", "config:view"], createdAt: new Date(now - 3600000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+      ];
+      // Merge: don't overwrite existing apps
+      const existing = getApps();
+      const existingIds = new Set(existing.map(a => a.id));
+      const merged = [...existing, ...demoApps.filter(a => !existingIds.has(a.id))];
+      saveApps(merged);
+      renderAll();
+      showToast("Seeded " + (merged.length - existing.length) + " demo applications", "success");
+    }
+
+    document.getElementById("seedBtn").addEventListener("click", seedDemoData);
+
+    // ===== Filter =====
+    let filterText = "";
+    document.getElementById("filterInput").addEventListener("input", (e) => {
+      filterText = e.target.value.toLowerCase();
+      renderTable();
+    });
 
     // ===== Render =====
     function renderAll() {
@@ -396,52 +458,68 @@
 
     function renderTable() {
       const tbody = document.getElementById("appTableBody");
-      const apps = getApps();
+      let apps = getApps();
+
+      // Apply filter
+      if (filterText) {
+        apps = apps.filter(a =>
+          a.id.toLowerCase().includes(filterText) ||
+          a.uid.toLowerCase().includes(filterText) ||
+          a.type.toLowerCase().includes(filterText) ||
+          a.status.toLowerCase().includes(filterText) ||
+          (a.fullName || "").toLowerCase().includes(filterText) ||
+          (a.passportNumber || "").toLowerCase().includes(filterText) ||
+          (a.scopes || []).join(" ").toLowerCase().includes(filterText)
+        );
+      }
+
+      // Sort: newest first
+      apps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       if (apps.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-muted">// registry empty — no applications submitted</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-muted">// ' + (filterText ? 'no results matching filter' : 'registry empty — seed demo data or submit applications') + '</td></tr>';
         return;
       }
 
-      tbody.innerHTML = apps.map((a, i) => `
+      tbody.innerHTML = apps.map((a) => `
         <tr class="border-b border-[#222233] hover:bg-[#16161e]">
           <td class="p-3 font-mono text-[11px] text-muted">${a.id.substring(0, 16)}</td>
           <td class="p-3 text-muted">${a.uid}</td>
           <td class="p-3 uppercase tracking-[1px] text-[11px]">${a.type}</td>
-          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.fullName + " / " + a.passportNumber) : (a.scopes || []).join(", ")}</td>
+          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.fullName + " / " + a.passportNumber + (a.token ? ' <span class="text-[#444]">[tok]</span>' : '')) : (a.scopes || []).join(", ")}</td>
           <td class="p-3"><span class="status-badge status-${a.status}">${a.status}</span></td>
           <td class="p-3 text-muted text-[11px]">${new Date(a.createdAt).toLocaleDateString()}</td>
           <td class="p-3 text-center">
             ${a.status === "pending" ? `
-              <button class="btn btn-approve mr-1" data-idx="${i}" data-action="approved">Approve</button>
-              <button class="btn btn-reject" data-idx="${i}" data-action="rejected">Reject</button>
+              <button class="btn btn-approve mr-1" data-id="${a.id}" data-action="approved">Approve</button>
+              <button class="btn btn-reject" data-id="${a.id}" data-action="rejected">Reject</button>
             ` : '<span class="text-[10px] text-muted">—</span>'}
           </td>
         </tr>
       `).join("");
 
       // Wire up approve/reject buttons
-tbody.querySelectorAll("button[data-action]").forEach(btn => {
+      tbody.querySelectorAll("button[data-action]").forEach(btn => {
         btn.addEventListener("click", async () => {
-          const idx = parseInt(btn.dataset.idx);
+          const id = btn.dataset.id;
           const action = btn.dataset.action;
           const apps = getApps();
+          const idx = apps.findIndex(a => a.id === id);
+          if (idx === -1) return;
+          const prevStatus = apps[idx].status;
           apps[idx].status = action;
           apps[idx].updatedAt = new Date().toISOString();
           saveApps(apps);
           renderAll();
+          showToast(`app ${id.substring(0,10)}... ${prevStatus} → ${action}`, "success");
 
-          // Notify backend
           try {
             await fetch("/api/update-status", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: apps[idx].id, status: action }),
+              body: JSON.stringify({ id, status: action }),
             });
-          } catch { /* offline - local persistence suffices */ }
-        });
-      });
-          } catch { /* offline - local persistence suffices */ }
+          } catch { /* offline ok */ }
         });
       });
     }
