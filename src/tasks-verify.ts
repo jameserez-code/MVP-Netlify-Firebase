@@ -1,17 +1,15 @@
 import { createTask, getTask } from './tasks.js'
+import { log } from './lib/logger.js'
 
 async function run() {
-  // 1. CREATE
   const task = await createTask({
     description: 'Verify Firestore CRUD for tasks collection',
     priority: 1,
     tags: ['healthcheck', 'firestore'],
   })
 
-  // 2. READ
   const found = await getTask(task.id)
 
-  // 3. VERIFY
   if (!found) {
     throw new Error('READ FAILED: task not found after create')
   }
@@ -25,14 +23,11 @@ async function run() {
     throw new Error('READ FAILED: payload mismatch')
   }
 
-  console.log('\n✅ ALL CHECKS PASSED')
-  console.log('   createTask → document written')
-  console.log('   getTask    → document read back')
-  console.log('   payload    → matches')
+  log.success('all checks passed')
   process.exit(0)
 }
 
 run().catch((err) => {
-  console.error('\n❌ CHECK FAILED:', err.message)
+  log.error('verify failed', { error: err.message })
   process.exit(1)
 })

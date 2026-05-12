@@ -1,152 +1,118 @@
-# Passport Agent MVP
+# Agent Control Plane — Core Backend
 
-YC-ready passport and visa issuance platform. Serverless backend on Netlify Functions with Firebase Firestore for per-user data isolation.
+Minimal Node.js + TypeScript backend proving Firestore read/write, task creation,
+agent run lifecycle, and uniform error handling.
 
-## Architecture
+## Setup
 
-```
-index.html          → Gate UI + Visa/Passport forms (client-side)
-admin-portal.html   → Admin dashboard with live stats
-netlify/functions/
-  api/
-    health.js       → Health check endpoint
-    apply-visa.js   → Visa application processing
-    apply-passport.js → Passport issuance with JWT signing
-    list-pending.js → List applications with pagination
-src/
-  config/
-    firebase.config.js  → Firebase initialization config
-  lib/firebase/
-    client.js           → Firebase client wrapper
-  models/
-    Application.js      → Application data model
-  services/
-    passport-service.js → JWT signing and verification
-  utils/
-    validation.js       → Input validation and sanitization
-  middleware/
-    auth-middleware.js  → Auth, rate limiting, CORS
-firestore.rules     → Per-user security rules
-netlify.toml        → Netlify deploy configuration
-```
-
-## Quick Start
-
-### Prerequisites
-- Netlify account with CLI: `npm install -g netlify-cli`
-- Firebase project with Firestore and Authentication (email/password) enabled
-- Node.js 18+
-
-### 1. Set up Firebase
 ```bash
-# Create a Firebase project at https://console.firebase.google.com
-# Enable Authentication → Email/Password
-# Enable Cloud Firestore
+# 1. Install dependencies
+npm install
 
-# Get your config values from Project Settings → Web App
-# Set these as Netlify environment variables:
-FIREBASE_API_KEY=your_api_key
-FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-FIREBASE_APP_ID=your_app_id
-JWT_SECRET=your_strong_random_secret
+# 2. Add service account key
+#    Firebase Console → Project Settings → Service accounts → Generate new private key
+#    Save as: service-account.json in project root
+
+# 3. Verify Firestore connection
+npm run healthcheck
+#   write success
+#   read success
+#   document contents: { ... }
+
+# 4. Seed collections with sample data
+npm run schema:seed
+#   ✓ seeded { collection: "users", id: "user_seed_001" }
+#   ✓ seeded { collection: "agents", id: "agent_seed_001" }
+#   ✓ seeded { collection: "tasks", id: "task_seed_001" }
+#   ✓ seeded { collection: "runs", id: "run_seed_001" }
+#   ✓ seeded { collection: "logs", id: "log_seed_001" }
+
+# 5. Start the API
+npm run dev
+#   server  → http://localhost:3000
+#   POST   /task        — create task
+#   GET    /task/:id    — read task
+#   POST   /agent/run   — start run
 ```
 
-### 2. Deploy
-```bash
-git clone https://github.com/jameserez-code/MVP-Netlify-Firebase.git
-cd MVP-Netlify-Firebase
-netlify login
-netlify init
-# Set environment variables in Netlify UI or via CLI:
-# netlify env:set FIREBASE_API_KEY your_value
-netlify deploy --prod
-```
+## Firestore Collections
 
-### 3. Verify
-```bash
-curl https://your-site.netlify.app/api/health
-# → {"status":"ok","timestamp":"...","version":"1.0.0"}
-```
-
-### 4. Deploy Firestore rules
-```bash
-# Copy firestore.rules content into Firebase Console → Firestore → Rules
-# Or use Firebase CLI:
-firebase deploy --only firestore:rules
-```
+| Collection | Purpose |
+|-----------|---------|
+| `users` | Org members and credential holders |
+| `agents` | Registered AI agents (model, provider, passport) |
+| `tasks` | Assignable work items with payload + status |
+| `runs` | Execution records tying agents to tasks |
+| `logs` | Individual tool call decisions during a run |
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/health` | GET | Health check and service status |
-| `/api/apply-visa` | POST | Submit visa application |
-| `/api/apply-passport` | POST | Issue passport with JWT |
-| `/api/list-pending` | GET | List applications (with pagination) |
+### POST /task
+Create a task.
 
-### POST /api/apply-visa
+**Request:** `{ "payload": { ... any data ... } }`
+**Response (201):** `{ "id": "...", "payload": {...}, "status": "created", "createdAt": "..." }`
+**Error (400):** `{ "error": { "code": "validation", "message": "payload is required" } }`
+
+### GET /task/:id
+Read a task by ID.
+
+**Response (200):** `{ "id": "...", "payload": {...}, "status": "...", "createdAt": "..." }`
+**Error (404):** `{ "error": { "code": "not_found", "message": "task {id} not found" } }`
+
+### POST /agent/run
+Start an agent run on a task. This is **atomic**: it creates a run document and
+sets the task status to `running` in a single transaction.
+
+**Request:** `{ "agentId": "...", "taskId": "..." }`
+**Response (201):** `{ "id": "...", "agentId": "...", "taskId": "...", "status": "running", "startedAt": "..." }`
+**Error (400):** `{ "error": { "code": "agent_not_found", "message": "agent {id} not found" } }`
+**Error (400):** `{ "error": { "code": "task_not_found", "message": "task {id} not found" } }`
+**Error (409):** `{ "error": { "code": "conflict", "message": "task {id} is already {status}", "currentStatus": "running" } }`
+
+## Data Flow
+
+```
+POST /task          → writes tasks/{auto-id}         (status: "created")
+GET  /task/:id      → reads  tasks/{id}              (any status)
+POST /agent/run     → verifies agents/{agentId}      (exists)
+                    → verifies tasks/{taskId}         (status: "created")
+                    → writes  runs/{auto-id}          (transaction: run + task→running)
+```
+
+## Error Shape
+
+All errors use the same format:
+
 ```json
 {
-  "scopes": ["api:read", "api:write"],
-  "uid": "user_id"
+  "error": {
+    "code": "not_found | validation | agent_not_found | task_not_found | conflict | firestore",
+    "message": "Human-readable description"
+  }
 }
 ```
 
-### POST /api/apply-passport
-```json
-{
-  "fullName": "James Sterling",
-  "passportNumber": "PS789012",
-  "uid": "user_id"
-}
+HTTP status codes: `200`, `201`, `400`, `404`, `409`, `503`.
+
+## Log Format
+
+Every log line includes a timestamp, level indicator, message, and optional context:
+
+```
+[2026-05-12 18:23:35] ✓ task created  {"taskId":"abc123..."}
+[2026-05-12 18:23:35] • task read     {"taskId":"abc123...","status":"created"}
+[2026-05-12 18:23:36] ✗ seed failed   {"error":"service-account.json not found"}
 ```
 
-### GET /api/list-pending?uid=user_id&status=pending&page=1&limit=20
+Level indicators: `•` (info), `⚠` (warn), `✗` (error), `✓` (success).
 
-## Security
+## Scripts
 
-- **Firestore rules**: Enforce per-user isolation — users can only read/write their own documents
-- **Input validation**: Both client-side (validation.js) and server-side (API functions)
-- **Rate limiting**: Configurable per-endpoint rate limiting via auth-middleware
-- **Security headers**: X-Frame-Options, Content-Type-Options, Referrer-Policy set in netlify.toml
-- **JWT signing**: Passports signed with HS256 using environment-managed secrets
-
-## Testing
-
-```bash
-# Run API tests (from functions directory)
-cd netlify/functions
-npm test
-
-# Manual endpoint testing
-curl -X POST https://your-site.netlify.app/api/apply-visa \
-  -H "Content-Type: application/json" \
-  -d '{"scopes":["api:read"],"uid":"test123"}'
-
-curl -X POST https://your-site.netlify.app/api/apply-passport \
-  -H "Content-Type: application/json" \
-  -d '{"fullName":"Test User","passportNumber":"TS000001","uid":"test123"}'
-```
-
-## YC Demo Flow
-
-1. Open site → Gate screen (enter "Thegreatwave")
-2. Sign in with Firebase Auth (email/password)
-3. Apply for Visa: select scope chips → Submit
-4. Issue Passport: enter name + passport number → Issue
-5. View pending applications in real-time list
-6. Admin portal: see aggregate stats and all applications
-
-## Production Roadmap
-
-- [ ] Replace mock data in list-pending with real Firestore queries
-- [ ] Add Firebase Admin SDK to functions for server-side auth verification
-- [ ] Migrate secrets to a secure vault (not env vars) for JWT signing
-- [ ] Add Playwright/Cypress end-to-end tests
-- [ ] Implement proper logging (structured JSON, correlation IDs)
-- [ ] Add monitoring and alerting
-- [ ] Scale Firestore with composite indexes for query patterns
-- [ ] Add multi-tenancy support for organizational passport management
+| Command | What it does |
+|---------|-------------|
+| `npm run healthcheck` | Write/read a single Firestore document |
+| `npm run schema:seed` | Seed 5 collections with sample data |
+| `npm run tasks:verify` | Create + read a task, verify payload matches |
+| `npm run dev` | Start the Fastify server on port 3000 |
+| `npm test` | Run crypto + evaluator unit tests |
