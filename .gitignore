@@ -8,6 +8,8 @@ node_modules/
 
 # Firebase config (contains real keys - use env vars instead)
 firebase.config.js
+service-account.json
+*-service-account.json
 
 # Netlify build artifacts
 .netlify/
