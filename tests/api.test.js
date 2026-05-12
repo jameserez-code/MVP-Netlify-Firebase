@@ -1,7 +1,7 @@
 // API Test Suite - Production Ready
 const { describe, it } = require("node:test");
 const assert = require("node:assert");
-const { Validator } = require("../../src/utils/validation.js");
+const { Validator } = require("../src/utils/validation.js");
 
 describe("Validation Utilities", () => {
   describe("validateEmail", () => {
@@ -110,7 +110,7 @@ describe("Validation Utilities", () => {
 
 describe("Application Model", () => {
   it("creates valid visa", () => {
-    const { Application } = require("../../src/models/Application.js");
+    const { Application } = require("../src/models/Application.js");
     const visa = Application.createVisa("user1", ["api:read"]);
     assert.strictEqual(visa.type, "visa");
     assert.strictEqual(visa.status, "pending");
@@ -118,7 +118,7 @@ describe("Application Model", () => {
   });
 
   it("creates valid passport", () => {
-    const { Application } = require("../../src/models/Application.js");
+    const { Application } = require("../src/models/Application.js");
     const passport = Application.createPassport("user1", "John Doe", "JD000001");
     assert.strictEqual(passport.type, "passport");
     assert.strictEqual(passport.status, "pending");
