@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Third-Party Service — Credential Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: {
+        colors: {
+          "surface": "#131313", "background": "#0e0e0e",
+          "primary": "#ebffe2", "primary-container": "#00ff41",
+          "secondary": "#97deff", "secondary-container": "#00c8fe",
+          "outline-variant": "#3b4b37", "on-surface": "#e5e2e1",
+          "on-surface-variant": "#b9ccb2", "error": "#ffb4ab",
+          neon: "#00e639", "neon-dim": "#68d3ff",
+        },
+        fontFamily: {
+          body: ["Geist", "sans-serif"],
+          mono: ["JetBrains Mono", "monospace"],
+        },
+      }},
+    };
+  </script>
+  <style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    body { font-family: "Geist", sans-serif; background: #0e0e0e; color: #e5e2e1; min-height: 100vh; }
+    body::after { content: ""; position: fixed; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(0,230,57,0.02) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; }
+    .mono, .tmp-mono { font-family: "JetBrains Mono", monospace !important; }
+    @keyframes text-glow { 0%,100%{text-shadow:0 0 4px rgba(0,230,57,.4)} 50%{text-shadow:0 0 10px rgba(0,230,57,.7)} }
+    @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .glass-panel { background: rgba(18,18,18,.85); backdrop-filter: blur(16px); border: 1px solid rgba(59,75,55,.3); border-radius: .25rem; }
+    .shimmer-bar { background: linear-gradient(90deg, transparent, #00e639, transparent); background-size: 200% 100%; animation: shimmer 3s infinite linear; }
+    @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+    .btn { padding: 12px 24px; border-radius: .25rem; font-weight: 600; font-size: 12px; cursor: pointer; border: 1px solid transparent; transition: all .15s ease; text-transform: uppercase; letter-spacing: 1px; font-family: "JetBrains Mono", monospace; }
+    .btn-primary { background: rgba(0,230,57,.12); color: #00e639; border-color: rgba(0,230,57,.25); }
+    .btn-primary:hover { background: rgba(0,230,57,.2); box-shadow: 0 0 20px rgba(0,230,57,.25); }
+    .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
+
+    .input { width: 100%; padding: 12px 16px; background: #1c1b1b; border: 1px solid rgba(59,75,55,.4); border-radius: .25rem; font-size: 13px; color: #e5e2e1; font-family: "JetBrains Mono", monospace; transition: border-color .15s; }
+    .input:focus { outline: none; border-color: #00e639; box-shadow: 0 0 8px rgba(0,230,57,.15); }
+    .input::placeholder { color: rgba(185,204,178,.3); }
+
+    .status-badge { display: inline-flex; align-items: center; padding: 4px 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; font-family: "JetBrains Mono", monospace; }
+    .status-verified { background: rgba(0,230,57,.1); color: #00e639; border: 1px solid rgba(0,230,57,.3); }
+    .status-denied { background: rgba(147,0,10,.1); color: #ffb4ab; border: 1px solid rgba(147,0,10,.3); }
+    .status-error { background: rgba(247,190,0,.1); color: #f7be00; border: 1px solid rgba(247,190,0,.2); }
+
+    .spinner { animation: spin 1s linear infinite; }
+    .pulse { animation: pulse 2s ease-in-out infinite; }
+    .meta-bar { font-family: "JetBrains Mono", monospace; font-size: 10px; color: rgba(185,204,178,.3); letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <!-- Simulated browser URL bar -->
+  <div class="glass-panel mx-auto mt-6 px-4 py-2 flex items-center gap-3 max-w-2xl" style="font-family:'JetBrains Mono',monospace;font-size:12px;">
+    <span style="color:#555;">🔒</span>
+    <span style="color:rgba(185,204,178,.4);">api.acme-corp.com</span>
+    <span style="color:rgba(185,204,178,.2);">/verify-credential</span>
+    <div class="flex items-center gap-1 ml-auto">
+      <span class="w-1.5 h-1.5 rounded-full pulse" style="background:#00e639;"></span>
+      <span style="font-size:9px;color:rgba(185,204,178,.2);">PASSPORT_AGENT_VERIFY_V1</span>
+    </div>
+  </div>
+
+  <main class="max-w-2xl mx-auto p-6 pt-12 space-y-6">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="w-12 h-12 border-2 border-[#00e639] flex items-center justify-center mx-auto mb-4" style="box-shadow:0 0 15px rgba(0,230,57,.15);">
+        <span class="material-symbols-outlined" style="color:#00e639;font-size:24px;">verified_user</span>
+      </div>
+      <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Credential Verification</h1>
+      <p class="text-xs" style="color:rgba(185,204,178,.4);font-family:'JetBrains Mono',monospace;">This service validates Passport Agent credentials via cryptographic hash verification.</p>
+      <p class="text-xs mt-1" style="color:rgba(185,204,178,.3);font-family:'JetBrains Mono',monospace;">No shared secrets required — any service can verify without SDK.</p>
+    </div>
+
+    <!-- Input Card -->
+    <div class="glass-panel p-6 relative overflow-hidden" style="animation:slide-in .3s ease;">
+      <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
+      <h2 class="text-xs uppercase tracking-[2px] mb-4" style="color:rgba(185,204,178,.6);font-family:'JetBrains Mono',monospace;">&gt; Credential Input</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Passport Number</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color:#00e639;font-family:'JetBrains Mono',monospace;">PP-</span>
+            <input id="passportInput" class="input" style="padding-left:34px;" placeholder="8A7F-2B3C" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">API Key</label>
+          <input id="apiKeyInput" class="input" placeholder="pp_live_..." type="password" />
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="verifyBtn" class="btn btn-primary flex-1" disabled>
+            <span class="flex items-center justify-center gap-2">
+              Verify Credential
+              <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </span>
+          </button>
+          <button id="demoFillBtn" class="btn" style="background:transparent;color:rgba(185,204,178,.5);border:1px solid rgba(59,75,55,.4);font-size:11px;" title="Fill with demo credential">
+            <span class="material-symbols-outlined text-sm">auto_fix</span>
+          </button>
+          <button id="hashVerifyBtn" class="btn" style="background:transparent;color:rgba(185,204,178,.5);border:1px solid rgba(59,75,55,.4);font-size:11px;" title="Verify via hash only (no key)">
+            <span class="material-symbols-outlined text-sm">fingerprint</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingView" class="glass-panel p-8 text-center hidden">
+      <div class="flex items-center justify-center gap-3">
+        <svg class="spinner inline w-5 h-5" style="color:#00e639;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
+        <span class="text-xs uppercase tracking-[2px] pulse" style="color:#00e639;font-family:'JetBrains Mono',monospace;">Validating credential...</span>
+      </div>
+      <p class="text-xs mt-4" style="color:rgba(185,204,178,.3);font-family:'JetBrains Mono',monospace;">Calling Passport Agent verification endpoint</p>
+    </div>
+
+    <!-- Result: ACCESS GRANTED -->
+    <div id="resultGranted" class="glass-panel p-6 relative overflow-hidden hidden" style="border-color:rgba(0,230,57,.3);animation:slide-in .3s ease;">
+      <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
+      <div class="flex items-start justify-between mb-6">
+        <div>
+          <h2 class="text-base font-bold flex items-center gap-2" style="color:#00e639;font-family:'JetBrains Mono',monospace;">
+            <span class="material-symbols-outlined">check_circle</span>
+            ACCESS GRANTED
+          </h2>
+          <p class="text-xs mt-2" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">This credential is valid and authorized.</p>
+        </div>
+        <span class="status-badge status-verified">VERIFIED</span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="p-3 border-l-2" style="border-color:rgba(0,230,57,.3);background:rgba(0,230,57,.03);">
+          <p class="text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Passport</p>
+          <p id="resultPassport" class="text-sm" style="font-family:'JetBrains Mono',monospace;">—</p>
+        </div>
+        <div class="p-3 border-l-2" style="border-color:rgba(0,200,254,.3);background:rgba(0,200,254,.03);">
+          <p class="text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Holder</p>
+          <p id="resultHolder" class="text-sm" style="font-family:'JetBrains Mono',monospace;">—</p>
+        </div>
+        <div class="p-3 border-l-2" style="border-color:rgba(104,211,255,.3);background:rgba(104,211,255,.03);">
+          <p class="text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Issuer</p>
+          <p id="resultIssuer" class="text-sm" style="font-family:'JetBrains Mono',monospace;">—</p>
+        </div>
+        <div class="p-3 border-l-2" style="border-color:rgba(247,190,0,.3);background:rgba(247,190,0,.03);">
+          <p class="text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Verified At</p>
+          <p id="resultTime" class="text-sm" style="font-family:'JetBrains Mono',monospace;">—</p>
+        </div>
+      </div>
+
+      <!-- Active Visas -->
+      <div class="mt-4 pt-4 border-t" style="border-color:rgba(59,75,55,.3);">
+        <p class="text-[10px] uppercase tracking-[2px] mb-3" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Active Scopes / Visas</p>
+        <div id="resultScopes" class="space-y-1"></div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t flex items-center gap-3" style="border-color:rgba(59,75,55,.3);">
+        <span class="text-[9px]" style="color:rgba(185,204,178,.4);font-family:'JetBrains Mono',monospace;">// Verified via Passport Agent // No shared secret required // Replay-proof</span>
+      </div>
+    </div>
+
+    <!-- Result: ACCESS DENIED -->
+    <div id="resultDenied" class="glass-panel p-6 relative overflow-hidden hidden" style="border-color:rgba(147,0,10,.3);animation:slide-in .3s ease;">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-base font-bold flex items-center gap-2" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">
+            <span class="material-symbols-outlined">cancel</span>
+            ACCESS DENIED
+          </h2>
+          <p class="text-xs mt-2" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">This credential could not be verified.</p>
+        </div>
+        <span class="status-badge status-denied">DENIED</span>
+      </div>
+      <div class="p-4 border" style="border-color:rgba(147,0,10,.2);background:rgba(147,0,10,.05);">
+        <p class="text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,.5);font-family:'JetBrains Mono',monospace;">Reason</p>
+        <p id="denyReason" class="text-sm" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">—</p>
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm" style="color:rgba(185,204,178,.3);">info</span>
+        <p class="text-xs" style="color:rgba(185,204,178,.4);">The credential issuer may have revoked this passport, or the API key is invalid.</p>
+      </div>
+    </div>
+
+    <!-- How It Works -->
+    <div class="glass-panel p-6">
+      <h3 class="text-xs uppercase tracking-[2px] mb-4" style="color:rgba(185,204,178,.4);font-family:'JetBrains Mono',monospace;">How Verification Works</h3>
+      <div class="meta-bar space-y-2">
+        <p>1. <span style="color:#00e639;">Any service</span> receives a passport number + API key from a user</p>
+        <p>2. Calls <code style="background:rgba(0,230,57,.05);padding:1px 6px;">POST /api/verify-passport</code> — no auth required</p>
+        <p>3. Passport Agent hashes the key, compares to stored hash — <span style="color:#00e639;">never exposes plaintext</span></p>
+        <p>4. Returns verified scopes, or denial reason with audit trail ID</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  (function() {
+    var passportInput = document.getElementById("passportInput");
+    var apiKeyInput = document.getElementById("apiKeyInput");
+    var verifyBtn = document.getElementById("verifyBtn");
+    var loadingView = document.getElementById("loadingView");
+    var resultGranted = document.getElementById("resultGranted");
+    var resultDenied = document.getElementById("resultDenied");
+
+    function toggleVerifyBtn() {
+      verifyBtn.disabled = !passportInput.value.trim() || !apiKeyInput.value.trim();
+    }
+    passportInput.addEventListener("input", toggleVerifyBtn);
+    apiKeyInput.addEventListener("input", toggleVerifyBtn);
+
+    // Demo fill button
+    document.getElementById("demoFillBtn").addEventListener("click", function() {
+      var apps = JSON.parse(localStorage.getItem("passport_apps") || "[]");
+      var passports = apps.filter(function(a) { return a.type === "passport" && a.status === "issued"; });
+      if (passports.length > 0) {
+        var p = passports[passports.length - 1];
+        passportInput.value = p.passportNumber;
+        apiKeyInput.value = "pp_live_demo_key_" + p.passportNumber.replace(/PP-/g, "").replace(/-/g, "").toLowerCase();
+        toggleVerifyBtn();
+      } else {
+        // Demo fallback
+        passportInput.value = "PP-8A7F-2B3C";
+        apiKeyInput.value = "pp_live_demo_key_8a7f2b3c";
+        toggleVerifyBtn();
+      }
+    });
+
+    // Hash-only verify
+    document.getElementById("hashVerifyBtn").addEventListener("click", function() {
+      if (!passportInput.value.trim()) return;
+      loadingView.classList.remove("hidden");
+      resultGranted.classList.add("hidden");
+      resultDenied.classList.add("hidden");
+
+      var ppNum = passportInput.value.trim();
+      var hash = document.getElementById("ppHash") ? document.getElementById("ppHash").textContent : null;
+
+      setTimeout(function() {
+        loadingView.classList.add("hidden");
+        if (hash) {
+          document.getElementById("resultPassport").textContent = ppNum;
+          document.getElementById("resultHolder").textContent = "Verified by hash";
+          document.getElementById("resultIssuer").textContent = "Passport Agent";
+          document.getElementById("resultTime").textContent = new Date().toLocaleString();
+          document.getElementById("resultScopes").innerHTML = '<p class="text-xs" style="color:rgba(185,204,178,.4);font-family:JetBrains Mono,monospace;">// Hash verification only — no scope data</p>';
+          resultGranted.classList.remove("hidden");
+        } else {
+          document.getElementById("denyReason").textContent = "No hash available — verify with API key instead";
+          resultDenied.classList.remove("hidden");
+        }
+      }, 800);
+    });
+
+    // Verify button
+    verifyBtn.addEventListener("click", async function() {
+      var ppNum = "PP-" + passportInput.value.trim();
+      var key = apiKeyInput.value.trim();
+
+      loadingView.classList.remove("hidden");
+      resultGranted.classList.add("hidden");
+      resultDenied.classList.add("hidden");
+
+      // Try real API first
+      try {
+        var res = await fetch("/api/verify-passport", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ passportNumber: ppNum, apiKey: key }),
+        });
+        var json = await res.json();
+        loadingView.classList.add("hidden");
+
+        if (json.verified) {
+          document.getElementById("resultPassport").textContent = json.passportNumber || ppNum;
+          document.getElementById("resultHolder").textContent = json.holderName || "—";
+          document.getElementById("resultIssuer").textContent = json.issuer || "Passport Agent";
+          document.getElementById("resultTime").textContent = json.verifiedAt || new Date().toLocaleString();
+          var scopes = (json.allScopes || (json.activeVisas || []).flatMap(function(v) { return v.scopes || []; }));
+          if (scopes.length > 0) {
+            document.getElementById("resultScopes").innerHTML = scopes.map(function(s) {
+              return '<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background:#00e639;"></span><span style="font-family:JetBrains Mono,monospace;font-size:11px;color:rgba(185,204,178,.8);">' + s + '</span></div>';
+            }).join("");
+          } else {
+            document.getElementById("resultScopes").innerHTML = '<p class="text-xs" style="color:rgba(185,204,178,.4);font-family:JetBrains Mono,monospace;">// No active visas</p>';
+          }
+          resultGranted.classList.remove("hidden");
+        } else {
+          document.getElementById("denyReason").textContent = json.reason || json.error || "Verification failed";
+          resultDenied.classList.remove("hidden");
+        }
+        return;
+      } catch(e) {
+        // API unavailable — try localStorage fallback
+      }
+
+      // Fallback: localStorage verification
+      setTimeout(function() {
+        var apps = JSON.parse(localStorage.getItem("passport_apps") || "[]");
+        var match = apps.filter(function(a) {
+          return a.type === "passport" && a.passportNumber === ppNum;
+        });
+
+        loadingView.classList.add("hidden");
+
+        if (match.length > 0 && (match[0].status === "issued" || match[0].status === "active")) {
+          document.getElementById("resultPassport").textContent = ppNum;
+          document.getElementById("resultHolder").textContent = match[0].fullName || "—";
+          document.getElementById("resultIssuer").textContent = "Passport Agent (local)";
+          document.getElementById("resultTime").textContent = new Date().toLocaleString();
+
+          var visaScopes = [];
+          var visas = apps.filter(function(a) { return a.type === "visa" && a.passportNumber === ppNum && (a.status === "approved" || a.status === "active"); });
+          visas.forEach(function(v) { visaScopes = visaScopes.concat(v.scopes || []); });
+
+          if (visaScopes.length > 0) {
+            document.getElementById("resultScopes").innerHTML = visaScopes.map(function(s) {
+              return '<div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background:#00e639;"></span><span style="font-family:JetBrains Mono,monospace;font-size:11px;color:rgba(185,204,178,.8);">' + s + '</span></div>';
+            }).join("");
+          } else {
+            document.getElementById("resultScopes").innerHTML = '<p class="text-xs" style="color:rgba(185,204,178,.4);font-family:JetBrains Mono,monospace;">// No active visas</p>';
+          }
+
+          resultGranted.classList.remove("hidden");
+        } else {
+          var reason = match.length > 0 ? "Passport status: " + match[0].status : "Passport not found in local registry";
+          document.getElementById("denyReason").textContent = reason;
+          resultDenied.classList.remove("hidden");
+        }
+      }, 1200);
+    });
+
+    // URL param pre-fill
+    var params = new URLSearchParams(window.location.search);
+    if (params.get("pn")) {
+      passportInput.value = params.get("pn").replace("PP-", "");
+      if (params.get("h")) {
+        document.getElementById("hashVerifyBtn").click();
+      }
+      toggleVerifyBtn();
+    }
+  })();
+  </script>
+</body>
+</html>
