@@ -6,333 +6,340 @@
   <title>Passport Agent // Admin Console</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
 
-  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script>
     tailwind.config = {
       darkMode: "class",
       theme: {
         extend: {
           colors: {
-            neon:  "#00ff41",
-            "neon-dim": "#00cc33",
-            void:  "#0a0a0a",
-            surface: "#16161e",
-            border: "#222233",
-            muted: "#6b7280",
-            error: "#ff4444",
-            success: "#00ff41",
+            "surface-dim": "#131313",
+            "secondary": "#97deff",
+            "on-surface-variant": "#b9ccb2",
+            "primary": "#ebffe2",
+            "surface-container-lowest": "#0e0e0e",
+            "background": "#131313",
+            "surface-tint": "#00e639",
+            "surface-container-highest": "#353534",
+            "secondary-container": "#00c8fe",
+            "surface-bright": "#3a3939",
+            "surface-variant": "#353534",
+            "secondary-fixed-dim": "#68d3ff",
+            "error-container": "#93000a",
+            "on-secondary-container": "#005068",
+            "on-surface": "#e5e2e1",
+            "primary-container": "#00ff41",
+            "primary-fixed-dim": "#00e639",
+            "on-primary": "#003907",
+            "outline": "#84967e",
+            "outline-variant": "#3b4b37",
+            "tertiary-container": "#ffd87e",
+            "surface-container-low": "#1c1b1b",
+            "on-secondary": "#003546",
+            "surface-container-high": "#2a2a2a",
+            "surface": "#131313",
+            "error": "#ffb4ab",
+            "on-background": "#e5e2e1",
+            "tertiary-fixed-dim": "#f7be00",
+            neon: "#00e639",
+            "neon-dim": "#68d3ff",
           },
-          fontFamily: { sans: ["JetBrains Mono", "monospace"], mono: ["JetBrains Mono", "monospace"] },
+          fontFamily: {
+            display: ["Geist", "sans-serif"],
+            body: ["Geist", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"],
+            label: ["JetBrains Mono", "monospace"],
+            hash: ["JetBrains Mono", "monospace"],
+          },
+          borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+          spacing: { unit: "4px", gutter: "24px", margin: "32px" },
         },
       },
     };
   </script>
 
   <style>
-    * { font-family: "JetBrains Mono", monospace; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
     body {
-      background: #0a0a0a;
-      color: #c0c0cc;
+      font-family: "Geist", sans-serif;
+      background: #0e0e0e;
+      color: #e5e2e1;
       min-height: 100vh;
     }
     body::after {
-      content: "";
-      position: fixed;
-      inset: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,.015) 2px, rgba(0,255,65,.015) 3px);
-      pointer-events: none;
-      z-index: 9999;
+      content: ""; position: fixed; inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(0, 230, 57, 0.03) 50%);
+      background-size: 100% 4px; pointer-events: none; z-index: 9999;
     }
-    @keyframes glow-pulse {
-      0%, 100% { box-shadow: 0 0 4px rgba(0,255,65,.2); }
-      50%      { box-shadow: 0 0 8px rgba(0,255,65,.35); }
+    .mono, .terminal, .btn, .input, .chip, .status-badge, table, .pp-number, .pp-masked-key {
+      font-family: "JetBrains Mono", monospace !important;
     }
-    @keyframes text-glow {
-      0%, 100% { text-shadow: 0 0 4px rgba(0,255,65,.4); }
-      50%      { text-shadow: 0 0 10px rgba(0,255,65,.7); }
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateX(20px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
+    @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+    @keyframes glow-pulse { 0%,100%{box-shadow:0 0 15px rgba(0,230,57,.1)} 50%{box-shadow:0 0 30px rgba(0,230,57,.3)} }
+    @keyframes text-glow { 0%,100%{text-shadow:0 0 4px rgba(0,230,57,.4)} 50%{text-shadow:0 0 10px rgba(0,230,57,.7)} }
+    @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes slideIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes pulse-ring { 0%{transform:scale(.33);opacity:1} 80%,100%{opacity:0} }
 
+    .glass-panel {
+      background: rgba(18, 18, 18, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(59, 75, 55, 0.3);
+    }
+    .shimmer-bar {
+      background: linear-gradient(90deg, transparent, #00e639, transparent);
+      background-size: 200% 100%;
+      animation: shimmer 3s infinite linear;
+    }
     .card {
-      background: #111118;
-      border: 1px solid #222233;
-      border-radius: 4px;
-      padding: 20px;
+      background: rgba(28, 27, 27, 0.9);
+      border: 1px solid rgba(59, 75, 55, 0.3);
+      border-radius: 0.25rem; padding: 20px; margin-bottom: 16px;
+      transition: border-color .2s;
     }
-    .card:hover { border-color: rgba(0,255,65,.25); }
+    .card:hover { border-color: rgba(0, 230, 57, 0.3); }
     .stat-card {
-      background: #111118;
-      border: 1px solid #222233;
-      border-radius: 4px;
-      padding: 20px;
+      background: rgba(28, 27, 27, 0.9);
+      border: 1px solid rgba(59, 75, 55, 0.3);
+      border-radius: 0.25rem; padding: 20px;
     }
-
     .btn {
-      padding: 8px 16px;
-      border-radius: 3px;
-      font-weight: 600;
-      font-size: 12px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all .15s ease;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      padding: 8px 16px; border-radius: 0.25rem; font-weight: 600; font-size: 12px;
+      cursor: pointer; border: 1px solid transparent; transition: all .15s ease;
+      text-transform: uppercase; letter-spacing: 1px;
       font-family: "JetBrains Mono", monospace;
     }
-    .btn-primary {
-      background: rgba(0,255,65,.1);
-      color: #00ff41;
-      border-color: rgba(0,255,65,.3);
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: rgba(0,255,65,.2);
-      box-shadow: 0 0 12px rgba(0,255,65,.25);
-    }
+    .btn-primary { background: rgba(0,230,57,.12); color: #00e639; border-color: rgba(0,230,57,.25); }
+    .btn-primary:hover:not(:disabled) { background: rgba(0,230,57,.2); box-shadow: 0 0 20px rgba(0,230,57,.25); }
     .btn-primary:disabled { opacity: .35; cursor: not-allowed; }
-    .btn-approve {
-      background: rgba(0,255,65,.08);
-      color: #00ff41;
-      border-color: rgba(0,255,65,.25);
-      font-size: 11px;
-      padding: 4px 12px;
-    }
-    .btn-approve:hover {
-      background: rgba(0,255,65,.18);
-      box-shadow: 0 0 8px rgba(0,255,65,.2);
-    }
-    .btn-reject {
-      background: rgba(255,68,68,.08);
-      color: #ff4444;
-      border-color: rgba(255,68,68,.25);
-      font-size: 11px;
-      padding: 4px 12px;
-    }
-    .btn-reject:hover {
-      background: rgba(255,68,68,.18);
-      box-shadow: 0 0 8px rgba(255,68,68,.2);
-    }
-    .btn-danger {
-      background: rgba(255,68,68,.1);
-      color: #ff4444;
-      border-color: rgba(255,68,68,.3);
-    }
-    .btn-danger:hover {
-      background: rgba(255,68,68,.2);
-      box-shadow: 0 0 12px rgba(255,68,68,.25);
-    }
+    .btn-approve { background: rgba(0,230,57,.08); color: #00e639; border-color: rgba(0,230,57,.25); font-size: 11px; padding: 4px 12px; font-family: "JetBrains Mono", monospace; }
+    .btn-approve:hover { background: rgba(0,230,57,.18); box-shadow: 0 0 8px rgba(0,230,57,.2); }
+    .btn-reject { background: rgba(147,0,10,.08); color: #ffb4ab; border-color: rgba(147,0,10,.25); font-size: 11px; padding: 4px 12px; font-family: "JetBrains Mono", monospace; }
+    .btn-reject:hover { background: rgba(147,0,10,.18); box-shadow: 0 0 8px rgba(255,180,171,.2); }
+    .btn-danger { background: rgba(147,0,10,.15); color: #ffb4ab; border-color: rgba(147,0,10,.3); }
+    .btn-danger:hover { background: rgba(147,0,10,.25); box-shadow: 0 0 12px rgba(255,180,171,.25); }
 
     .input {
-      width: 100%;
-      padding: 10px 14px;
-      background: #0d0d15;
-      border: 1px solid #333;
-      border-radius: 3px;
-      font-size: 13px;
-      color: #c0c0cc;
-      font-family: "JetBrains Mono", monospace;
-      transition: border-color .15s;
+      width: 100%; padding: 10px 14px; background: #1c1b1b;
+      border: 1px solid rgba(59, 75, 55, 0.4); border-radius: 0.25rem;
+      font-size: 13px; color: #e5e2e1;
+      font-family: "JetBrains Mono", monospace; transition: border-color .15s;
     }
-    .input:focus {
-      outline: none;
-      border-color: #00ff41;
-      box-shadow: 0 0 8px rgba(0,255,65,.1);
-    }
-    .input::placeholder { color: #444; }
+    .input:focus { outline: none; border-color: #00e639; box-shadow: 0 0 8px rgba(0,230,57,.15); }
+    .input::placeholder { color: rgba(185,204,178,.3); }
 
     .section-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: #00ff41;
-      margin-bottom: 12px;
+      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+      color: #00e639; margin-bottom: 12px;
       animation: text-glow 3s ease-in-out infinite;
-    }
-    .section-title::before { content: "// "; color: #444; }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 3px 10px;
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
       font-family: "JetBrains Mono", monospace;
     }
-    .status-pending {
-      background: rgba(255,196,0,.1);
-      color: #ffc400;
-      border: 1px solid rgba(255,196,0,.2);
+    .section-title::before { content: "// "; color: #555; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      font-family: "JetBrains Mono", monospace;
     }
-    .status-issued {
-      background: rgba(0,255,65,.1);
-      color: #00ff41;
-      border: 1px solid rgba(0,255,65,.2);
-    }
-    .status-approved {
-      background: rgba(0,200,255,.1);
-      color: #00c8ff;
-      border: 1px solid rgba(0,200,255,.2);
-    }
-    .status-rejected {
-      background: rgba(255,68,68,.1);
-      color: #ff4444;
-      border: 1px solid rgba(255,68,68,.2);
-    }
+    .status-pending { background: rgba(247,190,0,.1); color: #f7be00; border: 1px solid rgba(247,190,0,.2); }
+    .status-issued { background: rgba(0,230,57,.1); color: #00e639; border: 1px solid rgba(0,230,57,.2); }
+    .status-approved { background: rgba(0,200,254,.1); color: #00c8fe; border: 1px solid rgba(0,200,254,.2); }
+    .status-rejected, .status-error { background: rgba(147,0,10,.1); color: #ffb4ab; border: 1px solid rgba(147,0,10,.2); }
+
+    .prompt::before { content: ">"; color: #00e639; margin-right: 8px; animation: cursor-blink 1.2s step-end infinite; }
+    .spinner { animation: spin 1s linear infinite; }
   </style>
 </head>
 <body>
   <!-- Gate -->
-  <div id="gate" class="fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,.85);">
-    <div class="w-full max-w-sm bg-[#111118] border border-[#222233] p-8" style="box-shadow:0 0 40px rgba(0,255,65,.05);">
-      <div class="text-center mb-6">
-        <div class="text-neon text-3xl mb-2" style="animation: text-glow 3s ease-in-out infinite;">[#]</div>
-        <h2 class="text-sm font-bold uppercase tracking-[4px] text-neon mb-1" style="animation: text-glow 3s ease-in-out infinite;">Admin Console</h2>
-        <p class="text-xs text-muted">secure terminal // restricted access</p>
+  <div id="gate" class="fixed inset-0 z-[1000] flex items-center justify-center p-8" style="background:rgba(5,5,5,0.9);">
+    <div class="glass-panel w-full max-w-sm p-8 relative overflow-hidden">
+      <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
+      <div class="flex flex-col items-center text-center">
+        <div class="w-16 h-16 border-2 border-[#00e639] flex items-center justify-center mb-6" style="box-shadow:0 0 20px rgba(0,230,57,0.15);">
+          <span class="material-symbols-outlined" style="color:#00e639;font-size:36px;">security</span>
+        </div>
+        <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Admin Console</h1>
+        <p class="text-xs mb-8" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">secure terminal // restricted access</p>
+        <div class="w-full space-y-4">
+          <input id="gateInput" type="password" placeholder="Access Code" class="input" />
+          <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
+          <p id="gateError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
+        </div>
       </div>
-      <div class="mb-4">
-        <p class="text-[10px] text-muted uppercase tracking-[2px] mb-2">Access Code</p>
-        <input id="gateInput" type="password" placeholder="Enter code..." class="input" />
-      </div>
-      <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
-      <p id="gateError" class="text-xs text-error mt-3 text-center hidden">ACCESS DENIED</p>
     </div>
   </div>
 
   <!-- App -->
   <div id="app" class="hidden">
-    <!-- Admin Login -->
-    <div id="loginView" class="min-h-screen flex items-center justify-center p-6">
-      <div class="w-full max-w-sm card" style="animation: glow-pulse 4s ease-in-out infinite;">
+    <!-- Sidebar -->
+    <nav class="fixed left-0 top-0 h-full w-64 flex flex-col z-40" style="background:rgba(14,14,14,0.95);backdrop-filter:blur(12px);border-right:1px solid rgba(59,75,55,0.4);">
+      <div class="p-6 border-b" style="border-color:rgba(59,75,55,0.2);">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 border flex items-center justify-center" style="border-color:rgba(104,211,255,0.3);background:rgba(104,211,255,0.05);">
+            <span class="material-symbols-outlined" style="color:#68d3ff;font-variation-settings:'FILL' 1;">security</span>
+          </div>
+          <div>
+            <p class="text-xs font-bold" style="color:#68d3ff;font-family:'JetBrains Mono',monospace;">NODE_0492</p>
+            <p class="text-[10px]" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">CLEARANCE: OMEGA</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex-1 py-4">
+        <a class="flex items-center gap-4 px-6 py-4 border-l-4 text-xs uppercase tracking-tighter font-bold" style="color:#00e639;background:rgba(0,230,57,0.08);border-color:#00e639;font-family:'JetBrains Mono',monospace;" href="#">
+          <span class="material-symbols-outlined">terminal</span> TERMINAL
+        </a>
+        <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
+          <span class="material-symbols-outlined">database</span> REGISTRY
+        </a>
+        <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
+          <span class="material-symbols-outlined">rss_feed</span> ACTIVITY
+        </a>
+        <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
+          <span class="material-symbols-outlined">vpn_key</span> GATEWAY
+        </a>
+      </div>
+      <div class="p-4 mt-auto">
+        <button class="w-full py-3 text-xs uppercase tracking-[2px] font-bold transition-all" style="color:#00e639;background:rgba(0,230,57,0.05);border:1px solid rgba(0,230,57,0.15);font-family:'JetBrains Mono',monospace;">
+          INITIALIZE_SCAN
+        </button>
+      </div>
+    </nav>
+
+    <!-- Login -->
+    <div id="loginView" class="min-h-screen flex items-center justify-center p-6 ml-64">
+      <div class="glass-panel w-full max-w-sm p-8 relative overflow-hidden" style="animation:glow-pulse 4s ease-in-out infinite;">
+        <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
         <h2 class="section-title">Admin Sign In</h2>
         <div>
-          <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Email</label>
+          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
           <input id="loginEmail" type="email" class="input mb-3" placeholder="admin@example.com" required />
-          <label class="block text-[10px] uppercase tracking-[2px] text-muted mb-1">Password</label>
+          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
           <input id="loginPassword" type="password" class="input mb-4" placeholder="••••••••" required />
           <button id="loginBtn" class="btn btn-primary w-full">Sign In</button>
-          <p id="loginError" class="text-xs text-error text-center mt-3 hidden"></p>
+          <p id="loginError" class="text-xs text-center mt-3 hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
         </div>
       </div>
     </div>
 
     <!-- Dashboard -->
-    <div id="dashboard" class="hidden">
-      <header class="bg-[#0d0d15] border-b border-[#222233] sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 class="text-sm font-bold uppercase tracking-[4px] text-neon" style="animation: text-glow 3s ease-in-out infinite;">Passport Agent // Admin</h1>
-            <p id="adminUser" class="text-[10px] text-muted tracking-[2px] mt-0.5"></p>
+    <div id="dashboard" class="hidden ml-64">
+      <main class="p-8 space-y-6 max-w-6xl mx-auto">
+        <!-- Stats Row -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-panel p-5 relative overflow-hidden">
+            <div class="shimmer-bar absolute top-0 left-0 w-full opacity-30" style="height:2px;"></div>
+            <div class="flex justify-between items-start mb-4">
+              <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Total Records</span>
+              <span class="material-symbols-outlined text-sm" style="color:#00e639;">verified</span>
+            </div>
+            <p id="statTotal" class="text-3xl font-bold" style="color:#00e639;">---</p>
           </div>
-          <div class="flex items-center gap-3">
-            <button id="refreshBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
-            <button id="signOutBtn" class="btn btn-danger" style="font-size:11px;padding:6px 14px;">Sign Out</button>
+          <div class="glass-panel p-5 relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+              <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Pending</span>
+              <span class="material-symbols-outlined text-sm" style="color:#f7be00;">pending</span>
+            </div>
+            <p id="statPending" class="text-3xl font-bold" style="color:#f7be00;">---</p>
+          </div>
+          <div class="glass-panel p-5 relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+              <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passports Issued</span>
+              <span class="material-symbols-outlined text-sm" style="color:#00c8fe;">digital_wellbeing</span>
+            </div>
+            <p id="statApproved" class="text-3xl font-bold" style="color:#00c8fe;">---</p>
+          </div>
+          <div class="glass-panel p-5 relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+              <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Rejected</span>
+              <span class="material-symbols-outlined text-sm" style="color:#ffb4ab;">gpp_bad</span>
+            </div>
+            <p id="statRejected" class="text-3xl font-bold" style="color:#ffb4ab;">---</p>
           </div>
         </div>
-      </header>
 
-      <main class="max-w-6xl mx-auto p-6 space-y-6">
-        <!-- Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="stat-card">
-            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Total</p>
-            <p id="statTotal" class="text-2xl font-bold text-neon">---</p>
-          </div>
-          <div class="stat-card">
-            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Pending</p>
-            <p id="statPending" class="text-2xl font-bold text-[#ffc400]">---</p>
-          </div>
-          <div class="stat-card">
-            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Passports Issued</p>
-            <p id="statApproved" class="text-2xl font-bold text-[#00c8ff]">---</p>
-          </div>
-          <div class="stat-card">
-            <p class="text-[10px] uppercase tracking-[2px] text-muted mb-2">Rejected</p>
-            <p id="statRejected" class="text-2xl font-bold text-error">---</p>
-          </div>
-        </div>
-
-        <!-- Applications Table -->
-        <div class="card">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <!-- Application Registry -->
+        <div class="glass-panel">
+          <div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b" style="border-color:rgba(59,75,55,0.2);">
             <h3 class="section-title mb-0">Application Registry</h3>
             <div class="flex items-center gap-3">
               <input id="filterInput" class="input" style="width:220px;padding:6px 10px;" placeholder="Filter registry..." />
-              <button id="seedBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;" title="Populate with demo data">Seed Demo</button>
+              <button id="seedBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Seed Demo</button>
+              <button id="refreshBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-xs">
+            <table class="w-full text-xs" style="font-family:'JetBrains Mono',monospace;">
               <thead>
-                <tr class="border-b border-[#222233] text-muted text-[10px] uppercase tracking-[2px]">
-                  <th class="p-3 text-left">ID</th>
-                  <th class="p-3 text-left">User</th>
-                  <th class="p-3 text-left">Type</th>
-                  <th class="p-3 text-left">Details</th>
-                  <th class="p-3 text-left">Status</th>
-                  <th class="p-3 text-left">Date</th>
-                  <th class="p-3 text-center">Actions</th>
+                <tr class="border-b text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.5);border-color:rgba(59,75,55,0.2);">
+                  <th class="p-3 text-left font-normal">ID</th>
+                  <th class="p-3 text-left font-normal">User</th>
+                  <th class="p-3 text-left font-normal">Type</th>
+                  <th class="p-3 text-left font-normal">Details</th>
+                  <th class="p-3 text-left font-normal">Status</th>
+                  <th class="p-3 text-left font-normal">Date</th>
+                  <th class="p-3 text-center font-normal">Actions</th>
                 </tr>
               </thead>
               <tbody id="appTableBody">
-                <tr><td colspan="7" class="p-6 text-center text-muted">Loading registry...</td></tr>
+                <tr><td colspan="7" class="p-6 text-center" style="color:rgba(185,204,178,0.4);">Loading registry...</td></tr>
               </tbody>
             </table>
           </div>
-        <!-- Agent Monitor -->
-        <div class="card">
-          <div class="flex items-center justify-between mb-4">
+        </div>
+
+        <!-- Agent Activity Feed -->
+        <div class="glass-panel">
+          <div class="p-6 flex items-center justify-between border-b" style="border-color:rgba(59,75,55,0.2);">
             <h3 class="section-title mb-0">Agent Activity Feed</h3>
             <div class="flex items-center gap-3">
-              <select id="actionFilter" class="input" style="width:140px;padding:4px 8px;font-size:11px;">
+              <select id="actionFilter" class="input" style="width:160px;padding:6px 10px;font-size:11px;">
                 <option value="">All decisions</option>
                 <option value="allow">ALLOW</option>
                 <option value="deny">DENY</option>
                 <option value="modify">MODIFY</option>
               </select>
-              <button id="refreshActionsBtn" class="btn btn-primary" style="font-size:11px;padding:4px 12px;">Refresh</button>
+              <button id="refreshActionsBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
             </div>
           </div>
           <div class="overflow-x-auto">
-            <table class="w-full text-xs">
+            <table class="w-full text-xs" style="font-family:'JetBrains Mono',monospace;">
               <thead>
-                <tr class="border-b border-[#222233] text-muted text-[10px] uppercase tracking-[2px]">
-                  <th class="p-3 text-left">Intent</th>
-                  <th class="p-3 text-left">Agent</th>
-                  <th class="p-3 text-left">Tool</th>
-                  <th class="p-3 text-left">Decision</th>
-                  <th class="p-3 text-left">Reason</th>
-                  <th class="p-3 text-left">Time</th>
+                <tr class="border-b text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.5);border-color:rgba(59,75,55,0.2);">
+                  <th class="p-3 text-left font-normal">Intent</th>
+                  <th class="p-3 text-left font-normal">Agent</th>
+                  <th class="p-3 text-left font-normal">Tool</th>
+                  <th class="p-3 text-left font-normal">Decision</th>
+                  <th class="p-3 text-left font-normal">Reason</th>
+                  <th class="p-3 text-left font-normal">Time</th>
                 </tr>
               </thead>
               <tbody id="actionListBody">
-                <tr><td colspan="6" class="p-6 text-center text-muted">API not connected — run demo for simulation</td></tr>
+                <tr><td colspan="6" class="p-6 text-center" style="color:rgba(185,204,178,0.4);">API not connected — run demo for simulation</td></tr>
               </tbody>
             </table>
           </div>
-          <div class="mt-4 pt-3 border-t border-[#222233] flex items-center gap-4">
+          <div class="p-4 border-t flex items-center gap-4" style="border-color:rgba(59,75,55,0.2);background:rgba(19,19,19,0.5);">
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full" style="background:#00ff41;"></span>
-              <span id="actionAllowCount" class="text-[10px] text-muted">0 allowed</span>
+              <span class="w-2 h-2 rounded-full" style="background:#00e639;"></span>
+              <span id="actionAllowCount" class="text-[10px]" style="color:rgba(185,204,178,0.5);">0 allowed</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full" style="background:#ff4444;"></span>
-              <span id="actionDenyCount" class="text-[10px] text-muted">0 denied</span>
+              <span class="w-2 h-2 rounded-full" style="background:#ffb4ab;"></span>
+              <span id="actionDenyCount" class="text-[10px]" style="color:rgba(185,204,178,0.5);">0 denied</span>
             </div>
             <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full" style="background:#ffc400;"></span>
-              <span id="actionModifyCount" class="text-[10px] text-muted">0 modified</span>
+              <span class="w-2 h-2 rounded-full" style="background:#f7be00;"></span>
+              <span id="actionModifyCount" class="text-[10px]" style="color:rgba(185,204,178,0.5);">0 modified</span>
             </div>
-            <span class="text-[9px] text-[#444] ml-auto">// Agent Control Plane v1.0</span>
+            <span class="text-[9px] ml-auto" style="color:#555;font-family:'JetBrains Mono',monospace;">// Agent Control Plane v1.0</span>
           </div>
         </div>
+      </main>
     </div>
   </div>
 
@@ -342,8 +349,6 @@
   <script>
   (function() {
     const GATE_CODE = "Thegreatwave";
-
-    // ===== Gate =====
     const gate = document.getElementById("gate");
     const gateInput = document.getElementById("gateInput");
     const gateBtn = document.getElementById("gateBtn");
@@ -367,16 +372,14 @@
       if (e.key === "Enter" && !gateBtn.disabled) gateBtn.click();
     });
 
-    // ===== Auth (localStorage, shared with main app) =====
+    // ===== Auth =====
     let adminUser = JSON.parse(localStorage.getItem("passport_user") || "null");
-
     const loginView = document.getElementById("loginView");
     const dashboard = document.getElementById("dashboard");
     const loginEmail = document.getElementById("loginEmail");
     const loginPassword = document.getElementById("loginPassword");
     const loginBtn = document.getElementById("loginBtn");
     const loginError = document.getElementById("loginError");
-    const signOutBtn = document.getElementById("signOutBtn");
 
     function getUsers() {
       return JSON.parse(localStorage.getItem("passport_users") || "{}");
@@ -413,7 +416,6 @@
     function showDashboard() {
       loginView.classList.add("hidden");
       dashboard.classList.remove("hidden");
-      document.getElementById("adminUser").textContent = adminUser.email;
       renderAll();
     }
 
@@ -426,28 +428,17 @@
       loginPassword.value = "";
     }
 
-    signOutBtn.addEventListener("click", logout);
-
     if (adminUser) showDashboard();
 
-    // ===== Toast System =====
+    // ===== Toast =====
     function showToast(message, type) {
-      const container = document.getElementById("toastContainer");
-      const toast = document.createElement("div");
-      const colors = {
-        success: "border-[#00ff41] text-neon",
-        error: "border-[#ff4444] text-error",
-        info: "border-[#00c8ff] text-[#00c8ff]",
-      };
-      toast.className = `bg-[#111118] border ${colors[type] || colors.info} px-4 py-3 text-xs font-mono`;
-      toast.style.cssText = "animation: slideIn .2s ease;";
+      var container = document.getElementById("toastContainer");
+      var toast = document.createElement("div");
+      var colors = { success: "border-color:#00e639;color:#00e639;", error: "border-color:#ffb4ab;color:#ffb4ab;", info: "border-color:#00c8fe;color:#00c8fe;" };
+      toast.style.cssText = "background:rgba(18,18,18,.95);border-width:1px;border-style:solid;padding:12px 16px;font-size:12px;font-family:'JetBrains Mono',monospace;animation:slideIn .2s ease;" + (colors[type] || colors.info);
       toast.textContent = (type === "success" ? "OK: " : type === "error" ? "ERR: " : "") + message;
       container.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = "0";
-        toast.style.transition = "opacity .3s";
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
+      setTimeout(function() { toast.style.opacity = "0"; toast.style.transition = "opacity .3s"; setTimeout(function() { toast.remove(); }, 300); }, 3000);
     }
 
     // ===== Data =====
@@ -458,22 +449,22 @@
       localStorage.setItem("passport_apps", JSON.stringify(apps));
     }
 
-    // ===== Demo Data Seeder =====
-function seedDemoData() {
-      const now = Date.now();
-      const future = new Date(now + 604800000).toISOString(); // 7 days
-      const demoApps = [
+    // Seed demo data
+    function seedDemoData() {
+      var now = Date.now();
+      var future = new Date(now + 604800000).toISOString();
+      var demoApps = [
         { id: "pp_seed_001", uid: "alice@agency.io", type: "passport", status: "issued", fullName: "Alice Carter", nationality: "United States", passportNumber: "PP-8A7F-2B3C", apiKeyHash: "0x7f3a2c1b...7f3a", createdAt: new Date(now - 3600000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
         { id: "pp_seed_002", uid: "bob@agency.io", type: "passport", status: "issued", fullName: "Bob Nakamura", nationality: "Japan", passportNumber: "PP-9C1D-4E5F", apiKeyHash: "0x1d9e8f2c...1d9e", createdAt: new Date(now - 7200000).toISOString(), updatedAt: new Date(now - 7200000).toISOString() },
         { id: "pp_seed_003", uid: "carol@agency.io", type: "passport", status: "issued", fullName: "Carol Danvers", nationality: "Canada", passportNumber: "PP-2B4A-7F8C", apiKeyHash: "0xa3b7c1d4...a3b7", createdAt: new Date(now - 14400000).toISOString(), updatedAt: new Date(now - 14400000).toISOString() },
-        { id: "visa_seed_001", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:read", "api:write"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 1800000).toISOString(), updatedAt: new Date(now - 1800000).toISOString() },
-        { id: "visa_seed_002", uid: "bob@agency.io", type: "visa", status: "approved", scopes: ["api:read", "data:share", "config:view"], passportNumber: "PP-9C1D-4E5F", expiresAt: future, createdAt: new Date(now - 5400000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
+        { id: "visa_seed_001", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:read","api:write"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 1800000).toISOString(), updatedAt: new Date(now - 1800000).toISOString() },
+        { id: "visa_seed_002", uid: "bob@agency.io", type: "visa", status: "approved", scopes: ["api:read","data:share","config:view"], passportNumber: "PP-9C1D-4E5F", expiresAt: future, createdAt: new Date(now - 5400000).toISOString(), updatedAt: new Date(now - 3600000).toISOString() },
         { id: "visa_seed_003", uid: "carol@agency.io", type: "visa", status: "rejected", scopes: ["config:admin"], passportNumber: "PP-2B4A-7F8C", expiresAt: future, createdAt: new Date(now - 10800000).toISOString(), updatedAt: new Date(now - 5400000).toISOString() },
-        { id: "visa_seed_004", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:write", "config:view"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 600000).toISOString(), updatedAt: new Date(now - 600000).toISOString() },
+        { id: "visa_seed_004", uid: "alice@agency.io", type: "visa", status: "pending", scopes: ["api:write","config:view"], passportNumber: "PP-8A7F-2B3C", expiresAt: future, createdAt: new Date(now - 600000).toISOString(), updatedAt: new Date(now - 600000).toISOString() },
       ];
-      const existing = getApps();
-      const existingIds = new Set(existing.map(a => a.id));
-      const merged = [...existing, ...demoApps.filter(a => !existingIds.has(a.id))];
+      var existing = getApps();
+      var existingIds = new Set(existing.map(function(a) { return a.id; }));
+      var merged = existing.concat(demoApps.filter(function(a) { return !existingIds.has(a.id); }));
       saveApps(merged);
       renderAll();
       showToast("Seeded " + (merged.length - existing.length) + " demo credentials", "success");
@@ -481,95 +472,91 @@ function seedDemoData() {
 
     document.getElementById("seedBtn").addEventListener("click", seedDemoData);
 
-    // ===== Filter =====
-    let filterText = "";
-    document.getElementById("filterInput").addEventListener("input", (e) => {
+    // Filter
+    var filterText = "";
+    document.getElementById("filterInput").addEventListener("input", function(e) {
       filterText = e.target.value.toLowerCase();
       renderTable();
     });
 
-    // ===== Render =====
+    // Render
     function renderAll() {
       renderStats();
       renderTable();
     }
 
-function renderStats() {
-      const apps = getApps();
-      const passports = apps.filter(a => a.type === "passport");
-      const visas = apps.filter(a => a.type === "visa");
+    function renderStats() {
+      var apps = getApps();
+      var passports = apps.filter(function(a) { return a.type === "passport"; });
+      var visas = apps.filter(function(a) { return a.type === "visa"; });
       document.getElementById("statTotal").textContent = apps.length;
-      document.getElementById("statPending").textContent = visas.filter(a => a.status === "pending").length;
-      document.getElementById("statApproved").textContent = passports.length + visas.filter(a => a.status === "approved" || a.status === "issued").length;
-      document.getElementById("statRejected").textContent = visas.filter(a => a.status === "rejected").length;
+      document.getElementById("statPending").textContent = visas.filter(function(a) { return a.status === "pending"; }).length;
+      document.getElementById("statApproved").textContent = passports.length + visas.filter(function(a) { return a.status === "approved" || a.status === "issued"; }).length;
+      document.getElementById("statRejected").textContent = visas.filter(function(a) { return a.status === "rejected"; }).length;
     }
 
     function renderTable() {
-      const tbody = document.getElementById("appTableBody");
-      let apps = getApps();
+      var tbody = document.getElementById("appTableBody");
+      var apps = getApps();
 
-      // Apply filter
       if (filterText) {
-        apps = apps.filter(a =>
-          a.id.toLowerCase().includes(filterText) ||
-          a.uid.toLowerCase().includes(filterText) ||
-          a.type.toLowerCase().includes(filterText) ||
-          a.status.toLowerCase().includes(filterText) ||
-          (a.fullName || "").toLowerCase().includes(filterText) ||
-          (a.passportNumber || "").toLowerCase().includes(filterText) ||
-          (a.nationality || "").toLowerCase().includes(filterText) ||
-          (a.apiKeyHash || "").toLowerCase().includes(filterText) ||
-          (a.scopes || []).join(" ").toLowerCase().includes(filterText)
-        );
+        apps = apps.filter(function(a) {
+          return (a.id||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.uid||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.type||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.status||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.fullName||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.passportNumber||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.nationality||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.apiKeyHash||"").toLowerCase().indexOf(filterText) >= 0 ||
+            (a.scopes||[]).join(" ").toLowerCase().indexOf(filterText) >= 0;
+        });
       }
 
-      // Sort: newest first
-      apps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      apps.sort(function(a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
 
       if (apps.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-muted">// ' + (filterText ? 'no results matching filter' : 'registry empty — seed demo data or submit applications') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center" style="color:rgba(185,204,178,0.4);">// ' + (filterText ? 'no results matching filter' : 'registry empty — seed demo data or submit applications') + '</td></tr>';
         return;
       }
 
-      tbody.innerHTML = apps.map((a) => `
-        <tr class="border-b border-[#222233] hover:bg-[#16161e]">
-          <td class="p-3 font-mono text-[11px] text-muted">${a.id.substring(0, 14)}</td>
-          <td class="p-3 text-muted">${a.uid}</td>
-          <td class="p-3 uppercase tracking-[1px] text-[11px] ${a.type === 'passport' ? 'text-neon' : ''}">${a.type}</td>
-          <td class="p-3 text-[11px]">${a.type === "passport" ? (a.passportNumber + " / " + a.fullName) : ((a.scopes || []).join(", ")) + (a.passportNumber ? ' <span class="text-[#444]">[' + a.passportNumber + ']</span>' : '')}</td>
-          <td class="p-3"><span class="status-badge status-${a.status}">${a.status}</span></td>
-          <td class="p-3 text-muted text-[11px]">${new Date(a.createdAt).toLocaleDateString()}${a.expiresAt ? '<br><span class="text-[9px] text-[#444]">exp ' + new Date(a.expiresAt).toLocaleDateString() + '</span>' : ''}</td>
-          <td class="p-3 text-center">
-            ${a.type === "visa" && a.status === "pending" ? `
-              <button class="btn btn-approve mr-1" data-id="${a.id}" data-action="approved">Approve</button>
-              <button class="btn btn-reject" data-id="${a.id}" data-action="rejected">Reject</button>
-            ` : a.type === "passport" ? '<span class="text-[9px] text-neon-dim">// secured</span>' : '<span class="text-[10px] text-muted">—</span>'}
-          </td>
-        </tr>
-      `).join("");
+      tbody.innerHTML = apps.map(function(a) {
+        var row = '<tr class="border-b hover:bg-[#1c1b1b] transition-colors" style="border-color:rgba(59,75,55,0.2);">';
+        row += '<td class="p-3 text-[11px]" style="color:rgba(185,204,178,0.5);">' + (a.id||"").substring(0, 16) + '</td>';
+        row += '<td class="p-3" style="color:rgba(185,204,178,0.5);">' + (a.uid||"") + '</td>';
+        row += '<td class="p-3 text-[11px] uppercase tracking-[1px]" style="' + (a.type === "passport" ? "color:#00e639;" : "") + '">' + a.type + '</td>';
+        row += '<td class="p-3 text-[11px]">' + (a.type === "passport" ? (a.passportNumber + " / " + a.fullName) : ((a.scopes||[]).join(", ")) + (a.passportNumber ? ' <span style="color:#555;">[' + a.passportNumber + ']</span>' : '')) + '</td>';
+        row += '<td class="p-3"><span class="status-badge status-' + a.status + '">' + a.status + '</span></td>';
+        row += '<td class="p-3 text-[11px]" style="color:rgba(185,204,178,0.5);">' + new Date(a.createdAt).toLocaleDateString() + (a.expiresAt ? '<br><span style="font-size:9px;color:#555;">exp ' + new Date(a.expiresAt).toLocaleDateString() + '</span>' : '') + '</td>';
+        row += '<td class="p-3 text-center">';
+        if (a.type === "visa" && a.status === "pending") {
+          row += '<button class="btn btn-approve mr-1" data-id="' + a.id + '" data-action="approved">Approve</button>';
+          row += '<button class="btn btn-reject" data-id="' + a.id + '" data-action="rejected">Reject</button>';
+        } else if (a.type === "passport") {
+          row += '<span style="font-size:9px;color:#68d3ff;font-family:JetBrains Mono,monospace;">// secured</span>';
+        } else {
+          row += '<span style="font-size:10px;color:rgba(185,204,178,0.4);">—</span>';
+        }
+        row += '</td></tr>';
+        return row;
+      }).join("");
 
-      // Wire up approve/reject buttons
-      tbody.querySelectorAll("button[data-action]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const id = btn.dataset.id;
-          const action = btn.dataset.action;
-          const apps = getApps();
-          const idx = apps.findIndex(a => a.id === id);
+      tbody.querySelectorAll("button[data-action]").forEach(function(btn) {
+        btn.addEventListener("click", async function() {
+          var id = btn.dataset.id;
+          var action = btn.dataset.action;
+          var apps = getApps();
+          var idx = apps.findIndex(function(a) { return a.id === id; });
           if (idx === -1) return;
-          const prevStatus = apps[idx].status;
+          var prevStatus = apps[idx].status;
           apps[idx].status = action;
           apps[idx].updatedAt = new Date().toISOString();
           saveApps(apps);
           renderAll();
-          showToast(`app ${id.substring(0,10)}... ${prevStatus} → ${action}`, "success");
-
+          showToast("app " + id.substring(0,10) + "... " + prevStatus + " → " + action, "success");
           try {
-            await fetch("/api/update-status", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id, status: action }),
-            });
-          } catch { /* offline ok */ }
+            await fetch("/api/update-status", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: id, status: action }) });
+          } catch(e) { /* offline ok */ }
         });
       });
     }
@@ -578,22 +565,20 @@ function renderStats() {
 
     // ===== Agent Activity Feed =====
     document.getElementById("refreshActionsBtn").addEventListener("click", loadActions);
+    if (document.getElementById("actionFilter")) {
+      document.getElementById("actionFilter").addEventListener("change", loadActions);
+    }
 
-    const actionFilter = document.getElementById("actionFilter");
-    if (actionFilter) actionFilter.addEventListener("change", loadActions);
-
-    // Load actions from /api/audit — with fallback to demo data
     function loadActions() {
-      const tbody = document.getElementById("actionListBody");
-      const filter = (actionFilter && actionFilter.value) || "";
+      var tbody = document.getElementById("actionListBody");
+      var filter = (document.getElementById("actionFilter") && document.getElementById("actionFilter").value) || "";
 
-      // Try API first
       fetch("/api/audit?limit=20" + (filter ? "&decision=" + filter : ""), {
         headers: { "Authorization": "Bearer " + (localStorage.getItem("org_api_key") || "demo") }
       })
-        .then(r => r.json())
-        .then(json => {
-          const data = (json && json.data) || [];
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          var data = (json && json.data) || [];
           if (data.length > 0) {
             renderActionRows(tbody, data);
             updateActionCounts(data, true);
@@ -601,13 +586,12 @@ function renderStats() {
           }
           loadDemoActionData();
         })
-        .catch(() => loadDemoActionData());
+        .catch(function() { loadDemoActionData(); });
     }
 
     function loadDemoActionData() {
-      const tbody = document.getElementById("actionListBody");
-      const now = new Date().toISOString();
-      const demoActions = [
+      var tbody = document.getElementById("actionListBody");
+      var demoActions = [
         { id: "int_demo01", agentId: "agent_cs_bot_v2", tool: "lookup_order", decision: "allow", decisionReason: null, decidedAt: new Date(Date.now() - 5000).toISOString() },
         { id: "int_demo02", agentId: "agent_cs_bot_v2", tool: "send_email", decision: "deny", decisionReason: "tool_explicitly_blocked", decidedAt: new Date(Date.now() - 4000).toISOString() },
         { id: "int_demo03", agentId: "agent_cs_bot_v2", tool: "http_request", decision: "deny", decisionReason: "domain_not_permitted", decidedAt: new Date(Date.now() - 3000).toISOString() },
@@ -615,8 +599,8 @@ function renderStats() {
         { id: "int_demo05", agentId: "agent_cs_bot_v2", tool: "lookup_order", decision: "deny", decisionReason: "pii_detected", decidedAt: new Date(Date.now() - 1000).toISOString() },
         { id: "int_demo06", agentId: "agent_cs_bot_v2", tool: "http_request", decision: "modify", decisionReason: null, decidedAt: new Date(Date.now()).toISOString() },
       ];
-      const filter = (actionFilter && actionFilter.value) || "";
-      const filtered = filter ? demoActions.filter(a => a.decision === filter) : demoActions;
+      var filter = (document.getElementById("actionFilter") && document.getElementById("actionFilter").value) || "";
+      var filtered = filter ? demoActions.filter(function(a) { return a.decision === filter; }) : demoActions;
       renderActionRows(tbody, filtered);
       updateActionCounts(filtered, false);
     }
@@ -624,39 +608,36 @@ function renderStats() {
     function renderActionRows(tbody, actions) {
       if (!tbody) return;
       if (actions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-muted">// no actions recorded</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center" style="color:rgba(185,204,178,0.4);">// no actions recorded</td></tr>';
         return;
       }
-      const nowTs = Date.now();
-      tbody.innerHTML = actions.map(a => {
-        const msAgo = nowTs - new Date(a.decidedAt).getTime();
-        const timeAgo = msAgo < 60000 ? Math.round(msAgo / 1000) + 's ago'
-                      : msAgo < 3600000 ? Math.round(msAgo / 60000) + 'm ago'
-                      : Math.round(msAgo / 3600000) + 'h ago';
-        const decisionColor = a.decision === 'allow' ? 'text-neon'
-                            : a.decision === 'deny' ? 'text-error'
-                            : 'text-[#ffc400]';
-        return '<tr class="border-b border-[#222233] hover:bg-[#16161e]">'
-          + '<td class="p-3 font-mono text-[10px] text-muted">' + (a.id || '').substring(0, 14) + '</td>'
-          + '<td class="p-3 text-[11px]">' + (a.agentId || '—') + '</td>'
-          + '<td class="p-3 text-[11px] uppercase tracking-[1px]">' + (a.tool || '—') + '</td>'
-          + '<td class="p-3"><span class="' + decisionColor + ' text-[11px] font-bold uppercase tracking-[1px]">' + a.decision.toUpperCase() + '</span></td>'
-          + '<td class="p-3 text-[10px] text-muted">' + (a.decisionReason || (a.reason || '—')) + '</td>'
-          + '<td class="p-3 text-[10px] text-muted">' + timeAgo + '</td>'
+      var nowTs = Date.now();
+      tbody.innerHTML = actions.map(function(a) {
+        var msAgo = nowTs - new Date(a.decidedAt).getTime();
+        var timeAgo = msAgo < 60000 ? Math.round(msAgo / 1000) + 's ago'
+                    : msAgo < 3600000 ? Math.round(msAgo / 60000) + 'm ago'
+                    : Math.round(msAgo / 3600000) + 'h ago';
+        var decisionColor = a.decision === 'allow' ? 'color:#00e639;' : a.decision === 'deny' ? 'color:#ffb4ab;' : 'color:#f7be00;';
+        return '<tr class="border-b hover:bg-[#1c1b1b] transition-colors" style="border-color:rgba(59,75,55,0.2);">'
+          + '<td class="p-3 text-[11px]" style="color:rgba(185,204,178,0.5);">' + (a.id||"").substring(0, 14) + '</td>'
+          + '<td class="p-3 text-[11px]">' + (a.agentId||"—") + '</td>'
+          + '<td class="p-3 text-[11px] uppercase tracking-[1px]">' + (a.tool||"—") + '</td>'
+          + '<td class="p-3"><span class="text-[11px] font-bold uppercase tracking-[1px]" style="' + decisionColor + '">' + a.decision.toUpperCase() + '</span></td>'
+          + '<td class="p-3 text-[10px]" style="color:rgba(185,204,178,0.5);">' + (a.decisionReason || a.reason || "—") + '</td>'
+          + '<td class="p-3 text-[10px]" style="color:rgba(185,204,178,0.5);">' + timeAgo + '</td>'
           + '</tr>';
       }).join("");
     }
 
     function updateActionCounts(actions, isLive) {
-      const allow = document.getElementById("actionAllowCount");
-      const deny = document.getElementById("actionDenyCount");
-      const modify = document.getElementById("actionModifyCount");
-      if (allow) allow.textContent = actions.filter(a => a.decision === 'allow').length + ' allowed' + (isLive ? ' (live)' : ' (demo)');
-      if (deny) deny.textContent = actions.filter(a => a.decision === 'deny').length + ' denied' + (isLive ? ' (live)' : ' (demo)');
-      if (modify) modify.textContent = actions.filter(a => a.decision === 'modify').length + ' modified' + (isLive ? ' (live)' : ' (demo)');
+      var allow = document.getElementById("actionAllowCount");
+      var deny = document.getElementById("actionDenyCount");
+      var modify = document.getElementById("actionModifyCount");
+      if (allow) allow.textContent = actions.filter(function(a) { return a.decision === "allow"; }).length + ' allowed' + (isLive ? ' (live)' : ' (demo)');
+      if (deny) deny.textContent = actions.filter(function(a) { return a.decision === "deny"; }).length + ' denied' + (isLive ? ' (live)' : ' (demo)');
+      if (modify) modify.textContent = actions.filter(function(a) { return a.decision === "modify"; }).length + ' modified' + (isLive ? ' (live)' : ' (demo)');
     }
 
-    // Load on init
     loadActions();
   })();
   </script>
