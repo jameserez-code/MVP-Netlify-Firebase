@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passport Agent // Developer Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = { darkMode: "class", theme: { extend: {
+      colors: { "surface-dim":"#131313","background":"#0e0e0e","on-surface":"#e5e2e1","on-surface-variant":"#b9ccb2","neon":"#00e639","error":"#ffb4ab","amber":"#f7be00","cyan":"#00c8fe" },
+      fontFamily: { mono: ["JetBrains Mono","monospace"] },
+    } } };
+  </script>
+  <style>
+    body { font-family: "Geist",sans-serif; background:#0e0e0e; color:#e5e2e1; min-height:100vh; }
+    body::after { content:""; position:fixed; inset:0; background:linear-gradient(to bottom,transparent 50%,rgba(0,230,57,.02) 50%); background-size:100% 4px; pointer-events:none; z-index:9999; }
+    .glass { background:rgba(18,18,18,.85); backdrop-filter:blur(16px); border:1px solid rgba(59,75,55,.3); border-radius:.25rem; padding:16px; margin-bottom:12px; }
+    .mono { font-family:"JetBrains Mono",monospace !important; }
+    .stat { padding:12px 16px; border-left:2px solid; }
+    .stat-green { border-color:#00e639; background:rgba(0,230,57,.04); }
+    .stat-red { border-color:#ffb4ab; background:rgba(147,0,10,.04); }
+    .stat-amber { border-color:#f7be00; background:rgba(247,190,0,.04); }
+    .stat-cyan { border-color:#00c8fe; background:rgba(0,200,254,.04); }
+    .btn { padding:6px 14px; border-radius:.25rem; border:1px solid; cursor:pointer; font-size:11px; text-transform:uppercase; letter-spacing:1px; font-family:"JetBrains Mono",monospace; background:transparent; color:rgba(185,204,178,.5); border-color:rgba(59,75,55,.4); transition:all .15s; }
+    .btn:hover { color:#e5e2e1; border-color:rgba(185,204,178,.5); }
+    .badge { display:inline-block; padding:2px 8px; font-size:10px; font-weight:700; font-family:"JetBrains Mono",monospace; border:1px solid; }
+    .badge-green { color:#00e639; border-color:rgba(0,230,57,.3); background:rgba(0,230,57,.08); }
+    .badge-red { color:#ffb4ab; border-color:rgba(147,0,10,.3); background:rgba(147,0,10,.08); }
+    .badge-amber { color:#f7be00; border-color:rgba(247,190,0,.3); background:rgba(247,190,0,.08); }
+    .badge-cyan { color:#00c8fe; border-color:rgba(0,200,254,.3); background:rgba(0,200,254,.08); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
+  </style>
+</head>
+<body>
+  <header class="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16" style="background:rgba(19,19,19,.9);backdrop-filter:blur(20px);border-bottom:1px solid rgba(59,75,55,.3);">
+    <h1 class="text-sm font-bold uppercase tracking-[4px] mono" style="color:#00e639;">Developer Dashboard</h1>
+    <span id="statusDot" class="w-2 h-2 rounded-full" style="background:#555;"></span>
+  </header>
+
+  <main class="pt-20 px-8 pb-16 max-w-5xl mx-auto space-y-4">
+    <!-- Metrics -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="glass stat stat-green"><span class="text-[10px] mono uppercase" style="color:rgba(185,204,178,.5);">Active Tasks</span><p id="mActive" class="text-2xl mono font-bold" style="color:#00e639;">—</p></div>
+      <div class="glass stat stat-amber"><span class="text-[10px] mono uppercase" style="color:rgba(185,204,178,.5);">Failed Tasks</span><p id="mFailed" class="text-2xl mono font-bold" style="color:#f7be00;">—</p></div>
+      <div class="glass stat stat-cyan"><span class="text-[10px] mono uppercase" style="color:rgba(185,204,178,.5);">Active Runs</span><p id="mRuns" class="text-2xl mono font-bold" style="color:#00c8fe;">—</p></div>
+      <div class="glass stat stat-green"><span class="text-[10px] mono uppercase" style="color:rgba(185,204,178,.5);">Avg Duration</span><p id="mAvg" class="text-2xl mono font-bold" style="color:#e5e2e1;">—</p></div>
+    </div>
+
+    <!-- Active Runs -->
+    <div class="glass">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-xs mono uppercase tracking-[2px]" style="color:rgba(185,204,178,.5);">Active Runs</h2><button class="btn" onclick="refresh()">Refresh</button>
+      </div>
+      <div id="runsList" class="mono text-xs space-y-1" style="color:rgba(185,204,178,.4);">Loading...</div>
+    </div>
+
+    <!-- Recent Logs -->
+    <div class="glass">
+      <h2 class="text-xs mono uppercase tracking-[2px] mb-3" style="color:rgba(185,204,178,.5);">Recent Timeline</h2>
+      <div id="logsList" class="mono text-[11px] space-y-1 max-h-64 overflow-y-auto" style="color:rgba(185,204,178,.4);">Loading...</div>
+    </div>
+  </main>
+
+  <script>
+  var API = 'http://localhost:3000';
+  function fetchJSON(path) { return fetch(API + path).then(function(r) { return r.json(); }).catch(function() { return null; }); }
+
+  async function refresh() {
+    // Metrics
+    var m = await fetchJSON('/metrics');
+    if (m && !m.error) {
+      document.getElementById('mActive').textContent = m.tasks?.active || 0;
+      document.getElementById('mFailed').textContent = m.tasks?.failed || 0;
+      document.getElementById('mRuns').textContent = m.runs?.active || 0;
+      document.getElementById('mAvg').textContent = (m.avgDurationMs || 0) + 'ms';
+    }
+
+    // Active runs
+    var runs = await fetchJSON('/metrics');
+    var runsDiv = document.getElementById('runsList');
+    if (runs && runs.runs?.active > 0) {
+      var agents = await fetchJSON('/agents');
+      var agentMap = {};
+      if (agents && agents.data) agents.data.forEach(function(a) { agentMap[a.id] = a.name; });
+      runsDiv.innerHTML = '<span class="badge badge-green">' + runs.runs.active + ' active</span>';
+    } else {
+      runsDiv.innerHTML = '<span style="color:rgba(185,204,178,.3);">No active runs</span>';
+    }
+
+    // Timeline
+    var tl = await fetchJSON('/audit/timeline?limit=10');
+    var logsDiv = document.getElementById('logsList');
+    if (tl && tl.timeline && tl.timeline.length) {
+      logsDiv.innerHTML = tl.timeline.map(function(e) {
+        var timeAgo = Math.round((Date.now() - new Date(e.timestamp).getTime()) / 1000);
+        return '<div class="flex items-center gap-3" style="padding:4px 0;border-bottom:1px solid rgba(59,75,55,.1);">' +
+          '<span style="min-width:60px;color:rgba(185,204,178,.3);">' + timeAgo + 's ago</span>' +
+          '<span>' + (e.taskId || '—').substring(0,10) + '</span>' +
+          '<span class="badge-' + (e.decision === 'allow' ? 'green' : 'red') + ' badge" style="font-size:9px;">' + e.reason?.substring(0, 40) + '</span>' +
+          '</div>';
+      }).join('');
+    } else {
+      logsDiv.innerHTML = '<span style="color:rgba(185,204,178,.3);">No transitions recorded</span>';
+    }
+
+    // Status
+    document.getElementById('statusDot').style.background = '#00e639';
+  }
+
+  // Check API availability
+  fetchJSON('/metrics').then(function(m) {
+    document.getElementById('statusDot').style.background = m && !m.error ? '#00e639' : '#ffb4ab';
+  });
+  refresh();
+  </script>
+</body>
+</html>

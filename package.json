@@ -11,7 +11,9 @@
     "tasks:verify": "tsx src/tasks-verify.ts",
     "tasks:seed": "tsx src/tasks.ts",
     "schema:seed": "tsx src/seed.ts",
-    "dev": "tsx src/server.ts"
+    "dev": "tsx src/server.ts",
+    "worker": "tsx src/worker.ts",
+    "setup": "tsx src/bootstrap.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
