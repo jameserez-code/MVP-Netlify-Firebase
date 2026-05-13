@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - ENGINE_SECRET=${ENGINE_SECRET:-dev-engine-secret}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/metrics']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build: .
+    command: ['npx', 'tsx', 'src/worker.ts']
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - ENGINE_SECRET=${ENGINE_SECRET:-dev-engine-secret}
+    restart: unless-stopped
+    depends_on:
+      - api

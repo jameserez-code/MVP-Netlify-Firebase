@@ -6,6 +6,8 @@
   "scripts": {
     "test": "node --test tests/**/*.test.js",
     "test:integration": "tsx tests/integration/enforce.test.ts",
+    "test:security": "tsx tests/integration/security.test.ts",
+    "test:resilience": "tsx tests/integration/resilience.test.ts",
     "demo:lifecycle": "tsx demo/lifecycle.ts",
     "healthcheck": "tsx src/healthcheck.ts",
     "tasks:verify": "tsx src/tasks-verify.ts",
