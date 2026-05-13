@@ -346,6 +346,9 @@
   <!-- Toast container -->
   <div id="toastContainer" class="fixed bottom-6 right-6 z-[9999] space-y-2" style="max-width:320px;"></div>
 
+  <!-- API client -->
+  <script src="/public/js/api.js"></script>
+
   <script>
   (function() {
     const GATE_CODE = "Thegreatwave";
@@ -573,9 +576,9 @@
       var tbody = document.getElementById("actionListBody");
       var filter = (document.getElementById("actionFilter") && document.getElementById("actionFilter").value) || "";
 
-      fetch("/api/audit?limit=20" + (filter ? "&decision=" + filter : ""), {
-        headers: { "Authorization": "Bearer " + (localStorage.getItem("org_api_key") || "demo") }
-      })
+      // Try Fastify API first, then Netlify Functions, then demo
+      var apiUrl = 'http://localhost:3000/audit?limit=20' + (filter ? "&decision=" + filter : "");
+      fetch(apiUrl)
         .then(function(r) { return r.json(); })
         .then(function(json) {
           var data = (json && json.data) || [];
@@ -584,9 +587,26 @@
             updateActionCounts(data, true);
             return;
           }
-          loadDemoActionData();
+          loadNetlifyAudit();
         })
-        .catch(function() { loadDemoActionData(); });
+        .catch(function() { loadNetlifyAudit(); });
+
+      function loadNetlifyAudit() {
+        fetch("/api/audit?limit=20" + (filter ? "&decision=" + filter : ""), {
+          headers: { "Authorization": "Bearer " + (localStorage.getItem("org_api_key") || "demo") }
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(json) {
+            var data = (json && json.data) || [];
+            if (data.length > 0) {
+              renderActionRows(tbody, data);
+              updateActionCounts(data, true);
+              return;
+            }
+            loadDemoActionData();
+          })
+          .catch(function() { loadDemoActionData(); });
+      }
     }
 
     function loadDemoActionData() {

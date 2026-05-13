@@ -5,9 +5,6 @@ node_modules/
 .env
 .env.local
 .env.production
-
-# Firebase config (contains real keys - use env vars instead)
-firebase.config.js
 service-account.json
 *-service-account.json
 

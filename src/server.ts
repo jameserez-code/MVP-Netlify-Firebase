@@ -14,6 +14,18 @@ const db = initFirebase()
 const app = Fastify({ logger: false })
 
 // ---------------------------------------------------------------------------
+// CORS — allow browser access from any origin
+// ---------------------------------------------------------------------------
+app.addHook('onRequest', async (request, reply) => {
+  reply.header('Access-Control-Allow-Origin', '*')
+  reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
+  if (request.method === 'OPTIONS') {
+    reply.code(204).send()
+  }
+})
+
+// ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
 interface Claims { sub: string; role: string; iat: number; exp: number; jti: string }
@@ -274,6 +286,23 @@ app.patch('/run/:id/fail', async (request, reply) => {
 
   log.success('run failed', { runId: id, error: runError })
   return { id, status: 'failed', taskId: (run as any).taskId }
+})
+
+// ---------------------------------------------------------------------------
+// GET /audit — query action intents (public, for activity feeds)
+// ---------------------------------------------------------------------------
+app.get('/audit', async (request, reply) => {
+  try {
+    const { decision, agentId, limit } = (request.query || {}) as { decision?: string; agentId?: string; limit?: string }
+    let q = db.collection('actionIntents').orderBy('createdAt', 'desc')
+    if (decision) q = q.where('decision', '==', decision)
+    if (agentId) q = q.where('agentId', '==', agentId)
+    const snap = await q.limit(parseInt(limit || '20', 10)).get()
+    return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) }
+  } catch (e: any) {
+    reply.code(503)
+    return { error: { code: 'firestore', message: 'audit query failed' } }
+  }
 })
 
 // ---------------------------------------------------------------------------

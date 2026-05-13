@@ -1,118 +1,91 @@
-# Agent Control Plane — Core Backend
+# Passport Agent — Agent Control Plane
 
-Minimal Node.js + TypeScript backend proving Firestore read/write, task creation,
-agent run lifecycle, and uniform error handling.
+AI agent identity + permission enforcement system. Cryptographic identity (passports) + policy-based action control (visas) + immutable audit trail.
 
-## Setup
+## Quickstart
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Add service account key
-#    Firebase Console → Project Settings → Service accounts → Generate new private key
-#    Save as: service-account.json in project root
-
-# 3. Verify Firestore connection
-npm run healthcheck
-#   write success
-#   read success
-#   document contents: { ... }
-
-# 4. Seed collections with sample data
-npm run schema:seed
-#   ✓ seeded { collection: "users", id: "user_seed_001" }
-#   ✓ seeded { collection: "agents", id: "agent_seed_001" }
-#   ✓ seeded { collection: "tasks", id: "task_seed_001" }
-#   ✓ seeded { collection: "runs", id: "run_seed_001" }
-#   ✓ seeded { collection: "logs", id: "log_seed_001" }
-
-# 5. Start the API
-npm run dev
-#   server  → http://localhost:3000
-#   POST   /task        — create task
-#   GET    /task/:id    — read task
-#   POST   /agent/run   — start run
+# Place service-account.json in project root (from Firebase Console)
+npm run healthcheck     # Verify Firestore connection
+npm run schema:seed     # Seed 5 collections
+npm run dev             # Start API on :3000
 ```
 
-## Firestore Collections
-
-| Collection | Purpose |
-|-----------|---------|
-| `users` | Org members and credential holders |
-| `agents` | Registered AI agents (model, provider, passport) |
-| `tasks` | Assignable work items with payload + status |
-| `runs` | Execution records tying agents to tasks |
-| `logs` | Individual tool call decisions during a run |
-
-## API Endpoints
-
-### POST /task
-Create a task.
-
-**Request:** `{ "payload": { ... any data ... } }`
-**Response (201):** `{ "id": "...", "payload": {...}, "status": "created", "createdAt": "..." }`
-**Error (400):** `{ "error": { "code": "validation", "message": "payload is required" } }`
-
-### GET /task/:id
-Read a task by ID.
-
-**Response (200):** `{ "id": "...", "payload": {...}, "status": "...", "createdAt": "..." }`
-**Error (404):** `{ "error": { "code": "not_found", "message": "task {id} not found" } }`
-
-### POST /agent/run
-Start an agent run on a task. This is **atomic**: it creates a run document and
-sets the task status to `running` in a single transaction.
-
-**Request:** `{ "agentId": "...", "taskId": "..." }`
-**Response (201):** `{ "id": "...", "agentId": "...", "taskId": "...", "status": "running", "startedAt": "..." }`
-**Error (400):** `{ "error": { "code": "agent_not_found", "message": "agent {id} not found" } }`
-**Error (400):** `{ "error": { "code": "task_not_found", "message": "task {id} not found" } }`
-**Error (409):** `{ "error": { "code": "conflict", "message": "task {id} is already {status}", "currentStatus": "running" } }`
-
-## Data Flow
+## Architecture
 
 ```
-POST /task          → writes tasks/{auto-id}         (status: "created")
-GET  /task/:id      → reads  tasks/{id}              (any status)
-POST /agent/run     → verifies agents/{agentId}      (exists)
-                    → verifies tasks/{taskId}         (status: "created")
-                    → writes  runs/{auto-id}          (transaction: run + task→running)
+Agent SDK → POST /enforce → Policy Engine (11-step evaluator) → Gateway Ticket
+  ↓ deny                                                ↓ allow/modify
+  PermissionError                                POST /gateway/execute → tool runs
+                                                       ↓
+                                                  Audit log (actionIntents)
 ```
 
-## Error Shape
+## API Endpoints (15 total)
 
-All errors use the same format:
+### Auth
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/login` | Public | Get JWT token |
 
-```json
-{
-  "error": {
-    "code": "not_found | validation | agent_not_found | task_not_found | conflict | firestore",
-    "message": "Human-readable description"
-  }
-}
-```
+### Tasks
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/task` | JWT | Create task |
+| GET | `/task/:id` | Public | Read task |
 
-HTTP status codes: `200`, `201`, `400`, `404`, `409`, `503`.
+### Agent Runs
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/agent/run` | JWT | Start run (atomic: run+task→running) |
+| POST | `/run/:id/log` | JWT | Log tool call (atomic: log+counters) |
+| PATCH | `/run/:id/complete` | JWT | Complete run (atomic: run+task→completed) |
+| PATCH | `/run/:id/fail` | JWT | Fail run (atomic: run+task→failed+error) |
 
-## Log Format
+### Agent Registry
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/agents/register` | JWT | Register agent (returns secret key ONCE) |
+| GET | `/agents` | Public | List agents |
+| GET | `/agents/:id` | Public | Get agent |
+| PATCH | `/agents/:id/revoke` | JWT | Revoke agent |
+| POST | `/agents/:id/rotate-key` | JWT | Rotate signing key |
 
-Every log line includes a timestamp, level indicator, message, and optional context:
+### Policy Management
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/policies` | JWT | Create policy |
+| GET | `/policies` | Public | List policies |
+| GET | `/policies/:id` | Public | Get policy |
+| PATCH | `/policies/:id` | JWT | Update policy |
 
-```
-[2026-05-12 18:23:35] ✓ task created  {"taskId":"abc123..."}
-[2026-05-12 18:23:35] • task read     {"taskId":"abc123...","status":"created"}
-[2026-05-12 18:23:36] ✗ seed failed   {"error":"service-account.json not found"}
-```
+### Enforcement (the critical path)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/enforce` | JWT | Evaluate intent → ALLOW/DENY/MODIFY + ticket |
+| POST | `/gateway/execute` | Public | Execute with ticket (replay-protected) |
 
-Level indicators: `•` (info), `⚠` (warn), `✗` (error), `✓` (success).
+### Audit
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/audit` | Public | Query action intents |
+
+## Pages
+
+| File | Purpose |
+|------|---------|
+| `index.html` | Main app — gate, auth, passport issuance, visa application |
+| `admin-portal.html` | Admin dashboard — credential registry, agent activity feed |
+| `agents.html` | Agent management — register, list, policies, enforce test |
+| `verify-demo.html` | Third-party credential verification demo |
 
 ## Scripts
 
-| Command | What it does |
-|---------|-------------|
-| `npm run healthcheck` | Write/read a single Firestore document |
-| `npm run schema:seed` | Seed 5 collections with sample data |
-| `npm run tasks:verify` | Create + read a task, verify payload matches |
-| `npm run dev` | Start the Fastify server on port 3000 |
-| `npm test` | Run crypto + evaluator unit tests |
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start Fastify server on :3000 |
+| `npm run healthcheck` | Verify Firestore read/write |
+| `npm run schema:seed` | Seed 5 collections |
+| `npm run tasks:verify` | Verify tasks CRUD |
+| `npm test` | Run 30 unit tests (crypto + evaluator) |
