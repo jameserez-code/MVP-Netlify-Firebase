@@ -3,6 +3,10 @@ import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
 
+import agentsRoutes from './routes/agents.js'
+import policiesRoutes from './routes/policies.js'
+import enforceRoutes from './routes/enforce.js'
+
 // ---------------------------------------------------------------------------
 // Firebase
 // ---------------------------------------------------------------------------
@@ -271,6 +275,13 @@ app.patch('/run/:id/fail', async (request, reply) => {
   log.success('run failed', { runId: id, error: runError })
   return { id, status: 'failed', taskId: (run as any).taskId }
 })
+
+// ---------------------------------------------------------------------------
+// Register agent system routes
+// ---------------------------------------------------------------------------
+agentsRoutes(app, db)
+policiesRoutes(app, db)
+enforceRoutes(app, db)
 
 // ---------------------------------------------------------------------------
 // Start

@@ -119,7 +119,7 @@ let ENGINE_SECRET = null;
 
 function getEngineSecret() {
   if (!ENGINE_SECRET) {
-    ENGINE_SECRET = process.env.ENGINE_SECRET || crypto.randomBytes(32).toString('hex');
+    ENGINE_SECRET = process.env.ENGINE_SECRET || 'dev-engine-secret-change-me-in-production'
   }
   return ENGINE_SECRET;
 }
