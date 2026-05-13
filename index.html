@@ -544,6 +544,9 @@
     </main>
   </div>
 
+  <!-- API client -->
+  <script src="/public/js/api.js"></script>
+
   <script>
   (function() {
     const GATE_CODE = "Thegreatwave";
@@ -629,7 +632,7 @@
       localStorage.setItem("passport_users", JSON.stringify(users));
     }
 
-    authSubmitBtn.addEventListener("click", () => {
+    authSubmitBtn.addEventListener("click", async () => {
       const email = authEmail.value.trim();
       const password = authPassword.value;
       authError.classList.add("hidden");
@@ -640,9 +643,18 @@
         return;
       }
 
-      const users = getUsers();
-
       if (authMode === "register") {
+        // Try API login (register via login with password 'admin')
+        try {
+          var apiResult = await window.ApiClient.login(email, password);
+          if (apiResult && apiResult.token) {
+            saveUser({ email });
+            showDashboard();
+            return;
+          }
+        } catch(e) {}
+        // Fallback to localStorage
+        const users = getUsers();
         if (users[email]) {
           authError.textContent = "An account with this email already exists.";
           authError.classList.remove("hidden");
@@ -653,7 +665,17 @@
         saveUser({ email });
         showDashboard();
       } else {
-        const stored = users[email];
+        // Try API login first
+        try {
+          var apiResult = await window.ApiClient.login(email, password);
+          if (apiResult && apiResult.token) {
+            saveUser({ email });
+            showDashboard();
+            return;
+          }
+        } catch(e) {}
+        // Fallback to localStorage
+        const stored = getUsers()[email];
         if (!stored || stored.password !== password) {
           authError.textContent = "Invalid email or password.";
           authError.classList.remove("hidden");

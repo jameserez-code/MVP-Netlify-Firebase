@@ -16,12 +16,34 @@ const app = Fastify({ logger: false })
 // ---------------------------------------------------------------------------
 // CORS — allow browser access from any origin
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Rate limiting — simple in-memory sliding window
+// ---------------------------------------------------------------------------
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+function checkRateLimit(ip: string, maxPerMin: number): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 })
+    return true
+  }
+  if (entry.count >= maxPerMin) return false
+  entry.count++
+  return true
+}
+
 app.addHook('onRequest', async (request, reply) => {
   reply.header('Access-Control-Allow-Origin', '*')
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
   if (request.method === 'OPTIONS') {
     reply.code(204).send()
+    return
+  }
+  // Rate limit: 200 req/min per IP for all routes
+  const ip = (request.headers['x-forwarded-for'] as string || request.ip || '127.0.0.1').split(',')[0].trim()
+  if (!checkRateLimit(ip, 200)) {
+    reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests. Slow down.' } })
   }
 })
 
