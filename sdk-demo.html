@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passport Agent // SDK Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: { extend: {
+        colors: {
+          "surface-dim": "#131313", "secondary": "#97deff", "on-surface-variant": "#b9ccb2",
+          "primary": "#ebffe2", "background": "#0e0e0e", "surface-tint": "#00e639",
+          "secondary-container": "#00c8fe", "on-surface": "#e5e2e1", "primary-container": "#00ff41",
+          "outline-variant": "#3b4b37", "surface-container-low": "#1c1b1b",
+          "error": "#ffb4ab", "tertiary-fixed-dim": "#f7be00",
+          neon: "#00e639",
+        },
+        fontFamily: { body: ["Geist","sans-serif"], mono: ["JetBrains Mono","monospace"] },
+      }},
+    };
+  </script>
+  <style>
+    body { font-family: "Geist", sans-serif; background: #0e0e0e; color: #e5e2e1; min-height: 100vh; }
+    body::after { content: ""; position: fixed; inset: 0; background: linear-gradient(to bottom, transparent 50%, rgba(0,230,57,.03) 50%); background-size: 100% 4px; pointer-events: none; z-index: 9999; }
+    .mono { font-family: "JetBrains Mono", monospace !important; }
+    .glass { background: rgba(18,18,18,.85); backdrop-filter: blur(16px); border: 1px solid rgba(59,75,55,.3); border-radius: .25rem; padding: 16px; margin-bottom: 12px; }
+    .btn { padding: 8px 16px; border-radius: .25rem; font-weight: 600; font-size: 12px; cursor: pointer; border: 1px solid transparent; transition: all .15s ease; text-transform: uppercase; letter-spacing: 1px; font-family: "JetBrains Mono", monospace; }
+    .btn-primary { background: rgba(0,230,57,.12); color: #00e639; border-color: rgba(0,230,57,.25); }
+    .btn-primary:hover { background: rgba(0,230,57,.2); }
+    .btn-sm { padding: 4px 10px; font-size: 10px; }
+    .input { width: 100%; padding: 8px 12px; background: #1c1b1b; border: 1px solid rgba(59,75,55,.4); border-radius: .25rem; font-size: 13px; color: #e5e2e1; font-family: "JetBrains Mono", monospace; }
+    .input:focus { outline: none; border-color: #00e639; }
+    .log-line { font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 4px 0; border-bottom: 1px solid rgba(59,75,55,.2); }
+    .log-allow { color: #00e639; } .log-deny { color: #ffb4ab; } .log-modify { color: #f7be00; }
+    .tag { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 700; font-family: "JetBrains Mono", monospace; border: 1px solid; }
+    .tag-green { color: #00e639; border-color: rgba(0,230,57,.3); background: rgba(0,230,57,.08); }
+    .tag-red { color: #ffb4ab; border-color: rgba(147,0,10,.3); background: rgba(147,0,10,.08); }
+  </style>
+</head>
+<body>
+  <header class="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16" style="background:rgba(19,19,19,.9);backdrop-filter:blur(20px);border-bottom:1px solid rgba(59,75,55,.3);">
+    <h1 class="text-sm font-bold uppercase tracking-[4px] mono" style="color:#00e639;">SDK Demo</h1>
+    <div class="flex items-center gap-3 mono text-[10px]" style="color:rgba(185,204,178,.4);">
+      <span id="apiDot">●</span><span id="apiLabel">checking...</span>
+    </div>
+  </header>
+
+  <main class="pt-20 px-8 pb-16 max-w-4xl mx-auto space-y-4">
+    <!-- Quickstart code block -->
+    <div class="glass">
+      <h2 class="text-xs mono uppercase tracking-[2px] mb-3" style="color:rgba(185,204,178,.5);">Quickstart — Drop into any OpenAI agent in 3 lines</h2>
+      <pre class="mono text-xs" style="color:rgba(185,204,178,.6);background:rgba(0,0,0,.3);padding:12px;overflow-x:auto;">import { AgentControlPlane } from '@passport-agent/sdk'
+const acp = new AgentControlPlane({ agentId, secretKey, endpoint })
+const results = await acp.processToolCalls(tool_calls, toolImpls)  // ← one line</pre>
+    </div>
+
+    <!-- Demo runner -->
+    <div class="glass">
+      <h2 class="text-xs mono uppercase tracking-[2px] mb-3" style="color:rgba(185,204,178,.5);">Live Demo — Run a simulated agent task</h2>
+      <div class="flex items-center gap-3 mb-3">
+        <button id="runDemoBtn" class="btn btn-primary">Run Demo</button>
+        <button id="clearBtn" class="btn btn-sm" style="background:transparent;color:rgba(185,204,178,.4);border:1px solid rgba(59,75,55,.4);">Clear</button>
+      </div>
+      <div id="demoOutput" class="mono text-xs" style="max-height:400px;overflow-y:auto;">
+        <p style="color:rgba(185,204,178,.3);">> Click "Run Demo" to simulate an agent executing tasks with enforcement</p>
+      </div>
+    </div>
+
+    <!-- API status -->
+    <div class="glass">
+      <h2 class="text-xs mono uppercase tracking-[2px] mb-3" style="color:rgba(185,204,178,.5);">Live API Data</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div><span class="tag tag-green" id="agentCount">—</span><span class="text-[10px] mono ml-2" style="color:rgba(185,204,178,.5);">agents</span></div>
+        <div><span class="tag" style="color:#00c8fe;border-color:rgba(0,200,254,.3);background:rgba(0,200,254,.08);" id="policyCount">—</span><span class="text-[10px] mono ml-2" style="color:rgba(185,204,178,.5);">policies</span></div>
+        <div><span class="tag tag-green" id="taskCount">—</span><span class="text-[10px] mono ml-2" style="color:rgba(185,204,178,.5);">tasks</span></div>
+        <div><span class="tag tag-red" id="auditCount">—</span><span class="text-[10px] mono ml-2" style="color:rgba(185,204,178,.5);">audit</span></div>
+      </div>
+      <button id="refreshBtn" class="btn btn-sm" style="background:transparent;color:rgba(185,204,178,.4);border:1px solid rgba(59,75,55,.4);">Refresh Stats</button>
+    </div>
+  </main>
+
+  <script src="/public/js/api.js"></script>
+  <script>
+  (function() {
+    var api = window.ApiClient;
+    var BASE = window.API_BASE || 'http://localhost:3000';
+
+    // Check API
+    fetch(BASE + '/agents').then(function() {
+      document.getElementById('apiDot').style.color = '#00e639';
+      document.getElementById('apiLabel').textContent = 'connected';
+    }).catch(function() {
+      document.getElementById('apiDot').style.color = '#ffb4ab';
+      document.getElementById('apiLabel').textContent = 'offline';
+    });
+
+    // Log helper
+    function log(msg, cls) {
+      var div = document.getElementById('demoOutput');
+      div.innerHTML += '<div class="log-line ' + (cls || '') + '">' + msg + '</div>';
+      div.scrollTop = div.scrollHeight;
+    }
+
+    // Run demo
+    document.getElementById('runDemoBtn').addEventListener('click', async function() {
+      var out = document.getElementById('demoOutput');
+      out.innerHTML = '';
+
+      log('≡ Initializing demo...', 'log-modify');
+
+      try {
+        // Login
+        var loginRes = await fetch(BASE + '/auth/login', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({email:'admin@acmecorp.com',password:'admin'})
+        });
+        var { token } = await loginRes.json();
+        if (!token) { log('✗ Login failed — is the server running?', 'log-deny'); return; }
+        log('✓ Logged in', 'log-allow');
+
+        var post = function(p, b) {
+          return fetch(BASE + p, { method: 'POST', headers: {'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify(b) }).then(r => r.json());
+        };
+
+        // Register agent
+        var agent = await post('/agents/register', { name: 'SDK Demo Agent', model: 'gpt-4o', provider: 'openai' });
+        log('✓ Agent registered: ' + agent.agentId.substring(0,16) + '... / Key: ' + agent.secretKeyPrefix, 'log-allow');
+
+        // Create policy
+        var policy = await post('/policies', {
+          name: 'Demo SDK Policy', priority: 1, scope: { agentId: agent.agentId },
+          rules: {
+            allowedTools: [{ toolName: 'lookup_order', parameterConstraints: { orderId: { type: 'string' } } }],
+            deniedTools: ['send_email'],
+            deniedDomains: ['*.evil.com', '169.254.169.254'],
+            dataRestrictions: { denyPiiInParameters: true },
+          },
+        });
+        log('✓ Policy created: ' + policy.id.substring(0,16) + '...', 'log-allow');
+
+        // Create task
+        var task = await post('/task', { payload: { query: 'SDK demo task' } });
+        log('✓ Task created: ' + task.id.substring(0,16) + '...', 'log-allow');
+
+        // Start run
+        var run = await post('/agent/run', { agentId: agent.agentId, taskId: task.id });
+        log('✓ Run started: ' + run.id.substring(0,16) + '...', 'log-allow');
+
+        // Log actions
+        var patch = function(p, b) {
+          return fetch(BASE + p, { method: 'PATCH', headers: {'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify(b) }).then(r => r.json());
+        };
+        var logAction = function(rid, t, d, p, r) {
+          return post('/run/' + rid + '/log', { tool: t, decision: d, parameters: p || {}, reason: r || null });
+        };
+
+        await logAction(run.id, 'lookup_order', 'allow', { orderId: 'ORD-42' });
+        log('  ✓ lookup_order → ALLOW', 'log-allow');
+
+        await logAction(run.id, 'send_email', 'deny', { to: 'attacker@evil.com' }, 'tool_explicitly_blocked');
+        log('  ✗ send_email → DENY (blocked by policy)', 'log-deny');
+
+        await logAction(run.id, 'lookup_order', 'deny', { orderId: '1', ssn: '123-45-6789' }, null);
+        log('  ✗ lookup_order → DENY (PII detected)', 'log-deny');
+
+        // Complete
+        await patch('/run/' + run.id + '/complete', {});
+        log('✓ Run completed — task marked done\n', 'log-allow');
+
+        // Enforce checks
+        var enf = function(aid, t, p) { return post('/enforce', { intent: { intentId: 'sdk_' + Date.now(), agentId: aid, tool: t, parameters: p || {} } }); };
+        var e1 = await enf(agent.agentId, 'lookup_order', { orderId: '123' });
+        log('ENFORCE: lookup_order → ' + e1.decision.toUpperCase() + (e1.gatewayTicket ? ' [ticket]' : ''), e1.decision === 'allow' ? 'log-allow' : 'log-deny');
+
+        var e2 = await enf(agent.agentId, 'send_email', { to: 'evil@evil.com' });
+        log('ENFORCE: send_email → ' + e2.decision.toUpperCase() + ' (' + e2.reason + ')', 'log-deny');
+
+        log('\n✅ Demo complete — 1 agent, 1 policy, 1 task, 1 run, 3 actions logged', 'log-modify');
+        refreshStats();
+      } catch (e) {
+        log('✗ Error: ' + e.message, 'log-deny');
+      }
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function() {
+      document.getElementById('demoOutput').innerHTML = '<p style="color:rgba(185,204,178,.3);">> Cleared</p>';
+    });
+
+    function refreshStats() {
+      fetch(BASE + '/agents').then(r => r.json()).then(d => { document.getElementById('agentCount').textContent = (d.data||[]).length; });
+      fetch(BASE + '/policies').then(r => r.json()).then(d => { document.getElementById('policyCount').textContent = (d.data||[]).length; });
+      fetch(BASE + '/audit?limit=100').then(r => r.json()).then(d => { document.getElementById('auditCount').textContent = (d.data||[]).length; });
+      document.getElementById('taskCount').textContent = '—';
+    }
+    document.getElementById('refreshBtn').addEventListener('click', refreshStats);
+    refreshStats();
+  })();
+  </script>
+</body>
+</html>

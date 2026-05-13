@@ -306,6 +306,42 @@ app.get('/audit', async (request, reply) => {
 })
 
 // ---------------------------------------------------------------------------
+// GET /sessions — list recent sessions
+// ---------------------------------------------------------------------------
+app.get('/sessions', async (request, reply) => {
+  try {
+    const snap = await db.collection('sessions').orderBy('startedAt', 'desc').limit(20).get()
+    return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) }
+  } catch (e: any) {
+    reply.code(503)
+    return { error: { code: 'firestore', message: 'read failed' } }
+  }
+})
+
+// ---------------------------------------------------------------------------
+// GET /sessions/:id — get session details with related runs
+// ---------------------------------------------------------------------------
+app.get('/sessions/:id', async (request, reply) => {
+  try {
+    const id = (request.params as any).id
+    const sessionSnap = await db.collection('sessions').doc(id).get()
+    if (!sessionSnap.exists) { reply.code(404); return { error: { code: 'not_found' } } }
+
+    const runs = await db.collection('runs').where('sessionId', '==', id).get()
+    const logs = await db.collection('logs').where('runId', 'in', runs.docs.map(d => d.id)).get()
+
+    return {
+      session: { id, ...sessionSnap.data() },
+      runs: runs.docs.map(d => ({ id: d.id, ...d.data() })),
+      logs: logs.docs.map(d => ({ id: d.id, ...d.data() })),
+    }
+  } catch (e: any) {
+    reply.code(503)
+    return { error: { code: 'firestore', message: 'read failed' } }
+  }
+})
+
+// ---------------------------------------------------------------------------
 // Register agent system routes
 // ---------------------------------------------------------------------------
 agentsRoutes(app, db)
