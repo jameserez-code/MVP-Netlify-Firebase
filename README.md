@@ -25,12 +25,20 @@ Resilience: crash recovery, idempotency, retry, timeout, stale detection
 
 ## Quickstart
 
+### One-liner (any terminal)
+
 ```bash
+curl -fsSL https://raw.githubusercontent.com/jameserez-code/MVP-Netlify-Firebase/main/install.sh | bash
+```
+
+### Manual
+
+```bash
+git clone https://github.com/jameserez-code/MVP-Netlify-Firebase.git
+cd MVP-Netlify-Firebase
 npm install
-# Place service-account.json in project root
-npm run setup          # Validate, seed, test, print endpoints
-npm run dev            # Start API on :3000
-npm run worker         # Start background execution worker
+# Place service-account.json from Firebase Console
+bash start.sh
 ```
 
 ## API Endpoints (18 total)
