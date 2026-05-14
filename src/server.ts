@@ -8,6 +8,8 @@ import { attachRequestId, auditTimeline, runTrace, metrics } from './observabili
 import { hardenAuth } from './security.js'
 import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
 import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
+import { verifyPassword, DEFAULT_PASSWORD } from './lib/password.js'
+import { registerValidationHooks } from './lib/input-validation.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
@@ -16,13 +18,46 @@ import enforceRoutes from './routes/enforce.js'
 const db = initFirebase()
 const app = Fastify({ logger: false })
 
-// Rate limiting
+// Input validation + secure headers
+registerValidationHooks(app)
+
+// Rate limiting — per-IP sliding window, endpoint-specific limits
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-function checkRateLimit(ip: string, maxPerMin: number): boolean {
+const ENDPOINT_LIMITS: Record<string, number> = {
+  '/auth/login': 20,        // prevent credential brute-force
+  '/enforce': 100,          // enforcement in hot path but per-agent
+  '/gateway/execute': 50,   // gateway execution — sensitive
+  default: 200,             // general API limit
+}
+
+function getEndpointLimit(path: string): number {
+  for (const [prefix, limit] of Object.entries(ENDPOINT_LIMITS)) {
+    if (path.startsWith(prefix)) return limit
+  }
+  return ENDPOINT_LIMITS.default
+}
+
+const ipBurstMap = new Map<string, number>()
+function isBurstAttack(ip: string): boolean {
+  const now = Date.now()
+  const count = (ipBurstMap.get(ip) || 0) + 1
+  ipBurstMap.set(ip, count)
+  // Reset every 10 seconds
+  if (count > 50) {
+    setTimeout(() => ipBurstMap.delete(ip), 10_000)
+    return true
+  }
+  setTimeout(() => ipBurstMap.set(ip, (ipBurstMap.get(ip) || 1) - 1), 10_000)
+  return false
+}
+
+function checkRateLimit(ip: string, path: string): boolean {
+  if (isBurstAttack(ip)) return false
+  const limit = getEndpointLimit(path)
   const now = Date.now()
   const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.resetAt) { rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 }); return true }
-  if (entry.count >= maxPerMin) return false
+  if (!entry || now > entry.resetAt) { rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 }); return true }
+  if (entry.count >= limit) return false
   entry.count++; return true
 }
 
@@ -33,7 +68,7 @@ app.addHook('onRequest', async (request, reply) => {
   reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
   if (request.method === 'OPTIONS') { reply.code(204).send(); return }
   const ip = (request.headers['x-forwarded-for'] as string || request.ip || '127.0.0.1').split(',')[0].trim()
-  if (!checkRateLimit(ip, 200)) { reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests' } }) }
+  if (!checkRateLimit(ip, request.url)) { reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests' } }) }
 })
 
 // Request ID middleware
@@ -68,7 +103,21 @@ app.post('/auth/login', async (request, reply) => {
   if (!email || !password) return err(reply, 400, 'validation', 'email and password are required')
   try {
     const snap = await db.collection('users').where('email', '==', email).limit(1).get()
-    if (snap.empty || password !== 'admin') return err(reply, 401, 'unauthorized', 'invalid credentials')
+
+    // Check against stored PBKDF2 hash
+    let authenticated = false
+    if (!snap.empty) {
+      const userData = snap.docs[0].data() as any
+      if (userData.passwordHash && userData.passwordSalt) {
+        authenticated = verifyPassword(password, userData.passwordHash, userData.passwordSalt)
+      } else if (password === DEFAULT_PASSWORD) {
+        // Legacy: upgrade unhashed user on next seed
+        authenticated = true
+        log.warn('legacy user — no password hash stored', { email })
+      }
+    }
+
+    if (!authenticated) return err(reply, 401, 'unauthorized', 'invalid credentials')
     const userDoc = snap.docs[0]; const user = { id: userDoc.id, ...userDoc.data() }
     const token = sign({ sub: email, role: (user as any).role || 'org_admin' })
     log.success('login', { user: email })

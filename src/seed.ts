@@ -1,10 +1,12 @@
 import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
+import { hashPassword, DEFAULT_PASSWORD } from './lib/password.js'
 
 const db = initFirebase()
 
 async function seed() {
   const now = new Date().toISOString()
+  const { hash, salt } = hashPassword(DEFAULT_PASSWORD)
 
   const collections: Record<string, Record<string, Record<string, unknown>>> = {
     users: {
@@ -13,6 +15,9 @@ async function seed() {
         displayName: 'Admin User',
         role: 'org_admin',
         orgId: 'org_seed_001',
+        passwordHash: hash,
+        passwordSalt: salt,
+        passwordIterations: 100_000,
         createdAt: now,
       },
     },
