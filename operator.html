@@ -5,82 +5,214 @@
   <title>Passport Agent // Operator Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-  <script>tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-dim":"#131313","background":"#0e0e0e","on-surface":"#e5e2e1","on-surface-variant":"#b9ccb2",neon:"#00e639",error:"#ffb4ab",amber:"#f7be00",cyan:"#00c8fe"},fontFamily:{mono:["JetBrains Mono","monospace"]}}}}</script>
   <style>
-    body{font-family:"Geist",sans-serif;background:#0e0e0e;color:#e5e2e1;min-height:100vh}
-    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(0,230,57,.015) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
-    .glass{background:rgba(18,18,18,.85);backdrop-filter:blur(16px);border:1px solid rgba(59,75,55,.3);border-radius:.25rem;padding:16px;margin-bottom:12px}
-    .mono{font-family:"JetBrains Mono",monospace !important}
-    .dim{color:rgba(185,204,178,.4);font-family:"JetBrains Mono",monospace;font-size:12px}
-    .stat{text-align:center;padding:12px;border-left:2px solid}
-    .stat-green{border-color:#00e639;background:rgba(0,230,57,.03)}
-    .stat-amber{border-color:#f7be00;background:rgba(247,190,0,.03)}
-    .stat-red{border-color:#ffb4ab;background:rgba(147,0,10,.03)}
-    .stat-cyan{border-color:#00c8fe;background:rgba(0,200,254,.03)}
-    .badge{display:inline-block;padding:2px 8px;font-size:10px;font-weight:700;font-family:"JetBrains Mono",monospace;border:1px solid}
-    .badge-green{color:#00e639;border-color:rgba(0,230,57,.3);background:rgba(0,230,57,.06)}
-    .badge-red{color:#ffb4ab;border-color:rgba(147,0,10,.3);background:rgba(147,0,10,.06)}
-    .badge-amber{color:#f7be00;border-color:rgba(247,190,0,.3);background:rgba(247,190,0,.06)}
-    .badge-cyan{color:#00c8fe;border-color:rgba(0,200,254,.3);background:rgba(0,200,254,.06)}
-    .task-row{display:flex;align-items:center;gap:12px;padding:6px 0;border-bottom:1px solid rgba(59,75,55,.1);font-size:12px}
-    .tl-row{display:flex;align-items:center;gap:10px;padding:4px 0;border-bottom:1px solid rgba(59,75,55,.1);font-size:12px}
-    .action-btn{padding:2px 10px;font-size:10px;font-family:"JetBrains Mono",monospace;border:1px solid rgba(255,255,255,.15);color:#888;background:transparent;cursor:pointer;text-transform:uppercase;letter-spacing:1px}
-    .action-btn:hover{color:#e5e2e1;border-color:rgba(255,255,255,.3)}
-    h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(185,204,178,.5);margin-bottom:8px;font-family:"JetBrains Mono",monospace}
-    h2::before{content:"// ";color:#555}
-    .banner{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:100;padding:4px 16px;font-size:10px;font-family:"JetBrains Mono",monospace;letter-spacing:2px;text-transform:uppercase;border-radius:0 0 4px 4px}
-    .banner-dev{background:rgba(0,230,57,.1);color:#00e639;border:1px solid rgba(0,230,57,.3);border-top:none}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;overflow-x:hidden}
+    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+    :root{--green:#2ea043;--amber:#d2991d;--red:#f85149;--blue:#58a6ff;--muted:#8b949e;--border:rgba(48,54,61,.5);--bg-card:rgba(22,27,34,.7);--bg-hover:rgba(46,160,67,.04)}
+    .mono{font-family:"JetBrains Mono",monospace}
+
+    /* Header */
+    header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--green);text-shadow:0 0 10px rgba(46,160,67,.3)}
+    header .nav{display:flex;gap:6px;align-items:center}
+    header .nav a{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid transparent;border-radius:3px;transition:all .15s}
+    header .nav a:hover,.nav a.active{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
+    header .nav a.active{border-color:rgba(46,160,67,.35)}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,160,67,.4)}
+
+    /* Grid */
+    main{max-width:1200px;margin:0 auto;padding:28px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:22px}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:16px 18px;transition:border-color .15s}
+    .stat-card:hover{border-color:rgba(46,160,67,.2)}
+    .stat-label{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px}
+    .stat-value{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700}
+    .sg{color:var(--green)}.sa{color:var(--amber)}.sr{color:var(--red)}.sb{color:var(--blue)}.sw{color:#c9d1d9}
+
+    /* Sections */
+    .section{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:16px;overflow:hidden}
+    .section-header{padding:14px 20px;border-bottom:1px solid rgba(48,54,61,.3);display:flex;justify-content:space-between;align-items:center;background:rgba(13,17,23,.4)}
+    .section-title{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green)}
+    .section-title::before{content:"// ";color:#30363d}
+    .section-body{padding:14px 20px}
+
+    /* Buttons */
+    .btn{font-family:"JetBrains Mono",monospace;font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);text-transform:uppercase;letter-spacing:1px;transition:all .15s}
+    .btn:hover{border-color:rgba(139,148,158,.4);color:#c9d1d9}
+    .btn-active{color:var(--green);border-color:rgba(46,160,67,.25);background:rgba(46,160,67,.06)}
+    .btn-active:hover{border-color:rgba(46,160,67,.4);box-shadow:0 0 8px rgba(46,160,67,.1)}
+    .btn-danger{color:var(--red);border-color:rgba(248,81,73,.15);background:rgba(248,81,73,.04)}
+    .btn-danger:hover{border-color:rgba(248,81,73,.3)}
+
+    /* Task rows */
+    .task-row{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid rgba(48,54,61,.12);font-size:12px;font-family:"JetBrains Mono",monospace}
+    .task-row:last-child{border-bottom:none}
+    .badge{display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;font-family:"JetBrains Mono",monospace;border:1px solid;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
+    .badge-green{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
+    .badge-amber{color:var(--amber);border-color:rgba(210,153,29,.2);background:rgba(210,153,29,.04)}
+    .badge-red{color:var(--red);border-color:rgba(248,81,73,.2);background:rgba(248,81,73,.04)}
+    .badge-blue{color:var(--blue);border-color:rgba(88,166,255,.2);background:rgba(88,166,255,.04)}
+    .dim{color:var(--muted);font-size:11px}
+
+    /* Timeline */
+    .tl-row{display:flex;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.1);font-size:12px;font-family:"JetBrains Mono",monospace}
+    .tl-row:last-child{border-bottom:none}
+    .tl-time{min-width:52px;color:#484f58;font-size:10px}
+
+    /* Loading */
+    .loading{color:var(--muted);font-size:12px;font-family:"JetBrains Mono",monospace;padding:20px;text-align:center}
+    .loading::before{content:"> ";color:var(--green);animation:blink 1.2s step-end infinite}
+    @keyframes blink{50%{opacity:0}}
+
+    /* Footer */
+    .refresh-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;background:rgba(13,17,23,.3);font-family:"JetBrains Mono",monospace;font-size:10px;color:#30363d}
   </style>
 </head>
 <body>
-  <div class="banner banner-dev" id="envBanner">DEVELOPMENT</div>
-
-  <header style="background:rgba(19,19,19,.9);backdrop-filter:blur(20px);border-bottom:1px solid rgba(59,75,55,.3);position:fixed;top:0;width:100%;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:0 32px;height:56px;">
-    <h1 class="mono" style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#00e639;">Operator Console</h1>
-    <div class="flex items-center gap-3">
-      <span id="authStatus" class="mono" style="font-size:10px;"></span>
-      <button class="action-btn" onclick="location.reload()">Refresh</button>
-      <span id="lastRefresh" class="mono dim" style="font-size:10px;"></span>
+  <header>
+    <h1>Operator Console</h1>
+    <div class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/operator.html" class="active">Console</a>
+      <a href="/agents.html">Agents</a>
+      <a href="/admin-portal.html">Admin</a>
+      <span class="status-dot" id="apiDot" title="API status"></span>
     </div>
   </header>
 
-  <main style="padding-top:72px;padding:72px 32px 32px;max-width:1200px;margin:0 auto;">
-    <!-- Stats row -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
-      <div class="glass stat stat-green"><div class="mono dim">Tasks</div><div id="tasksTotal" class="mono" style="font-size:24px;font-weight:700;color:#00e639;">—</div></div>
-      <div class="glass stat stat-amber"><div class="mono dim">Pending</div><div id="tasksPending" class="mono" style="font-size:24px;font-weight:700;color:#f7be00;">—</div></div>
-      <div class="glass stat stat-cyan"><div class="mono dim">Active</div><div id="tasksActive" class="mono" style="font-size:24px;font-weight:700;color:#00c8fe;">—</div></div>
-      <div class="glass stat stat-red"><div class="mono dim">Failed</div><div id="tasksFailed" class="mono" style="font-size:24px;font-weight:700;color:#ffb4ab;">—</div></div>
-      <div class="glass stat stat-green"><div class="mono dim">Active Runs</div><div id="runsActive" class="mono" style="font-size:24px;font-weight:700;color:#00e639;">—</div></div>
-      <div class="glass stat stat-cyan"><div class="mono dim">Avg Duration</div><div id="avgDuration" class="mono" style="font-size:24px;font-weight:700;color:#00c8fe;">—</div></div>
+  <main>
+    <!-- Stats -->
+    <div class="grid" id="statsGrid"></div>
+
+    <!-- Pending Queue -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Pending Queue</span>
+        <div>
+          <button class="btn btn-active" onclick="seedDemo()">+ Seed Demos</button>
+        </div>
+      </div>
+      <div class="section-body" id="pendingList"><div class="loading">loading</div></div>
+      <div class="refresh-bar"><span id="pendingCount">0 pending</span><span id="lastRefresh">—</span></div>
     </div>
 
-    <!-- Pending queue -->
-    <div class="glass">
-      <h2>Pending Queue</h2>
-      <div id="pendingTasks"><div class="dim">Loading...</div></div>
-    </div>
-
-    <!-- Active runs -->
-    <div class="glass">
-      <h2>Active Runs</h2>
-      <div id="activeRuns"><div class="dim">Loading...</div></div>
-    </div>
-
-    <!-- Failed tasks -->
-    <div class="glass">
-      <h2>Failed / Recoverable</h2>
-      <div id="failedTasks"><div class="dim">Loading...</div></div>
+    <!-- Active + Failed (2-col) -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="section" style="margin-bottom:0">
+        <div class="section-header"><span class="section-title">Active Runs</span></div>
+        <div class="section-body" id="activeRuns"><div class="loading">loading</div></div>
+      </div>
+      <div class="section" style="margin-bottom:0">
+        <div class="section-header"><span class="section-title">Failed / Recoverable</span></div>
+        <div class="section-body" id="failedTasks"><div class="loading">loading</div></div>
+      </div>
     </div>
 
     <!-- Timeline -->
-    <div class="glass">
-      <h2>Execution Timeline</h2>
-      <div id="timeline"><div class="dim">Loading...</div></div>
+    <div class="section" style="margin-top:16px">
+      <div class="section-header"><span class="section-title">Execution Timeline</span></div>
+      <div class="section-body" id="timeline"><div class="loading">loading</div></div>
     </div>
   </main>
 
-  <script src="/public/js/operator.js"></script>
+  <script>
+    var API = 'http://localhost:3000';
+    var token = '';
+
+    async function login() {
+      try {
+        var r = await fetch(API+'/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@acmecorp.com',password:'admin'})});
+        var d = await r.json();
+        if (d.token) { token = d.token; return true; }
+      } catch(e) {}
+      return false;
+    }
+
+    async function api(path, opts) {
+      opts = opts || {};
+      if (token) opts.headers = Object.assign({Authorization:'Bearer '+token}, opts.headers||{});
+      opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+      try { var r = await fetch(API+path, opts); return await r.json(); }
+      catch(e) { return null; }
+    }
+
+    function seedDemo() {
+      for (var i = 0; i < 3; i++) {
+        api('/task', {method:'POST',body:JSON.stringify({payload:{description:'Demo task '+(i+1),type:['order','inventory','query'][i]}})});
+      }
+      setTimeout(refresh, 600);
+    }
+
+    async function retryTask(id) {
+      var agents = await api('/agents');
+      var agentId = agents && agents.data && agents.data[0] ? agents.data[0].id : 'agent_seed_001';
+      await api('/agent/run', {method:'POST',body:JSON.stringify({agentId:agentId,taskId:id})});
+      setTimeout(refresh, 500);
+    }
+
+    async function replayTask(id) {
+      var t = await api('/task/'+id);
+      if (t && t.payload) {
+        var nt = await api('/task', {method:'POST',body:JSON.stringify({payload:t.payload})});
+        if (nt && nt.id) retryTask(nt.id);
+      }
+    }
+
+    async function refresh() {
+      document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString();
+
+      var m = await api('/metrics');
+      if (m && !m.error) {
+        var t = m.tasks || {};
+        document.getElementById('statsGrid').innerHTML =
+          '<div class="stat-card"><div class="stat-label">Tasks</div><div class="stat-value sg">'+t.total+'</div></div>'+
+          '<div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value sa">'+t.pending+'</div></div>'+
+          '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-value sb">'+t.active+'</div></div>'+
+          '<div class="stat-card"><div class="stat-label">Failed</div><div class="stat-value sr">'+t.failed+'</div></div>'+
+          '<div class="stat-card"><div class="stat-label">Runs Active</div><div class="stat-value sw">'+(m.runs?m.runs.active:0)+'</div></div>'+
+          '<div class="stat-card"><div class="stat-label">Avg Duration</div><div class="stat-value sw">'+(m.avgDurationMs||0)+'ms</div></div>';
+        document.getElementById('apiDot').style.background = '#2ea043';
+      } else {
+        document.getElementById('apiDot').style.background = '#f85149';
+      }
+
+      // Pending
+      var tasks = await api('/audit?limit=80');
+      var pending = tasks && tasks.data ? tasks.data.filter(function(t){return t.status==='pending'||t.status==='queued'}) : [];
+      document.getElementById('pendingCount').textContent = pending.length + ' pending';
+      document.getElementById('pendingList').innerHTML = pending.length === 0
+        ? '<div class="dim" style="text-align:center;padding:12px">No pending tasks. <a href="#" onclick="seedDemo();return false" style="color:var(--green);text-decoration:none;">Seed demo tasks</a>.</div>'
+        : pending.slice(0,6).map(function(t){
+            return '<div class="task-row"><span class="dim" style="min-width:70px">'+(t.taskId||t.id||'').substring(0,10)+'</span><span class="badge badge-amber">'+(t.status||'pending')+'</span><span class="dim" style="flex:1">'+(t.payload&&t.payload.description||t.payload&&t.payload.type||'—')+'</span><button class="btn btn-active" onclick="retryTask(\''+(t.taskId||t.id)+'\')">&#9654; Run</button></div>';
+          }).join('');
+
+      // Active runs
+      document.getElementById('activeRuns').innerHTML = m && m.runs && m.runs.active > 0
+        ? '<div class="dim" style="text-align:center;padding:12px"><span class="badge badge-green">'+m.runs.active+' active</span> — check timeline below</div>'
+        : '<div class="dim" style="text-align:center;padding:12px">No active runs</div>';
+
+      // Failed
+      var failed = tasks && tasks.data ? tasks.data.filter(function(t){return t.status==='failed'}) : [];
+      document.getElementById('failedTasks').innerHTML = failed.length === 0
+        ? '<div class="dim" style="text-align:center;padding:12px">No failures</div>'
+        : failed.slice(0,5).map(function(t){
+            return '<div class="task-row"><span class="dim" style="min-width:70px">'+(t.taskId||t.id||'').substring(0,10)+'</span><span class="badge badge-red">failed</span><span class="dim" style="flex:1">'+(t.error||'—')+'</span><button class="btn btn-active" onclick="replayTask(\''+(t.taskId||t.id)+'\')">&#8635; Replay</button></div>';
+          }).join('');
+
+      // Timeline
+      var tl = await api('/audit/timeline?limit=10');
+      document.getElementById('timeline').innerHTML = tl && tl.timeline && tl.timeline.length
+        ? tl.timeline.slice(0,8).map(function(e){
+            var s = Math.round((Date.now()-new Date(e.timestamp).getTime())/1000);
+            var cls = e.decision==='allow'?'badge-green':e.decision==='deny'?'badge-red':'badge-blue';
+            return '<div class="tl-row"><span class="tl-time">-'+(s<60?s+'s':Math.round(s/60)+'m')+'</span><span class="badge '+cls+'">'+((e.tool||'transition').substring(0,14))+'</span><span class="dim" style="flex:1">'+(e.reason||e.decision||'')+'</span></div>';
+          }).join('')
+        : '<div class="dim" style="text-align:center;padding:12px">No events yet — run some tasks first</div>';
+    }
+
+    login().then(refresh);
+    setInterval(refresh, 6000);
+  </script>
 </body>
 </html>

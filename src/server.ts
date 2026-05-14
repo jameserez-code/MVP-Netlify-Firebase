@@ -99,37 +99,100 @@ async function fetchDoc(collection: string, id: string) {
 
 // ==================== ENDPOINTS ====================
 
-// GET / — root (API index + redirect to landing)
+// GET / — root (live mini-dashboard)
 app.get('/', async (_request, reply) => {
   reply.header('Content-Type', 'text/html')
   return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>Passport Agent</title>
-<style>body{font-family:system-ui;background:#0e0e0e;color:#e5e2e1;padding:40px;max-width:600px;margin:0 auto}
-h1{color:#00e639}a{color:#00c8fe}code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:3px}
-.endpoint{margin:8px 0;font-size:14px}.method{display:inline-block;width:48px;font-weight:700}
-.get{color:#00e639}.post{color:#f7be00}.patch{color:#00c8fe}
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Passport Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;overflow-x:hidden}
+body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 32px;display:flex;justify-content:space-between;align-items:center}
+h1{font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#2ea043;text-shadow:0 0 12px rgba(46,160,67,.3)}
+.status{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:#8b949e}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#2ea043;box-shadow:0 0 6px rgba(46,160,67,.5)}
+main{max-width:1100px;margin:0 auto;padding:32px 28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.card{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:18px 20px;transition:border-color .2s}
+.card:hover{border-color:rgba(46,160,67,.25)}
+.card-label{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8b949e;margin-bottom:8px}
+.card-value{font-family:"JetBrains Mono",monospace;font-size:28px;font-weight:700}
+.val-green{color:#2ea043}.val-amber{color:#d2991d}.val-red{color:#f85149}.val-cyan{color:#58a6ff}.val-white{color:#c9d1d9}
+.section{margin-bottom:28px}
+.section-title{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#2ea043;margin-bottom:14px}
+.section-title::before{content:"// ";color:#444}
+.link-row{display:flex;flex-wrap:wrap;gap:10px}
+.link-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(46,160,67,.06);border:1px solid rgba(46,160,67,.15);border-radius:4px;font-family:"JetBrains Mono",monospace;font-size:11px;color:#2ea043;text-decoration:none;transition:all .15s}
+.link-btn:hover{background:rgba(46,160,67,.12);border-color:rgba(46,160,67,.35);box-shadow:0 0 12px rgba(46,160,67,.1)}
+.link-btn-secondary{border-color:rgba(48,54,61,.4);color:#8b949e}
+.link-btn-secondary:hover{border-color:rgba(139,148,158,.3);color:#c9d1d9}
+.endpoint-table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:12px}
+.endpoint-table th{text-align:left;padding:8px 14px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8b949e;border-bottom:1px solid rgba(48,54,61,.3);font-weight:600}
+.endpoint-table td{padding:7px 14px;border-bottom:1px solid rgba(48,54,61,.15);color:#c9d1d9}
+.method-tag{display:inline-block;width:44px;text-align:center;padding:2px 0;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:1px}
+.g{background:rgba(46,160,67,.12);color:#2ea043}.p{background:rgba(210,153,29,.12);color:#d2991d}.pt{background:rgba(88,166,255,.12);color:#58a6ff}
+.auth-yes{color:#2ea043;font-size:10px}.auth-no{color:#484f58;font-size:10px}
+.path-mono{color:#c9d1d9}.desc-cell{color:#8b949e;font-size:11px}
+.refresh{font-family:"JetBrains Mono",monospace;font-size:10px;color:#484f58}
+footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;font-size:10px;color:#30363d}
 </style></head><body>
-<h1>Passport Agent — API Server</h1>
-<p>Running on <code>http://localhost:3000</code></p>
-<p><strong>Console pages:</strong> <a href="/landing.html">Landing</a> · <a href="/operator.html">Operator</a> · <a href="/dev-dashboard.html">Dev Dashboard</a> · <a href="/agents.html">Agents</a></p>
-<h3>Endpoints</h3>
-<div class="endpoint"><span class="method post">POST</span> /auth/login</div>
-<div class="endpoint"><span class="method post">POST</span> /task</div>
-<div class="endpoint"><span class="method get">GET</span> /task/:id</div>
-<div class="endpoint"><span class="method post">POST</span> /agent/run</div>
-<div class="endpoint"><span class="method post">POST</span> /run/:id/log</div>
-<div class="endpoint"><span class="method patch">PATCH</span> /run/:id/complete</div>
-<div class="endpoint"><span class="method patch">PATCH</span> /run/:id/fail</div>
-<div class="endpoint"><span class="method post">POST</span> /agents/register</div>
-<div class="endpoint"><span class="method get">GET</span> /agents</div>
-<div class="endpoint"><span class="method post">POST</span> /policies</div>
-<div class="endpoint"><span class="method get">GET</span> /policies</div>
-<div class="endpoint"><span class="method post">POST</span> /enforce</div>
-<div class="endpoint"><span class="method post">POST</span> /gateway/execute</div>
-<div class="endpoint"><span class="method get">GET</span> /audit</div>
-<div class="endpoint"><span class="method get">GET</span> /metrics</div>
-<div class="endpoint"><span class="method get">GET</span> /diagnostics</div>
-</body></html>`
+<header>
+<h1>Passport Agent</h1>
+<div class="status"><span class="status-dot" id="dot"></span><span id="statusText">initializing</span></div>
+</header>
+<main>
+<div class="grid" id="stats"></div>
+<div class="section">
+<div class="section-title">Console Pages</div>
+<div class="link-row">
+<a class="link-btn" href="/landing.html">&#9654; Landing</a>
+<a class="link-btn" href="/operator.html">&#9632; Operator Console</a>
+<a class="link-btn" href="/agents.html">&#9783; Agent Manager</a>
+<a class="link-btn" href="/admin-portal.html">&#9881; Admin Portal</a>
+<a class="link-btn" href="/dev-dashboard.html">&#9776; Dev Dashboard</a>
+<a class="link-btn link-btn-secondary" href="/sdk-demo.html">SDK Demo</a>
+<a class="link-btn link-btn-secondary" href="/verify-demo.html">Verify Demo</a>
+</div>
+</div>
+<div class="section">
+<div class="section-title">API Endpoints</div>
+<table class="endpoint-table">
+<tr><th></th><th>Path</th><th>Auth</th><th>Purpose</th></tr>
+<tr><td><span class="method-tag p">POST</span></td><td class="path-mono">/auth/login</td><td class="auth-no">—</td><td class="desc-cell">Get JWT token</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/task</td><td class="auth-yes">JWT</td><td class="desc-cell">Create task</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/task/:id</td><td class="auth-no">—</td><td class="desc-cell">Read task</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/agent/run</td><td class="auth-yes">JWT</td><td class="desc-cell">Start run</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/run/:id/log</td><td class="auth-yes">JWT</td><td class="desc-cell">Log action</td></tr>
+<tr><td><span class="method-tag pt">PATCH</span></td><td>/run/:id/complete</td><td class="auth-yes">JWT</td><td class="desc-cell">Complete run</td></tr>
+<tr><td><span class="method-tag pt">PATCH</span></td><td>/run/:id/fail</td><td class="auth-yes">JWT</td><td class="desc-cell">Fail run</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/agents/register</td><td class="auth-yes">JWT</td><td class="desc-cell">Register agent</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/agents</td><td class="auth-no">—</td><td class="desc-cell">List agents</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/policies</td><td class="auth-yes">JWT</td><td class="desc-cell">Create policy</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/policies</td><td class="auth-no">—</td><td class="desc-cell">List policies</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/enforce</td><td class="auth-yes">JWT</td><td class="desc-cell">Evaluate intent</td></tr>
+<tr><td><span class="method-tag p">POST</span></td><td>/gateway/execute</td><td class="auth-no">—</td><td class="desc-cell">Execute with ticket</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/audit</td><td class="auth-no">—</td><td class="desc-cell">Query intents</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/metrics</td><td class="auth-no">—</td><td class="desc-cell">Operational metrics</td></tr>
+<tr><td><span class="method-tag g">GET</span></td><td>/diagnostics</td><td class="auth-no">—</td><td class="desc-cell">System health</td></tr>
+</table>
+</div>
+<div class="refresh">auto-refreshing every 10s</div>
+</main>
+<footer>Passport Agent v2.0 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
+<script>
+async function refresh(){try{var r=await fetch("/metrics"),d=await r.json();if(!d.error){document.getElementById("stats").innerHTML=
+'<div class=card><div class=card-label>Total Tasks</div><div class="card-value val-green" id=tTotal>'+((d.tasks||{}).total||0)+'</div></div>'+
+'<div class=card><div class=card-label>Pending</div><div class="card-value val-amber">'+((d.tasks||{}).pending||0)+'</div></div>'+
+'<div class=card><div class=card-label>Active</div><div class="card-value val-cyan">'+((d.tasks||{}).active||0)+'</div></div>'+
+'<div class=card><div class=card-label>Failed</div><div class="card-value val-red">'+((d.tasks||{}).failed||0)+'</div></div>'+
+'<div class=card><div class=card-label>Active Runs</div><div class="card-value val-white">'+((d.runs||{}).active||0)+'</div></div>'+
+'<div class=card><div class=card-label>Active Agents</div><div class="card-value val-white">'+((d.agents||{}).active||0)+'</div></div>';
+document.getElementById("dot").style.background="#2ea043";document.getElementById("statusText").textContent="healthy"}}catch(e){document.getElementById("dot").style.background="#f85149";document.getElementById("statusText").textContent="offline"}}
+refresh();setInterval(refresh,10000)
+</script></body></html>`
 })
 
 // POST /auth/login

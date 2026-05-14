@@ -5,101 +5,123 @@
   <title>Passport Agent — AI Agent Execution Infrastructure</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
-  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-  <script>tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-dim":"#131313",background:"#0e0e0e","on-surface":"#e5e2e1","on-surface-variant":"#b9ccb2",neon:"#00e639",error:"#ffb4ab",amber:"#f7be00",cyan:"#00c8fe"},fontFamily:{mono:["JetBrains Mono","monospace"],sans:["Geist","sans-serif"]}}}}</script>
   <style>
-    body{font-family:"Geist",sans-serif;background:#0e0e0e;color:#e5e2e1;min-height:100vh}
-    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(0,230,57,.01) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
-    .glass{background:rgba(18,18,18,.85);backdrop-filter:blur(16px);border:1px solid rgba(59,75,55,.3);border-radius:.25rem}
-    .mono{font-family:"JetBrains Mono",monospace !important}
-    .btn{padding:12px 24px;border-radius:.25rem;font-weight:600;font-size:13px;cursor:pointer;border:1px solid;transition:all .15s;text-transform:uppercase;letter-spacing:1px;font-family:"JetBrains Mono",monospace}
-    .btn-primary{background:rgba(0,230,57,.12);color:#00e639;border-color:rgba(0,230,57,.25)}
-    .btn-primary:hover{background:rgba(0,230,57,.2);box-shadow:0 0 20px rgba(0,230,57,.25)}
-    .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#00e639;margin-bottom:12px;font-family:"JetBrains Mono",monospace}
-    .section-title::before{content:"// ";color:#555}
-    .shimmer{background:linear-gradient(90deg,transparent,#00e639,transparent);background-size:200% 100%;animation:shimmer 3s infinite linear}
-    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-    .dim{color:rgba(185,204,178,.5)}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh;overflow-x:hidden}
+    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+    :root{--green:#2ea043;--blue:#58a6ff;--amber:#d2991d;--muted:#8b949e;--border:rgba(48,54,61,.5);--bg-card:rgba(22,27,34,.7)}
+    .mono{font-family:"JetBrains Mono",monospace}
+
+    header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--green);text-shadow:0 0 10px rgba(46,160,67,.3)}
+    header .nav{display:flex;gap:6px;align-items:center}
+    header .nav a{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid transparent;border-radius:3px;transition:all .15s}
+    header .nav a:hover,.nav a.active{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
+
+    .hero{padding:80px 28px 48px;text-align:center;max-width:700px;margin:0 auto}
+    .hero h2{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:var(--green);text-shadow:0 0 15px rgba(46,160,67,.3);margin-bottom:14px}
+    .hero p{color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:28px}
+    .hero .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .btn{font-family:"JetBrains Mono",monospace;font-size:11px;padding:10px 22px;border-radius:4px;cursor:pointer;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;transition:all .15s;display:inline-block}
+    .btn-primary{background:rgba(46,160,67,.1);color:var(--green);border:1px solid rgba(46,160,67,.3)}
+    .btn-primary:hover{background:rgba(46,160,67,.18);box-shadow:0 0 18px rgba(46,160,67,.2)}
+    .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(48,54,61,.4)}
+    .btn-ghost:hover{border-color:rgba(139,148,158,.3);color:#c9d1d9}
+
+    main{max-width:900px;margin:0 auto;padding:0 28px 48px}
+    .section{margin-bottom:28px}
+    .section-title{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green);margin-bottom:14px}
+    .section-title::before{content:"// ";color:#30363d}
+
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:22px 24px}
+
+    .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+    .feature{padding:20px;border:1px solid var(--border);border-radius:5px;background:rgba(22,27,34,.4)}
+    .feature-icon{font-size:20px;margin-bottom:10px}
+    .feature h3{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;margin-bottom:6px}
+    .feature p{font-size:13px;line-height:1.5;color:var(--muted)}
+    .fc-green h3{color:var(--green)}.fc-blue h3{color:var(--blue)}.fc-amber h3{color:var(--amber)}
+
+    .grid-sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:14px}
+    .check-item{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+    .check-item::before{content:"✓";color:var(--green);font-weight:700}
+    pre{background:rgba(0,0,0,.35);padding:16px 20px;border-radius:4px;overflow-x:auto;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);border:1px solid rgba(48,54,61,.3)}
+    footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;font-size:10px;color:#30363d}
   </style>
 </head>
 <body>
-  <div style="position:fixed;top:0;left:0;width:100%;height:2px;z-index:100" class="shimmer"></div>
-
-  <!-- Hero -->
-  <header class="text-center pt-24 pb-12 px-6">
-    <h1 class="mono" style="font-size:28px;font-weight:700;letter-spacing:3px;color:#00e639;text-shadow:0 0 10px rgba(0,230,57,.4);">Passport Agent</h1>
-    <p class="mono dim mt-4" style="font-size:14px;">Execution infrastructure for AI agents.<br/>Cryptographic identity. Policy enforcement. Deterministic replay. Immutable audit.</p>
-    <div class="flex gap-4 justify-center mt-8">
-      <a href="/operator.html" class="btn btn-primary">Operator Console</a>
-      <a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" class="btn" style="background:transparent;color:#888;border-color:rgba(255,255,255,.1);">GitHub</a>
+  <header>
+    <h1>Passport Agent</h1>
+    <div class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/operator.html">Console</a>
+      <a href="/agents.html">Agents</a>
+      <a href="/admin-portal.html">Admin</a>
     </div>
   </header>
 
-  <!-- What it does -->
-  <main class="max-w-4xl mx-auto px-6 pb-24 space-y-8">
-    <div class="glass p-8">
-      <h2 class="section-title">What It Does</h2>
-      <p class="dim text-sm">Every AI agent tool call goes through an 11-step enforcement engine <strong>before execution</strong>. The system cryptographically proves which agent made the call, checks it against defined policies, and either allows, denies, or modifies the action — all logged immutably.</p>
+  <div class="hero">
+    <h2>Passport Agent</h2>
+    <p>Execution infrastructure for AI agents. Cryptographic identity. Policy enforcement. Deterministic replay. Immutable audit.</p>
+    <div class="btns">
+      <a href="/operator.html" class="btn btn-primary">Open Operator Console</a>
+      <a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" class="btn btn-ghost">GitHub</a>
     </div>
+  </div>
 
-    <!-- Three columns -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="glass p-6">
-        <h3 class="mono text-sm font-bold mb-3" style="color:#00e639;">Identity</h3>
-        <p class="dim text-xs">Every agent gets a cryptographic keypair and passport. Every action is HMAC-signed. Unsigned or forged actions are rejected before execution.</p>
-      </div>
-      <div class="glass p-6">
-        <h3 class="mono text-sm font-bold mb-3" style="color:#00c8fe;">Enforcement</h3>
-        <p class="dim text-xs">Defined policies block tools, domains, and data patterns. 11-step deterministic evaluator catches SSRF, PII leaks, blocked tools — before execution.</p>
-      </div>
-      <div class="glass p-6">
-        <h3 class="mono text-sm font-bold mb-3" style="color:#f7be00;">Audit</h3>
-        <p class="dim text-xs">Every tool call, state transition, and policy decision is logged with timestamps. Replay any run. Prove exactly what happened. SOC 2 ready.</p>
+  <main>
+    <div class="section">
+      <div class="section-title">What It Does</div>
+      <div class="card">
+        <p style="font-size:14px;line-height:1.6;color:var(--muted);">Every AI agent tool call goes through an <strong style="color:#c9d1d9;">11-step enforcement engine</strong> before execution. The system cryptographically proves which agent made the call, checks it against defined policies, and either allows, denies, or modifies the action — all logged immutably. Worker crash recovery, idempotent execution, retry with backoff, and deterministic replay come built-in.</p>
       </div>
     </div>
 
-    <!-- Operational features -->
-    <div class="glass p-8">
-      <h2 class="section-title">Operational Features</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Crash recovery</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Idempotent execution</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Retry with backoff</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Replay execution</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Stale task detection</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Replay protection</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Org isolation</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Consistency repair</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">System diagnostics</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Live metrics</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Operator console</span></div>
-        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Docker support</span></div>
+    <div class="features">
+      <div class="feature fc-green">
+        <div class="feature-icon">&#x1F512;</div>
+        <h3>Identity</h3>
+        <p>Every agent gets a cryptographic keypair and passport. Actions are HMAC-signed. Forged actions rejected.</p>
+      </div>
+      <div class="feature fc-blue">
+        <div class="feature-icon">&#x26D4;</div>
+        <h3>Enforcement</h3>
+        <p>Defined policies block tools, domains, and data patterns. 11-step evaluator catches SSRF, PII leaks, blocked tools.</p>
+      </div>
+      <div class="feature fc-amber">
+        <div class="feature-icon">&#x1F4CB;</div>
+        <h3>Audit</h3>
+        <p>Every tool call, state transition, and policy decision logged with timestamps. Replay any run. Prove exactly what happened.</p>
       </div>
     </div>
 
-    <!-- Quickstart -->
-    <div class="glass p-8">
-      <h2 class="section-title">Quickstart</h2>
-      <pre class="mono text-xs dim" style="background:rgba(0,0,0,.3);padding:16px;overflow-x:auto;">bash start.sh          # One-command local startup
+    <div class="section" style="margin-top:28px">
+      <div class="section-title">Operational Features</div>
+      <div class="card">
+        <div class="grid-sm">
+          <span class="check-item">Crash recovery</span>
+          <span class="check-item">Idempotent execution</span>
+          <span class="check-item">Retry with backoff</span>
+          <span class="check-item">Replay execution</span>
+          <span class="check-item">Stale task detection</span>
+          <span class="check-item">Replay protection</span>
+          <span class="check-item">Org isolation</span>
+          <span class="check-item">Consistency repair</span>
+          <span class="check-item">System diagnostics</span>
+          <span class="check-item">Live metrics</span>
+          <span class="check-item">Operator console</span>
+          <span class="check-item">Docker support</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:28px">
+      <div class="section-title">Quickstart</div>
+      <pre>bash start.sh          # One-command local startup
 open operator.html     # Operator console
-open localhost:3000    # API server (18 endpoints)</pre>
+open http://localhost:3000  # Live API dashboard</pre>
     </div>
-
-    <!-- Pages -->
-    <div class="glass p-8">
-      <h2 class="section-title">Console Pages</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-        <a href="/operator.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#00e639;">Operator<br/>Console</a>
-        <a href="/agents.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#00c8fe;">Agent<br/>Manager</a>
-        <a href="/admin-portal.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#f7be00;">Admin<br/>Portal</a>
-        <a href="/dev-dashboard.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#888;">Dev<br/>Dashboard</a>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="text-center dim mono text-xs pt-8">
-      Passport Agent v2.0 · Built on Firestore + Fastify + JetBrains Mono · No frameworks, no abstractions, no hype
-    </footer>
   </main>
+  <footer>Passport Agent v2.0 · 2 runtime deps · 18 endpoints · Zero frameworks</footer>
 </body>
 </html>
