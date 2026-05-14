@@ -1,4 +1,6 @@
 import Fastify from 'fastify'
+import { readFileSync, existsSync } from 'fs'
+import { resolve } from 'path'
 import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
@@ -96,6 +98,39 @@ async function fetchDoc(collection: string, id: string) {
 }
 
 // ==================== ENDPOINTS ====================
+
+// GET / — root (API index + redirect to landing)
+app.get('/', async (_request, reply) => {
+  reply.header('Content-Type', 'text/html')
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Passport Agent</title>
+<style>body{font-family:system-ui;background:#0e0e0e;color:#e5e2e1;padding:40px;max-width:600px;margin:0 auto}
+h1{color:#00e639}a{color:#00c8fe}code{background:rgba(255,255,255,.06);padding:2px 6px;border-radius:3px}
+.endpoint{margin:8px 0;font-size:14px}.method{display:inline-block;width:48px;font-weight:700}
+.get{color:#00e639}.post{color:#f7be00}.patch{color:#00c8fe}
+</style></head><body>
+<h1>Passport Agent — API Server</h1>
+<p>Running on <code>http://localhost:3000</code></p>
+<p><strong>Console pages:</strong> <a href="/landing.html">Landing</a> · <a href="/operator.html">Operator</a> · <a href="/dev-dashboard.html">Dev Dashboard</a> · <a href="/agents.html">Agents</a></p>
+<h3>Endpoints</h3>
+<div class="endpoint"><span class="method post">POST</span> /auth/login</div>
+<div class="endpoint"><span class="method post">POST</span> /task</div>
+<div class="endpoint"><span class="method get">GET</span> /task/:id</div>
+<div class="endpoint"><span class="method post">POST</span> /agent/run</div>
+<div class="endpoint"><span class="method post">POST</span> /run/:id/log</div>
+<div class="endpoint"><span class="method patch">PATCH</span> /run/:id/complete</div>
+<div class="endpoint"><span class="method patch">PATCH</span> /run/:id/fail</div>
+<div class="endpoint"><span class="method post">POST</span> /agents/register</div>
+<div class="endpoint"><span class="method get">GET</span> /agents</div>
+<div class="endpoint"><span class="method post">POST</span> /policies</div>
+<div class="endpoint"><span class="method get">GET</span> /policies</div>
+<div class="endpoint"><span class="method post">POST</span> /enforce</div>
+<div class="endpoint"><span class="method post">POST</span> /gateway/execute</div>
+<div class="endpoint"><span class="method get">GET</span> /audit</div>
+<div class="endpoint"><span class="method get">GET</span> /metrics</div>
+<div class="endpoint"><span class="method get">GET</span> /diagnostics</div>
+</body></html>`
+})
 
 // POST /auth/login
 app.post('/auth/login', async (request, reply) => {
@@ -297,6 +332,23 @@ hardenAuth(app, db)
 auditTimeline(app, db)
 runTrace(app, db)
 metrics(app, db)
+
+// Serve static HTML files (catch-all for unmatched GETs)
+app.get('/*', async (request, reply) => {
+  const url = (request.url || '/').split('?')[0]
+  const staticFiles = ['index.html', 'landing.html', 'operator.html', 'admin-portal.html',
+    'agents.html', 'dev-dashboard.html', 'verify-demo.html', 'sdk-demo.html']
+  if (staticFiles.includes(url.substring(1))) {
+    try {
+      const path = resolve(process.cwd(), url.substring(1))
+      if (existsSync(path)) {
+        reply.header('Content-Type', 'text/html')
+        return readFileSync(path, 'utf-8')
+      }
+    } catch {}
+  }
+  reply.code(404).send({ error: { code: 'not_found', message: `Route ${request.method}:${url} not found` } })
+})
 
 // Start
 const PORT = parseInt(process.env.PORT || '3000', 10)
