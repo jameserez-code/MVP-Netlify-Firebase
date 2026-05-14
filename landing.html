@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passport Agent — AI Agent Execution Infrastructure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>tailwind.config={darkMode:"class",theme:{extend:{colors:{"surface-dim":"#131313",background:"#0e0e0e","on-surface":"#e5e2e1","on-surface-variant":"#b9ccb2",neon:"#00e639",error:"#ffb4ab",amber:"#f7be00",cyan:"#00c8fe"},fontFamily:{mono:["JetBrains Mono","monospace"],sans:["Geist","sans-serif"]}}}}</script>
+  <style>
+    body{font-family:"Geist",sans-serif;background:#0e0e0e;color:#e5e2e1;min-height:100vh}
+    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(0,230,57,.01) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+    .glass{background:rgba(18,18,18,.85);backdrop-filter:blur(16px);border:1px solid rgba(59,75,55,.3);border-radius:.25rem}
+    .mono{font-family:"JetBrains Mono",monospace !important}
+    .btn{padding:12px 24px;border-radius:.25rem;font-weight:600;font-size:13px;cursor:pointer;border:1px solid;transition:all .15s;text-transform:uppercase;letter-spacing:1px;font-family:"JetBrains Mono",monospace}
+    .btn-primary{background:rgba(0,230,57,.12);color:#00e639;border-color:rgba(0,230,57,.25)}
+    .btn-primary:hover{background:rgba(0,230,57,.2);box-shadow:0 0 20px rgba(0,230,57,.25)}
+    .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#00e639;margin-bottom:12px;font-family:"JetBrains Mono",monospace}
+    .section-title::before{content:"// ";color:#555}
+    .shimmer{background:linear-gradient(90deg,transparent,#00e639,transparent);background-size:200% 100%;animation:shimmer 3s infinite linear}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    .dim{color:rgba(185,204,178,.5)}
+  </style>
+</head>
+<body>
+  <div style="position:fixed;top:0;left:0;width:100%;height:2px;z-index:100" class="shimmer"></div>
+
+  <!-- Hero -->
+  <header class="text-center pt-24 pb-12 px-6">
+    <h1 class="mono" style="font-size:28px;font-weight:700;letter-spacing:3px;color:#00e639;text-shadow:0 0 10px rgba(0,230,57,.4);">Passport Agent</h1>
+    <p class="mono dim mt-4" style="font-size:14px;">Execution infrastructure for AI agents.<br/>Cryptographic identity. Policy enforcement. Deterministic replay. Immutable audit.</p>
+    <div class="flex gap-4 justify-center mt-8">
+      <a href="/operator.html" class="btn btn-primary">Operator Console</a>
+      <a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" class="btn" style="background:transparent;color:#888;border-color:rgba(255,255,255,.1);">GitHub</a>
+    </div>
+  </header>
+
+  <!-- What it does -->
+  <main class="max-w-4xl mx-auto px-6 pb-24 space-y-8">
+    <div class="glass p-8">
+      <h2 class="section-title">What It Does</h2>
+      <p class="dim text-sm">Every AI agent tool call goes through an 11-step enforcement engine <strong>before execution</strong>. The system cryptographically proves which agent made the call, checks it against defined policies, and either allows, denies, or modifies the action — all logged immutably.</p>
+    </div>
+
+    <!-- Three columns -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="glass p-6">
+        <h3 class="mono text-sm font-bold mb-3" style="color:#00e639;">Identity</h3>
+        <p class="dim text-xs">Every agent gets a cryptographic keypair and passport. Every action is HMAC-signed. Unsigned or forged actions are rejected before execution.</p>
+      </div>
+      <div class="glass p-6">
+        <h3 class="mono text-sm font-bold mb-3" style="color:#00c8fe;">Enforcement</h3>
+        <p class="dim text-xs">Defined policies block tools, domains, and data patterns. 11-step deterministic evaluator catches SSRF, PII leaks, blocked tools — before execution.</p>
+      </div>
+      <div class="glass p-6">
+        <h3 class="mono text-sm font-bold mb-3" style="color:#f7be00;">Audit</h3>
+        <p class="dim text-xs">Every tool call, state transition, and policy decision is logged with timestamps. Replay any run. Prove exactly what happened. SOC 2 ready.</p>
+      </div>
+    </div>
+
+    <!-- Operational features -->
+    <div class="glass p-8">
+      <h2 class="section-title">Operational Features</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Crash recovery</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Idempotent execution</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Retry with backoff</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Replay execution</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Stale task detection</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Replay protection</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Org isolation</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Consistency repair</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">System diagnostics</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Live metrics</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Operator console</span></div>
+        <div><span style="color:#00e639;">✓</span> <span class="dim text-xs">Docker support</span></div>
+      </div>
+    </div>
+
+    <!-- Quickstart -->
+    <div class="glass p-8">
+      <h2 class="section-title">Quickstart</h2>
+      <pre class="mono text-xs dim" style="background:rgba(0,0,0,.3);padding:16px;overflow-x:auto;">bash start.sh          # One-command local startup
+open operator.html     # Operator console
+open localhost:3000    # API server (18 endpoints)</pre>
+    </div>
+
+    <!-- Pages -->
+    <div class="glass p-8">
+      <h2 class="section-title">Console Pages</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+        <a href="/operator.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#00e639;">Operator<br/>Console</a>
+        <a href="/agents.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#00c8fe;">Agent<br/>Manager</a>
+        <a href="/admin-portal.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#f7be00;">Admin<br/>Portal</a>
+        <a href="/dev-dashboard.html" class="glass p-4 text-center hover:border-green-600 transition-colors mono text-xs" style="color:#888;">Dev<br/>Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center dim mono text-xs pt-8">
+      Passport Agent v2.0 · Built on Firestore + Fastify + JetBrains Mono · No frameworks, no abstractions, no hype
+    </footer>
+  </main>
+</body>
+</html>
