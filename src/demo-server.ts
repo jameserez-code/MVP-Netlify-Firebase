@@ -2,6 +2,8 @@
 // Start with: npm run demo
 
 import Fastify from 'fastify'
+import { readFileSync, existsSync } from 'fs'
+import { resolve } from 'path'
 import { getDemoDb, seedDemo } from './lib/demo-store.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
@@ -105,12 +107,30 @@ app.get('/', async (_req: any, reply: any) => {
   return renderDashboard()
 })
 
+// Serve static HTML files
+app.get('/*', async (request: any, reply: any) => {
+  const url = (request.url || '/').split('?')[0]
+  const staticFiles = ['index.html', 'landing.html', 'operator.html', 'admin-portal.html',
+    'agents.html', 'dev-dashboard.html', 'verify-demo.html', 'sdk-demo.html']
+  if (staticFiles.includes(url.substring(1))) {
+    try {
+      const path = resolve(process.cwd(), url.substring(1))
+      if (existsSync(path)) {
+        reply.header('Content-Type', 'text/html')
+        return readFileSync(path, 'utf-8')
+      }
+    } catch {}
+  }
+  reply.code(404).send({ error: { code: 'not_found', message: 'Route not found' } })
+})
+
 // Start
 const PORT = parseInt(process.env.PORT || '3000', 10)
 app.listen({ port: PORT }, (e: any) => {
   if (e) { console.error('Start failed:', e.message); process.exit(1) }
   console.log(`\n  ⚡ Demo mode — no Firebase required`)
-  console.log(`  → http://localhost:${PORT}\n`)
+  console.log(`  → http://localhost:${PORT}`)
+  console.log(`  → Terminal TUI:  npm run tui  (in another terminal)\n`)
 })
 
 // ---------------------------------------------------------------------------
