@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Passport Agent — One-Liner Installer
+# Passport Agent — One-Liner Installer + Auto-Launch TUI
 # curl -fsSL https://raw.githubusercontent.com/jameserez-code/MVP-Netlify-Firebase/main/install.sh | bash
 set -e
 
@@ -63,14 +63,32 @@ if [ "$MODE" = "2" ]; then
   fi
 fi
 
-# Start
+# Start server in background
 echo ""
 echo -e "${G}${BOLD}╔══════════════════════════════════════╗${N}"
 echo -e "${G}${BOLD}║  STARTING PASSPORT AGENT             ║${N}"
 echo -e "${G}${BOLD}╚══════════════════════════════════════╝${N}"
 echo ""
-echo -e "  ${G}→${N} http://localhost:3000"
+echo -e "  ${G}→${N} API:   http://localhost:3000"
+echo -e "  ${G}→${N} TUI:   auto-launching in terminal"
 echo -e "  ${C}→${N} Press Ctrl+C to stop"
 echo ""
 
-npx tsx src/demo-server.ts
+# Start server in background
+npx tsx src/demo-server.ts &
+SERVER_PID=$!
+
+# Wait for server to be ready
+echo -e "  ${Y}…${N} waiting for server..."
+for i in $(seq 1 20); do
+  curl -s http://localhost:3000/metrics > /dev/null 2>&1 && break
+  sleep 0.5
+done
+
+# Launch TUI
+npx tsx src/tui.ts
+
+# Cleanup on TUI exit
+kill $SERVER_PID 2>/dev/null
+echo ""
+echo -e "${G}Passport Agent stopped.${N}"
