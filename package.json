@@ -14,6 +14,7 @@
     "tasks:seed": "tsx src/tasks.ts",
     "schema:seed": "tsx src/seed.ts",
     "dev": "tsx src/server.ts",
+    "demo": "tsx src/demo-server.ts",
     "worker": "tsx src/worker.ts",
     "setup": "tsx src/bootstrap.ts"
   },
