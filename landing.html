@@ -11,6 +11,11 @@
     body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
     :root{--green:#2ea043;--blue:#58a6ff;--amber:#d2991d;--muted:#8b949e;--border:rgba(48,54,61,.5);--bg-card:rgba(22,27,34,.7)}
     .mono{font-family:"JetBrains Mono",monospace}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
     header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
     header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--green);text-shadow:0 0 10px rgba(46,160,67,.3)}
@@ -19,14 +24,15 @@
     header .nav a:hover,.nav a.active{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
 
     .hero{padding:80px 28px 48px;text-align:center;max-width:700px;margin:0 auto}
-    .hero h2{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:var(--green);text-shadow:0 0 15px rgba(46,160,67,.3);margin-bottom:14px}
-    .hero p{color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:28px}
+    .hero h2{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700;letter-spacing:3px;color:var(--green);text-shadow:0 0 15px rgba(46,160,67,.3);margin-bottom:14px;animation:slideDown .6s ease}
+    .hero p{color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:28px;animation:fadeIn .8s ease .2s both}
+    .hero .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;animation:fadeIn .8s ease .4s both}
     .hero .btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
     .btn{font-family:"JetBrains Mono",monospace;font-size:11px;padding:10px 22px;border-radius:4px;cursor:pointer;text-decoration:none;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;transition:all .15s;display:inline-block}
     .btn-primary{background:rgba(46,160,67,.1);color:var(--green);border:1px solid rgba(46,160,67,.3)}
-    .btn-primary:hover{background:rgba(46,160,67,.18);box-shadow:0 0 18px rgba(46,160,67,.2)}
+    .btn-primary:hover{background:rgba(46,160,67,.18);box-shadow:0 0 18px rgba(46,160,67,.2);transform:translateY(-1px)}
     .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(48,54,61,.4)}
-    .btn-ghost:hover{border-color:rgba(139,148,158,.3);color:#c9d1d9}
+    .btn-ghost:hover{border-color:rgba(139,148,158,.3);color:#c9d1d9;transform:translateY(-1px)}
 
     main{max-width:900px;margin:0 auto;padding:0 28px 48px}
     .section{margin-bottom:28px}
@@ -36,7 +42,9 @@
     .card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;padding:22px 24px}
 
     .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-    .feature{padding:20px;border:1px solid var(--border);border-radius:5px;background:rgba(22,27,34,.4)}
+    .feature{padding:20px;border:1px solid var(--border);border-radius:5px;background:rgba(22,27,34,.4);animation:slideUp .5s ease both;transition:all .2s ease}
+    .feature:hover{transform:translateY(-2px);border-color:rgba(46,160,67,.2);box-shadow:0 6px 16px rgba(0,0,0,.2)}
+    .feature:nth-child(1){animation-delay:.15s}.feature:nth-child(2){animation-delay:.25s}.feature:nth-child(3){animation-delay:.35s}
     .feature-icon{font-size:20px;margin-bottom:10px}
     .feature h3{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;margin-bottom:6px}
     .feature p{font-size:13px;line-height:1.5;color:var(--muted)}
@@ -50,6 +58,7 @@
   </style>
 </head>
 <body>
+  <div style="position:fixed;top:0;left:0;width:100%;height:2px;z-index:200;background:linear-gradient(90deg,transparent,#2ea043,transparent);background-size:200% 100%;animation:shimmer 3s infinite linear"></div>
   <header>
     <h1>Passport Agent</h1>
     <div class="nav">

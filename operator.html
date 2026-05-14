@@ -19,35 +19,44 @@
     header .nav a{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);text-decoration:none;padding:4px 10px;border:1px solid transparent;border-radius:3px;transition:all .15s}
     header .nav a:hover,.nav a.active{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
     header .nav a.active{border-color:rgba(46,160,67,.35)}
-    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,160,67,.4)}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,160,67,.4);animation:pulse 2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes slideRight{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
     /* Grid */
     main{max-width:1200px;margin:0 auto;padding:28px}
     .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:22px}
-    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:16px 18px;transition:border-color .15s}
-    .stat-card:hover{border-color:rgba(46,160,67,.2)}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:16px 18px;transition:all .2s ease;animation:slideUp .35s ease both}
+    .stat-card:hover{transform:translateY(-2px);border-color:rgba(46,160,67,.2);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+    .stat-card:nth-child(1){animation-delay:.04s}.stat-card:nth-child(2){animation-delay:.08s}.stat-card:nth-child(3){animation-delay:.12s}.stat-card:nth-child(4){animation-delay:.16s}.stat-card:nth-child(5){animation-delay:.2s}.stat-card:nth-child(6){animation-delay:.24s}
     .stat-label{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:6px}
     .stat-value{font-family:"JetBrains Mono",monospace;font-size:26px;font-weight:700}
     .sg{color:var(--green)}.sa{color:var(--amber)}.sr{color:var(--red)}.sb{color:var(--blue)}.sw{color:#c9d1d9}
 
     /* Sections */
-    .section{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:16px;overflow:hidden}
+    .section{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:16px;overflow:hidden;animation:fadeIn .5s ease both}
+    .section:nth-child(2){animation-delay:.1s}.section:nth-child(3){animation-delay:.2s}.section:nth-child(4){animation-delay:.3s}.section:nth-child(5){animation-delay:.35s}
     .section-header{padding:14px 20px;border-bottom:1px solid rgba(48,54,61,.3);display:flex;justify-content:space-between;align-items:center;background:rgba(13,17,23,.4)}
     .section-title{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--green)}
     .section-title::before{content:"// ";color:#30363d}
     .section-body{padding:14px 20px}
 
     /* Buttons */
-    .btn{font-family:"JetBrains Mono",monospace;font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);text-transform:uppercase;letter-spacing:1px;transition:all .15s}
-    .btn:hover{border-color:rgba(139,148,158,.4);color:#c9d1d9}
+    .btn{font-family:"JetBrains Mono",monospace;font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);text-transform:uppercase;letter-spacing:1px;transition:all .2s ease}
+    .btn:hover{transform:translateY(-1px)}
     .btn-active{color:var(--green);border-color:rgba(46,160,67,.25);background:rgba(46,160,67,.06)}
-    .btn-active:hover{border-color:rgba(46,160,67,.4);box-shadow:0 0 8px rgba(46,160,67,.1)}
+    .btn-active:hover{border-color:rgba(46,160,67,.4);box-shadow:0 0 10px rgba(46,160,67,.15);background:rgba(46,160,67,.1)}
     .btn-danger{color:var(--red);border-color:rgba(248,81,73,.15);background:rgba(248,81,73,.04)}
     .btn-danger:hover{border-color:rgba(248,81,73,.3)}
 
     /* Task rows */
-    .task-row{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid rgba(48,54,61,.12);font-size:12px;font-family:"JetBrains Mono",monospace}
+    .task-row{display:flex;align-items:center;gap:14px;padding:8px 0;border-bottom:1px solid rgba(48,54,61,.12);font-size:12px;font-family:"JetBrains Mono",monospace;animation:slideRight .3s ease both;transition:background .15s}
+    .task-row:hover{background:rgba(46,160,67,.03)}
     .task-row:last-child{border-bottom:none}
+    .task-row:nth-child(1){animation-delay:.05s}.task-row:nth-child(2){animation-delay:.1s}.task-row:nth-child(3){animation-delay:.15s}.task-row:nth-child(4){animation-delay:.2s}.task-row:nth-child(5){animation-delay:.25s}.task-row:nth-child(6){animation-delay:.3s}
     .badge{display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;font-family:"JetBrains Mono",monospace;border:1px solid;border-radius:2px;letter-spacing:1px;text-transform:uppercase}
     .badge-green{color:var(--green);border-color:rgba(46,160,67,.2);background:rgba(46,160,67,.04)}
     .badge-amber{color:var(--amber);border-color:rgba(210,153,29,.2);background:rgba(210,153,29,.04)}
@@ -56,7 +65,8 @@
     .dim{color:var(--muted);font-size:11px}
 
     /* Timeline */
-    .tl-row{display:flex;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.1);font-size:12px;font-family:"JetBrains Mono",monospace}
+    .tl-row{display:flex;align-items:center;gap:12px;padding:5px 0;border-bottom:1px solid rgba(48,54,61,.1);font-size:12px;font-family:"JetBrains Mono",monospace;transition:background .15s}
+    .tl-row:hover{background:rgba(46,160,67,.02)}
     .tl-row:last-child{border-bottom:none}
     .tl-time{min-width:52px;color:#484f58;font-size:10px}
 
@@ -70,6 +80,7 @@
   </style>
 </head>
 <body>
+  <div style="position:fixed;top:0;left:0;width:100%;height:2px;z-index:200;background:linear-gradient(90deg,transparent,#2ea043,transparent);background-size:200% 100%;animation:shimmer 3s infinite linear"></div>
   <header>
     <h1>Operator Console</h1>
     <div class="nav">

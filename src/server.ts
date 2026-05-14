@@ -113,22 +113,27 @@ body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bott
 header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 32px;display:flex;justify-content:space-between;align-items:center}
 h1{font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#2ea043;text-shadow:0 0 12px rgba(46,160,67,.3)}
 .status{display:flex;align-items:center;gap:8px;font-family:"JetBrains Mono",monospace;font-size:11px;color:#8b949e}
-.status-dot{width:8px;height:8px;border-radius:50%;background:#2ea043;box-shadow:0 0 6px rgba(46,160,67,.5)}
-main{max-width:1100px;margin:0 auto;padding:32px 28px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
-.card{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:18px 20px;transition:border-color .2s}
-.card:hover{border-color:rgba(46,160,67,.25)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#2ea043;box-shadow:0 0 6px rgba(46,160,67,.5);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes countIn{from{opacity:0}to{opacity:1}}
+@keyframes borderPulse{0%,100%{border-color:rgba(46,160,67,.15)}50%{border-color:rgba(46,160,67,.35)}}
+.card{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:18px 20px;transition:all .2s ease;animation:slideUp .4s ease both}
+.card:hover{border-color:rgba(46,160,67,.25);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.card:nth-child(1){animation-delay:.05s}.card:nth-child(2){animation-delay:.1s}.card:nth-child(3){animation-delay:.15s}.card:nth-child(4){animation-delay:.2s}.card:nth-child(5){animation-delay:.25s}.card:nth-child(6){animation-delay:.3s}
 .card-label{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8b949e;margin-bottom:8px}
-.card-value{font-family:"JetBrains Mono",monospace;font-size:28px;font-weight:700}
-.val-green{color:#2ea043}.val-amber{color:#d2991d}.val-red{color:#f85149}.val-cyan{color:#58a6ff}.val-white{color:#c9d1d9}
-.section{margin-bottom:28px}
-.section-title{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#2ea043;margin-bottom:14px}
-.section-title::before{content:"// ";color:#444}
-.link-row{display:flex;flex-wrap:wrap;gap:10px}
-.link-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(46,160,67,.06);border:1px solid rgba(46,160,67,.15);border-radius:4px;font-family:"JetBrains Mono",monospace;font-size:11px;color:#2ea043;text-decoration:none;transition:all .15s}
-.link-btn:hover{background:rgba(46,160,67,.12);border-color:rgba(46,160,67,.35);box-shadow:0 0 12px rgba(46,160,67,.1)}
+.card-value{font-family:"JetBrains Mono",monospace;font-size:28px;font-weight:700;animation:countIn .6s ease}
+.link-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(46,160,67,.06);border:1px solid rgba(46,160,67,.15);border-radius:4px;font-family:"JetBrains Mono",monospace;font-size:11px;color:#2ea043;text-decoration:none;transition:all .2s ease}
+.link-btn:hover{background:rgba(46,160,67,.12);border-color:rgba(46,160,67,.35);box-shadow:0 0 12px rgba(46,160,67,.1);transform:translateY(-1px)}
 .link-btn-secondary{border-color:rgba(48,54,61,.4);color:#8b949e}
 .link-btn-secondary:hover{border-color:rgba(139,148,158,.3);color:#c9d1d9}
+.shimmer-bar{position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,#2ea043,transparent);background-size:200% 100%;animation:shimmer 3s infinite linear;z-index:200}
+.endpoint-table td{transition:background .15s}
+.endpoint-table tr:hover td{background:rgba(46,160,67,.03)}
+.method-tag{transition:transform .15s}
+tr:hover .method-tag{transform:scale(1.1)}
 .endpoint-table{width:100%;border-collapse:collapse;font-family:"JetBrains Mono",monospace;font-size:12px}
 .endpoint-table th{text-align:left;padding:8px 14px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8b949e;border-bottom:1px solid rgba(48,54,61,.3);font-weight:600}
 .endpoint-table td{padding:7px 14px;border-bottom:1px solid rgba(48,54,61,.15);color:#c9d1d9}
@@ -139,6 +144,7 @@ main{max-width:1100px;margin:0 auto;padding:32px 28px}
 .refresh{font-family:"JetBrains Mono",monospace;font-size:10px;color:#484f58}
 footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;font-size:10px;color:#30363d}
 </style></head><body>
+<div class="shimmer-bar"></div>
 <header>
 <h1>Passport Agent</h1>
 <div class="status"><span class="status-dot" id="dot"></span><span id="statusText">initializing</span></div>
@@ -183,13 +189,18 @@ footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;fon
 </main>
 <footer>Passport Agent v2.0 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
 <script>
-async function refresh(){try{var r=await fetch("/metrics"),d=await r.json();if(!d.error){document.getElementById("stats").innerHTML=
-'<div class=card><div class=card-label>Total Tasks</div><div class="card-value val-green" id=tTotal>'+((d.tasks||{}).total||0)+'</div></div>'+
-'<div class=card><div class=card-label>Pending</div><div class="card-value val-amber">'+((d.tasks||{}).pending||0)+'</div></div>'+
-'<div class=card><div class=card-label>Active</div><div class="card-value val-cyan">'+((d.tasks||{}).active||0)+'</div></div>'+
-'<div class=card><div class=card-label>Failed</div><div class="card-value val-red">'+((d.tasks||{}).failed||0)+'</div></div>'+
-'<div class=card><div class=card-label>Active Runs</div><div class="card-value val-white">'+((d.runs||{}).active||0)+'</div></div>'+
-'<div class=card><div class=card-label>Active Agents</div><div class="card-value val-white">'+((d.agents||{}).active||0)+'</div></div>';
+function countUp(el,target){if(!el)return;var cur=parseInt(el.textContent)||0;if(cur===target)return;var step=Math.ceil(Math.abs(target-cur)/20);if(step<1)step=1;var go=function(){cur+=step;if((step>0&&cur>=target)||(step<0&&cur<=target)){el.textContent=target;return}el.textContent=cur;requestAnimationFrame(go)};go()}
+async function refresh(){try{var r=await fetch("/metrics"),d=await r.json();if(!d.error){var t=d.tasks||{},ra=d.runs||{},ag=d.agents||{};
+document.getElementById("stats").innerHTML=
+'<div class=card><div class=card-label>Total Tasks</div><div class="card-value val-green" id=tTotal>0</div></div>'+
+'<div class=card><div class=card-label>Pending</div><div class="card-value val-amber" id=tPending>0</div></div>'+
+'<div class=card><div class=card-label>Active</div><div class="card-value val-cyan" id=tActive>0</div></div>'+
+'<div class=card><div class=card-label>Failed</div><div class="card-value val-red" id=tFailed>0</div></div>'+
+'<div class=card><div class=card-label>Active Runs</div><div class="card-value val-white" id=tRuns>0</div></div>'+
+'<div class=card><div class=card-label>Active Agents</div><div class="card-value val-white" id=tAgents>0</div></div>';
+countUp(document.getElementById("tTotal"),t.total||0);countUp(document.getElementById("tPending"),t.pending||0);
+countUp(document.getElementById("tActive"),t.active||0);countUp(document.getElementById("tFailed"),t.failed||0);
+countUp(document.getElementById("tRuns"),ra.active||0);countUp(document.getElementById("tAgents"),ag.active||0);
 document.getElementById("dot").style.background="#2ea043";document.getElementById("statusText").textContent="healthy"}}catch(e){document.getElementById("dot").style.background="#f85149";document.getElementById("statusText").textContent="offline"}}
 refresh();setInterval(refresh,10000)
 </script></body></html>`
