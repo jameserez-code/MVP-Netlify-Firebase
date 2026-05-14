@@ -6,6 +6,8 @@ import { transitionTask, transitionRun, failRunWithError } from './transitions.j
 import { generateId } from './lib/crypto.js'
 import { attachRequestId, auditTimeline, runTrace, metrics } from './observability.js'
 import { hardenAuth } from './security.js'
+import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
+import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
@@ -188,6 +190,54 @@ app.get('/sessions/:id', async (request, reply) => {
     const logs = runs.docs.length > 0 ? await db.collection('logs').where('runId', 'in', runs.docs.map(d => d.id)).get() : { docs: [] }
     return { session: { id, ...ssn.data() }, runs: runs.docs.map(d => ({ id: d.id, ...d.data() })), logs: logs.docs.map(d => ({ id: d.id, ...d.data() })) }
   } catch (e: any) { reply.code(503); return { error: { code: 'firestore' } } }
+})
+
+// GET /diagnostics — full system health
+app.get('/diagnostics', async (_req, reply) => {
+  try { return await systemDiagnostics(db) }
+  catch (e: any) { reply.code(500); return { error: { code: 'diagnostics_failed', message: e.message } } }
+})
+
+// GET /consistency — detect bad states
+app.get('/consistency', async (_req, reply) => {
+  try { return await checkConsistency(db) }
+  catch (e: any) { reply.code(500); return { error: { code: 'consistency_failed', message: e.message } } }
+})
+
+// POST /repair — safely repair common inconsistency
+app.post('/repair', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  const { action } = (request.body || {}) as { action?: string }
+  try {
+    if (action === 'orphaned') return await repairOrphanedRuns(db)
+    if (action === 'stuck') return await repairStuckTasks(db)
+    return { repaired: 0, message: 'Specify action: "orphaned" or "stuck"' }
+  } catch (e: any) { reply.code(500); return { error: { code: 'repair_failed', message: e.message } } }
+})
+
+// GET /report — operational summary
+app.get('/report', async (_req, reply) => {
+  try { return await generateReport(db) }
+  catch (e: any) { reply.code(500); return { error: { code: 'report_failed', message: e.message } } }
+})
+
+// POST /org/seed — create isolated demo org
+app.post('/org/seed', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  const { name, email } = (request.body || {}) as { name?: string; email?: string }
+  if (!name || !email) return err(reply, 400, 'validation', 'name and email are required')
+  try {
+    const result = await seedOrg(db, name, email)
+    reply.code(201); return result
+  } catch (e: any) { reply.code(500); return { error: { code: 'seed_failed', message: e.message } } }
+})
+
+// GET /org/metrics — org-scoped metrics
+app.get('/org/metrics', async (request, reply) => {
+  const { orgId } = (request.query || {}) as { orgId?: string }
+  if (!orgId) return err(reply, 400, 'validation', 'orgId query parameter required')
+  try { return await getOrgMetrics(db, orgId) }
+  catch (e: any) { reply.code(500); return { error: { code: 'metrics_failed', message: e.message } } }
 })
 
 // Register sub-routes, security, observability
