@@ -16,6 +16,7 @@
     "dev": "tsx src/server.ts",
     "demo": "tsx src/demo-server.ts",
     "tui": "tsx src/tui.ts",
+    "passport-tui": "tsx src/passport-tui.ts",
     "worker": "tsx src/worker.ts",
     "setup": "tsx src/bootstrap.ts"
   },
