@@ -1,8 +1,10 @@
-# Passport Agent — Agent Control Plane
+# Passport Agent — Trustworthy Autonomous Execution
 
-**AI agent identity + permission enforcement + execution infrastructure.**
+A deterministic execution runtime for autonomous systems.
 
-Cryptographic agent identity (passports) → policy-based action control (visas) → deterministic execution engine (worker) → immutable audit trail.
+**Cryptographic identity. Pre-execution enforcement. Explainable decisions. Deterministic replay. Immutable audit. Crash recovery.**
+
+AI agents generate tool calls. Passport Agent intercepts every call, verifies the agent's identity, evaluates the action against defined policies, and either allows, denies, or modifies it — all before execution.
 
 ## Architecture
 
