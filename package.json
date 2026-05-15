@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "AI Agent Identity + Permission Control System",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "node --test tests/**/*.test.js",
     "test:integration": "tsx tests/integration/enforce.test.ts",
@@ -15,20 +16,18 @@
     "schema:seed": "tsx src/seed.ts",
     "dev": "tsx src/server.ts",
     "demo": "tsx src/demo-server.ts",
+    "build": "tsc",
     "tui": "tsx src/tui.ts",
     "worker": "tsx src/worker.ts",
     "setup": "tsx src/bootstrap.ts"
   },
-  "dependencies": {
+"dependencies": {
     "fastify": "^5.8.5",
-    "firebase-admin": "^12.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "firebase-admin": "^12.0.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/node": "^25.7.0",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.3"
   }
 }
