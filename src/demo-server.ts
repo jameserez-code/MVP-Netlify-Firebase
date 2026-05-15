@@ -101,7 +101,61 @@ app.get('/security/ping', async (req: any) => {
   return { authenticated: !!claims, mode: 'demo' }
 })
 
-// GET / — dashboard
+// GET /health — system health model (HEALTHY / DEGRADED / STALLED)
+app.get('/health', async () => {
+  const snap = await db.collection('tasks').get()
+  const tasks = snap.docs.filter(d => d.exists).map(d => d.data() as any)
+  const stuck = tasks.filter(t => t.status === 'running').length
+  const failed = tasks.filter(t => t.status === 'failed').length
+  const pending = tasks.filter(t => t.status === 'pending').length
+  const status = stuck > 0 ? 'DEGRADED' : failed > 5 ? 'DEGRADED' : pending > 20 ? 'STALLED' : 'HEALTHY'
+  return { status, summary: status === 'HEALTHY' ? 'All queues clear' : `${stuck} stuck, ${failed} failed, ${pending} pending`, indicators: { stuckTasks: stuck, failedTasks: failed, pendingTasks: pending } }
+})
+
+// GET /explain/:id — execution explainability (WHY decisions happened)
+app.get('/explain/:id', async (req: any, reply: any) => {
+  const id = req.params.id
+  // Find logs for this intent/run/task
+  const snap = await db.collection('logs').get()
+  const relatedLogs = snap.docs
+    .filter(d => d.exists)
+    .map(d => ({ id: d.id, ...d.data() } as any))
+    .filter(l => l.intentId === id || l.runId === id || l.taskId === id)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+  if (relatedLogs.length === 0) {
+    return {
+      id,
+      explainable: false,
+      message: 'No execution logs found for this ID. Execute a task first to generate logs.',
+      help: 'POST /task → POST /agent/run → POST /run/:id/log → GET /explain/:id',
+    }
+  }
+
+  return {
+    id,
+    explainable: true,
+    executionPath: relatedLogs.map((l, i) => ({
+      step: i + 1,
+      timestamp: l.timestamp,
+      tool: l.tool,
+      decision: l.decision,
+      reason: l.reason || '(system transition)',
+      decisionPath: l.decision === 'allow'
+        ? '→ policy matched → constraints passed → domain allowed → permit'
+        : l.decision === 'deny'
+          ? `→ policy violated → ${l.reason || 'rule triggered'} → block`
+          : '→ policy matched → parameter modified → permit with changes',
+    })),
+    summary: {
+      totalSteps: relatedLogs.length,
+      allowed: relatedLogs.filter(l => l.decision === 'allow').length,
+      denied: relatedLogs.filter(l => l.decision === 'deny').length,
+      modified: relatedLogs.filter(l => l.decision === 'modify').length,
+      finalOutcome: relatedLogs[relatedLogs.length - 1]?.decision || 'unknown',
+    },
+  }
+})
 app.get('/', async (_req: any, reply: any) => {
   reply.header('Content-Type', 'text/html')
   return renderDashboard()
@@ -111,7 +165,8 @@ app.get('/', async (_req: any, reply: any) => {
 app.get('/*', async (request: any, reply: any) => {
   const url = (request.url || '/').split('?')[0]
   const staticFiles = ['index.html', 'landing.html', 'operator.html', 'admin-portal.html',
-    'agents.html', 'dev-dashboard.html', 'verify-demo.html', 'sdk-demo.html']
+    'agents.html', 'dev-dashboard.html', 'verify-demo.html', 'sdk-demo.html',
+    'tutorial.html', 'tui-tutorial.html']
   if (staticFiles.includes(url.substring(1))) {
     try {
       const path = resolve(process.cwd(), url.substring(1))
@@ -172,6 +227,8 @@ main{max-width:700px;margin:0 auto;padding:40px 20px}
 <div class="link-grid">
 <a class="link" href="/operator.html">Operator Console</a>
 <a class="link" href="/agents.html">Agent Manager</a>
+<a class="link" href="/tutorial.html">Web Tutorial</a>
+<a class="link" href="/tui-tutorial.html">TUI Guide</a>
 <a class="link" href="/landing.html">Landing Page</a>
 <a class="link" href="/admin-portal.html">Admin Portal</a>
 <a class="link" href="/dev-dashboard.html">Dev Dashboard</a>

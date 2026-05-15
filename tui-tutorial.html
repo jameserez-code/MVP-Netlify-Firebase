@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Passport Agent — TUI Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+    header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#2ea043}
+    header a{font-family:"JetBrains Mono",monospace;font-size:10px;color:#8b949e;text-decoration:none;padding:4px 10px;border:1px solid transparent;border-radius:3px}
+    header a:hover{color:#2ea043;border-color:rgba(46,160,67,.2)}
+    main{max-width:800px;margin:0 auto;padding:40px 20px}
+    h2{font-family:"JetBrains Mono",monospace;font-size:13px;color:#2ea043;margin:32px 0 12px;text-transform:uppercase;letter-spacing:2px}
+    h2::before{content:"// ";color:#30363d}
+    p,li{color:#8b949e;line-height:1.7;font-size:15px;margin-bottom:10px}
+    table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+    th{text-align:left;padding:8px 12px;font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8b949e;border-bottom:1px solid rgba(48,54,61,.3)}
+    td{padding:8px 12px;border-bottom:1px solid rgba(48,54,61,.15);font-family:"JetBrains Mono",monospace;font-size:12px}
+    kbd{font-family:"JetBrains Mono",monospace;font-size:11px;background:rgba(22,27,34,.8);border:1px solid rgba(48,54,61,.5);border-radius:3px;padding:2px 6px;color:#2ea043}
+    .layout{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:20px;margin:16px 0;font-family:"JetBrains Mono",monospace;font-size:11px;color:#8b949e;line-height:1.8;white-space:pre}
+    .note{background:rgba(210,153,29,.06);border:1px solid rgba(210,153,29,.2);border-radius:4px;padding:12px 16px;margin:16px 0;font-size:13px;color:#d2991d}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Passport Agent</h1>
+  <div>
+    <a href="/">Dashboard</a>
+    <a href="/landing.html">Landing</a>
+    <a href="/tutorial.html">Tutorial</a>
+    <a href="/tui-tutorial.html">TUI Guide</a>
+  </div>
+</header>
+<main>
+  <h2>Terminal UI Guide</h2>
+  <p>The TUI is a keyboard-native operational console. No browser required — full control from the terminal.</p>
+
+  <h2>Launch</h2>
+  <pre>npm run tui</pre>
+  <p>Requires the server running (start with <code>npm run demo</code> in another terminal). The install script auto-launches both.</p>
+
+  <h2>Screen Layout</h2>
+  <div class="layout">┌─────────────────────────────────────────────────┐
+│ PASSPORT AGENT  Operational Console    ● HEALTHY │
+├──────────────┬──────────────────────────────────┤
+│ Queue        │ Agents                           │
+│ Pending: 3   │ 2 registered                     │
+│ Failed:  1   │ ● agent_demo    active           │
+│              │ ● support_bot   active           │
+├──────────────┴──────────────────────────────────┤
+│ Live Events                                     │
+│ 14:23:01  task.created       allow              │
+│ 14:23:02  run.started        allow              │
+│ 14:23:03  lookup_order       allow              │
+│ 14:23:04  send_email         deny  tool_blocked │
+├─────────────────────────────────────────────────┤
+│ Detail: task                                    │
+│ status          pending                         │
+│ payload         {"description":"Demo 1"}        │
+│ createdAt       2026-05-14T14:23:01Z            │
+├─────────────────────────────────────────────────┤
+│ [↑↓j/k]nav [enter]inspect [:]cmd [s]seed [q]quit│
+└─────────────────────────────────────────────────┘</div>
+
+  <h2>Keyboard Shortcuts</h2>
+  <table>
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>j</kbd> / <kbd>↓</kbd></td><td>Move selection down</td></tr>
+    <tr><td><kbd>k</kbd> / <kbd>↑</kbd></td><td>Move selection up</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Inspect selected item — opens detail pane</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Dismiss detail pane</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Switch panel (Queue → Agents → Events)</td></tr>
+    <tr><td><kbd>d</kbd></td><td>Toggle detail on/off</td></tr>
+    <tr><td><kbd>r</kbd></td><td>Retry (run) selected task</td></tr>
+    <tr><td><kbd>s</kbd></td><td>Seed 3 demo tasks</td></tr>
+    <tr><td><kbd>:</kbd></td><td>Enter command mode</td></tr>
+    <tr><td><kbd>q</kbd></td><td>Quit (or Ctrl+C)</td></tr>
+  </table>
+
+  <h2>Command Palette</h2>
+  <p>Press <kbd>:</kbd> to enter command mode. Available commands:</p>
+  <table>
+    <tr><th>Command</th><th>Action</th></tr>
+    <tr><td><code>retry &lt;id&gt;</code></td><td>Rerun a specific task</td></tr>
+    <tr><td><code>fail &lt;id&gt;</code></td><td>Manually fail a run</td></tr>
+    <tr><td><code>seed</code></td><td>Create 3 demo tasks</td></tr>
+    <tr><td><code>diag</code></td><td>Refresh all data</td></tr>
+    <tr><td><code>agents</code></td><td>Switch to agents panel</td></tr>
+    <tr><td><code>queue</code></td><td>Switch to queue panel</td></tr>
+    <tr><td><code>events</code></td><td>Switch to events panel</td></tr>
+    <tr><td><code>help</code></td><td>Show command list</td></tr>
+  </table>
+
+  <h2>Demo Walkthrough</h2>
+  <p>A 3-minute keyboard-driven demo:</p>
+  <p><kbd>s</kbd> — seed 3 demo tasks</p>
+  <p><kbd>j j Enter</kbd> — select a task, inspect it</p>
+  <p><kbd>Esc r</kbd> — dismiss detail, retry (run) the task</p>
+  <p><kbd>Tab Tab Enter</kbd> — switch to events, inspect an event</p>
+  <p><kbd>:</kbd> <code>seed</code> <kbd>Enter</kbd> — create more tasks via command</p>
+
+  <div class="note"><strong>Health model:</strong> The status indicator in the header shows HEALTHY (green), DEGRADED (amber) if there are stuck/failed tasks, or STALLED (red) if the queue is backing up. Run <code>GET /health</code> for details.</div>
+</main>
+</body>
+</html>
