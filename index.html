@@ -403,12 +403,12 @@
           <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
           <h2 id="authTitle" class="section-title">Sign In</h2>
           <div id="authFields">
-            <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
+            <label for="authEmail" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
             <input id="authEmail" type="email" class="input mb-3" placeholder="you@example.com" required />
-            <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
+            <label for="authPassword" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
             <input id="authPassword" type="password" class="input mb-4" placeholder="••••••••" required />
             <button id="authSubmitBtn" class="btn btn-primary w-full mb-2">Sign In</button>
-            <p id="authError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
+            <p id="authError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;" aria-live="polite"></p>
           </div>
           <div class="text-xs text-center mt-4 pt-4" style="color:rgba(185,204,178,0.5);border-top:1px solid rgba(59,75,55,0.2);font-family:'JetBrains Mono',monospace;">
             <span id="authToggleText">Don't have an account?</span>
@@ -429,19 +429,19 @@
             <div id="passportForm">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Full Legal Name</label>
+                  <label for="fullNameInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Full Legal Name</label>
                   <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Nationality</label>
+                  <label for="nationalityInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Nationality</label>
                   <input id="nationalityInput" class="input" placeholder="e.g. United States" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Date of Birth</label>
+                  <label for="dobInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Date of Birth</label>
                   <input id="dobInput" type="date" class="input" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passport Number</label>
+                  <label for="passportNumInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passport Number</label>
                   <input id="passportNumInput" class="input" placeholder="PP-7A3F-2B1C (auto-generated)" />
                 </div>
               </div>
@@ -513,11 +513,11 @@
               <p>No passport found. Issue a passport credential first.</p>
             </div>
             <div id="visaForm" class="hidden">
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
+              <label for="passportSelect" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
               <select id="passportSelect" class="input mb-3"></select>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
-              <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
+              <label id="scopeChipsLabel" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
+              <div id="scopeChips" class="flex flex-wrap gap-2 mb-4" aria-labelledby="scopeChipsLabel"></div>
+              <label for="visaExpiry" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
               <select id="visaExpiry" class="input mb-4">
                 <option value="24h">24 hours</option>
                 <option value="7d" selected>7 days</option>
@@ -526,7 +526,7 @@
                 <option value="365d">1 year</option>
               </select>
               <button id="applyVisaBtn" class="btn btn-primary" disabled>Issue Visa Token</button>
-              <p id="visaResult" class="text-xs mt-3 hidden"></p>
+              <p id="visaResult" class="text-xs mt-3 hidden" aria-live="polite"></p>
               <div id="visaSpinner" class="hidden mt-2 text-xs" style="color:rgba(185,204,178,0.5);">
                 <svg class="spinner inline w-3.5 h-3.5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4z"/></svg>
                 Issuing visa token...
@@ -537,7 +537,7 @@
           <!-- Active Credentials -->
           <div class="glass-panel p-6 relative overflow-hidden" id="applicationsSection">
             <h3 class="section-title">Active Credentials</h3>
-            <div id="appList"><p class="text-xs prompt" style="color:rgba(185,204,178,0.5);">Loading credentials...</p></div>
+            <div id="appList" aria-live="polite"><p class="text-xs prompt" style="color:rgba(185,204,178,0.5);">Loading credentials...</p></div>
           </div>
         </div>
       </div>
@@ -924,15 +924,28 @@
       chip.textContent = s.label;
       chip.dataset.value = s.value;
       chip.tabIndex = 0;
-      chip.addEventListener("click", () => {
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", "false");
+
+      const toggleChip = () => {
         if (selectedScopes.has(s.value)) {
           selectedScopes.delete(s.value);
           chip.classList.remove("selected");
+          chip.setAttribute("aria-checked", "false");
         } else {
           selectedScopes.add(s.value);
           chip.classList.add("selected");
+          chip.setAttribute("aria-checked", "true");
         }
         document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      };
+
+      chip.addEventListener("click", toggleChip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleChip();
+        }
       });
       scopeContainer.appendChild(chip);
     });
