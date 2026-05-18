@@ -166,7 +166,7 @@
         <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Admin Console</h1>
         <p class="text-xs mb-8" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">secure terminal // restricted access</p>
         <div class="w-full space-y-4">
-          <input id="gateInput" type="password" placeholder="Access Code" class="input" />
+          <input id="gateInput" type="password" placeholder="Access Code" class="input" aria-label="Access Code" />
           <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
           <p id="gateError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
         </div>
@@ -216,9 +216,9 @@
         <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
         <h2 class="section-title">Admin Sign In</h2>
         <div>
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
+          <label for="loginEmail" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
           <input id="loginEmail" type="email" class="input mb-3" placeholder="admin@example.com" required />
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
+          <label for="loginPassword" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
           <input id="loginPassword" type="password" class="input mb-4" placeholder="••••••••" required />
           <button id="loginBtn" class="btn btn-primary w-full">Sign In</button>
           <p id="loginError" class="text-xs text-center mt-3 hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
