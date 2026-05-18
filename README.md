@@ -33,14 +33,16 @@ Resilience: crash recovery, idempotency, retry, timeout, stale detection
 curl -fsSL https://raw.githubusercontent.com/jameserez-code/MVP-Netlify-Firebase/main/install.sh | bash
 ```
 
+The installer auto-launches the server + TUI. Press `Enter` through the guided demo.
+
 ### Manual
 
 ```bash
 git clone https://github.com/jameserez-code/MVP-Netlify-Firebase.git
 cd MVP-Netlify-Firebase
 npm install
-# Place service-account.json from Firebase Console
-bash start.sh
+npm run demo             # Zero-setup demo server
+npm run demo:guided      # Guided walkthrough (6 scenes)
 ```
 
 ## API Endpoints (18 total)
