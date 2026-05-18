@@ -116,6 +116,59 @@ app.get('/security/ping', async (req: any) => {
   return { authenticated: !!claims, mode: 'demo' }
 })
 
+// POST /orgs — create organization
+app.post('/orgs', async (req: any, reply: any) => {
+  if (!(await requireAuth(req, reply))) return
+  const { name, email } = (req.body || {}) as any
+  if (!name || !email) return err(reply, 400, 'validation', 'name and email required')
+  const id = 'org_' + Date.now().toString(36)
+  const now = new Date().toISOString()
+  await db.collection('orgs').doc(id).set({ id, name, email, plan: 'free', createdAt: now })
+  await db.collection('agents').doc('agent_' + id).set({ id: 'agent_' + id, name: name + ' Bot', model: 'gpt-4o', provider: 'openai', orgId: id, status: 'active', registeredAt: now, capabilities: ['task:execute'] })
+  return { id, name, email, agentId: 'agent_' + id }
+})
+
+// GET /orgs — list orgs
+app.get('/orgs', async () => {
+  const snap = await db.collection('orgs').get()
+  return { data: snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() })) }
+})
+
+// POST /agents/register — register agent (demo)
+app.post('/agents/register', async (req: any, reply: any) => {
+  if (!(await requireAuth(req, reply))) return
+  const { name, model, provider } = (req.body || {}) as any
+  if (!name || !model || !provider) return err(reply, 400, 'validation', 'name, model, provider required')
+  const id = 'agent_' + Date.now().toString(36)
+  const pn = 'PP-' + Math.random().toString(16).substring(2, 6).toUpperCase() + '-' + Math.random().toString(16).substring(2, 6).toUpperCase()
+  await db.collection('agents').doc(id).set({ id, name, model, provider, orgId: 'demo_org', status: 'active', passport: { passportNumber: pn, systemPromptHash: 'sha256:demo' }, registeredAt: new Date().toISOString(), capabilities: ['task:execute', 'network:http'] })
+  return { agentId: id, passportNumber: pn, secretKey: 'ak_live_demo_' + id, secretKeyPrefix: 'ak_live_demo' }
+})
+
+// POST /policies — create policy (demo)
+app.post('/policies', async (req: any, reply: any) => {
+  if (!(await requireAuth(req, reply))) return
+  const body = (req.body || {}) as any
+  if (!body.name || !body.rules) return err(reply, 400, 'validation', 'name and rules required')
+  const id = 'pol_' + Date.now().toString(36)
+  await db.collection('policies').doc(id).set({ id, name: body.name, orgId: 'demo_org', status: 'active', priority: body.priority || 10, scope: body.scope || { agentId: '*', environment: ['*'] }, rules: body.rules, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  return { id, name: body.name }
+})
+
+// GET /report — operational report
+app.get('/report', async () => {
+  const tasksSnap = await db.collection('tasks').get()
+  const tasks = tasksSnap.docs.filter(d => d.exists).map(d => d.data() as any)
+  return {
+    summary: {
+      totalTasks: tasks.length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+      failed: tasks.filter(t => t.status === 'failed').length,
+      pending: tasks.filter(t => t.status === 'pending').length,
+    },
+  }
+})
+
 // GET /health — system health model (HEALTHY / DEGRADED / STALLED)
 app.get('/health', async () => {
   const snap = await db.collection('tasks').get()
