@@ -10,6 +10,7 @@
     "test:security": "tsx tests/integration/security.test.ts",
     "test:resilience": "tsx tests/integration/resilience.test.ts",
     "test:e2e": "tsx tests/integration/e2e.test.ts",
+    "test:policy": "tsx tests/integration/policy.test.ts",
     "demo:lifecycle": "tsx demo/lifecycle.ts",
     "healthcheck": "tsx src/healthcheck.ts",
     "tasks:verify": "tsx src/tasks-verify.ts",

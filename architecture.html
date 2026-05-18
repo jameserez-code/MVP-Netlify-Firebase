@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Passport Agent — Architecture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+    header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#2ea043}
+    header a{font-family:"JetBrains Mono",monospace;font-size:10px;color:#8b949e;text-decoration:none;padding:4px 10px}
+    header a:hover{color:#2ea043}
+    main{max-width:900px;margin:0 auto;padding:32px 20px}
+    h2{font-family:"JetBrains Mono",monospace;font-size:12px;color:#2ea043;margin:28px 0 12px;text-transform:uppercase;letter-spacing:2px}
+    h2::before{content:"// ";color:#30363d}
+    pre{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:20px;overflow-x:auto;font-family:"JetBrains Mono",monospace;font-size:11px;line-height:1.7;color:#c9d1d9}
+    .section-title{font-family:"JetBrains Mono",monospace;font-size:13px;color:#2ea043;margin:16px 0 8px}
+    p{color:#8b949e;font-size:14px;line-height:1.6;margin-bottom:12px}
+    .callout{background:rgba(46,160,67,.06);border:1px solid rgba(46,160,67,.2);border-radius:4px;padding:12px 16px;margin:16px 0;font-size:13px;color:#2ea043}
+    ul{margin:8px 0 16px 20px;color:#8b949e;font-size:14px;line-height:1.7}
+  </style>
+</head>
+<body>
+<header><h1>Architecture</h1><div><a href="/">Dashboard</a><a href="/architecture.html">Arch</a></div></header>
+<main>
+  <h2>Execution Pipeline</h2>
+  <pre>┌─────────────┐    HMAC-SHA256     ┌──────────────┐     30s JWT       ┌─────────────┐
+│  Agent SDK  │ ──── SIGN ──────▶ │ Policy Engine │ ──── TICKET ────▶ │   Gateway   │
+│ (wrapTool)  │                    │ 11-step eval  │                  │  (execute)  │
+└─────────────┘                    └──────┬───────┘                  └──────┬──────┘
+                                         │ ALLOW/DENY/MODIFY               │
+                                    ┌────▼────┐                      ┌─────▼─────┐
+                                    │ Explain │                      │ Replay    │
+                                    │  WHY?   │                      │ Protect   │
+                                    └─────────┘                      └───────────┘
+                                         │                                  │
+                                    ┌────▼──────────────────────────────────▼────┐
+                                    │              IMMUTABLE AUDIT               │
+                                    │  Every decision logged with timestamps     │
+                                    └────────────────────────────────────────────┘</pre>
+
+  <h2>State Machines</h2>
+  <pre>Task:  pending → queued → running → completed
+                          ↘ failed → pending (retry)
+                          ↘ cancelled
+
+Run:   starting → running → completed
+                        ↘ failed
+                        ↘ timed_out</pre>
+
+  <h2>11-Step Enforcement Engine</h2>
+  <pre>1. Agent status check      ─── revoked/suspended? → DENY
+2. Blocked tools check      ─── in deniedTools? → DENY
+3. Allowed tools check      ─── not in allowedTools? → DENY
+4. Modify transforms        ─── apply parameter rewrites
+5. Domain blocklist         ─── matches *.evil.com? → DENY
+6. Domain allowlist         ─── no match? → DENY
+7. Parameter constraints    ─── type/enum/pattern/length/range
+8. Data restrictions        ─── PII / secret patterns detected? → DENY
+9. Rate limit check         ─── exceeded? → DENY
+10. Cost limit check        ─── exceeded? → DENY
+11. Issue gateway ticket    ─── single-use JWT, 30s TTL</pre>
+
+  <h2>Deployment Modes</h2>
+  <pre>DEMO:    npm run demo       → localhost:3000
+         JSON file store   → ~/.passport-agent/data.json
+         Zero config       → auto-seeds demo data
+         Worker included   → tasks execute automatically
+
+PROD:    npm run dev        → localhost:3000
+         Firestore          → real persistence
+         Env vars           → FIREBASE_PROJECT_ID, etc.
+         Separate worker    → npm run worker</pre>
+
+  <h2>Security Trust Boundaries</h2>
+  <pre>┌──────────────────┐     JWT (HMAC-SHA256)    ┌──────────────────┐
+│ Agent SDK        │ ─────────────────────▶   │ API Server       │
+│ (client-side)    │                           │ (Fastify)        │
+└──────────────────┘                           └────────┬─────────┘
+                                                        │ Service Account
+                                                        ▼
+                                                ┌──────────────────┐
+                                                │ Firestore        │
+                                                │ (7 collections)  │
+                                                └──────────────────┘
+
+Agent → External Tools:  Policy Engine → Gateway Ticket → Execute
+                         EVERY action evaluated BEFORE execution</pre>
+</main>
+</body>
+</html>
