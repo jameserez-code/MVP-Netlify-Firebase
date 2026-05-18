@@ -59,6 +59,11 @@ app.post('/task', async (req: any, reply: any) => {
   if (!payload) return err(reply, 400, 'validation', 'payload required')
   const ref = db.collection('tasks').doc()
   await ref.set({ payload, status: 'pending', createdAt: new Date().toISOString(), orgId: 'demo_org' })
+  // Log the creation event
+  await db.collection('logs').doc(`log_${ref.id}_create`).set({
+    taskId: ref.id, tool: 'task.created', decision: 'allow', reason: 'task submitted to queue',
+    timestamp: new Date().toISOString(),
+  })
   return { id: ref.id, payload, status: 'pending' }
 })
 
@@ -93,7 +98,12 @@ app.get('/diagnostics', async () => ({
 }))
 
 // GET /audit/timeline
-app.get('/audit/timeline', async () => ({ timeline: [] }))
+app.get('/audit/timeline', async () => {
+  const snap = await db.collection('logs').get()
+  const logs = snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() as any }))
+  logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return { timeline: logs }
+})
 
 // GET /security/ping
 app.get('/security/ping', async (req: any) => {
@@ -180,12 +190,46 @@ app.get('/*', async (request: any, reply: any) => {
 })
 
 // Start
+// ---------------------------------------------------------------------------
+// Demo worker — processes pending tasks and generates execution events
+// ---------------------------------------------------------------------------
+async function demoWorker() {
+  try {
+    const snap = await db.collection('tasks').get()
+    const pending = snap.docs.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() as any })).filter(t => t.status === 'pending')
+    if (pending.length === 0) return
+    const task = pending[0]; const now = new Date().toISOString()
+    await db.collection('tasks').doc(task.id).update({ status: 'running', startedAt: now })
+    const runId = `run_${Date.now().toString(36)}`
+    await db.collection('runs').doc(runId).set({ id: runId, agentId: 'agent_demo', taskId: task.id, status: 'running', startedAt: now, sessionId: `sess_${runId}`, totalActions: 0, allowedActions: 0, deniedActions: 0 })
+    const calls = [
+      { tool: 'task.started', decision: 'allow', reason: 'worker picked up task' },
+      { tool: 'lookup_order', decision: 'allow', reason: 'policy: allowed tool' },
+      { tool: 'check_inventory', decision: 'allow', reason: 'policy: allowed tool' },
+      { tool: 'send_email', decision: 'deny', reason: 'tool_explicitly_blocked' },
+      { tool: 'http_request', decision: 'deny', reason: 'domain_blocked: *.evil.com' },
+    ]
+    for (let i = 0; i < calls.length; i++) {
+      await new Promise(r => setTimeout(r, 150))
+      await db.collection('logs').doc(`log_${runId}_${i}`).set({ runId, taskId: task.id, agentId: 'agent_demo', tool: calls[i].tool, decision: calls[i].decision, reason: calls[i].reason, timestamp: new Date().toISOString() })
+    }
+    const end = new Date().toISOString()
+    await db.collection('runs').doc(runId).update({ status: 'completed', endedAt: end, totalActions: calls.length, allowedActions: calls.filter(c => c.decision === 'allow').length, deniedActions: calls.filter(c => c.decision === 'deny').length })
+    await db.collection('tasks').doc(task.id).update({ status: 'completed', completedAt: end })
+  } catch (e: any) {}
+}
+
 const PORT = parseInt(process.env.PORT || '3000', 10)
 app.listen({ port: PORT }, (e: any) => {
   if (e) { console.error('Start failed:', e.message); process.exit(1) }
   console.log(`\n  ⚡ Demo mode — no Firebase required`)
   console.log(`  → http://localhost:${PORT}`)
-  console.log(`  → Terminal TUI:  npm run tui  (in another terminal)\n`)
+  console.log(`  → Terminal TUI:  npm run tui  (in another terminal)`)
+
+  // Start demo worker — processes pending tasks every 3 seconds
+  setInterval(demoWorker, 3000)
+  demoWorker() // immediate first run
+  console.log(`  → Worker: processing tasks automatically\n`)
 })
 
 // ---------------------------------------------------------------------------

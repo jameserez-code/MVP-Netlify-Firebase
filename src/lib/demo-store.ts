@@ -86,14 +86,14 @@ export class DemoDocRef {
 
 export class DemoDocSnapshot {
   id: string
-  data: Record<string, unknown> | null
+  _data: Record<string, unknown> | null
   exists: boolean
 
-  constructor(id: string, data: Record<string, unknown> | null) {
-    this.id = id; this.data = data; this.exists = data !== null
+  constructor(id: string, _data: Record<string, unknown> | null) {
+    this.id = id; this._data = _data; this.exists = _data !== null
   }
 
-  data(): Record<string, unknown> | undefined { return this.data || undefined }
+  data(): Record<string, unknown> | undefined { return this._data || undefined }
 }
 
 export class DemoQuerySnapshot {
