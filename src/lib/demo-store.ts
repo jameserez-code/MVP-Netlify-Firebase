@@ -144,5 +144,15 @@ export function seedDemo(db: DemoFirestore) {
   const now = new Date().toISOString()
   db.collection('users').doc('admin@acmecorp.com').set({ email: 'admin@acmecorp.com', displayName: 'Admin', role: 'org_admin', orgId: 'demo_org', password: 'admin', createdAt: now })
   db.collection('agents').doc('agent_demo').set({ id: 'agent_demo', name: 'Demo Bot', model: 'gpt-4o', provider: 'openai', orgId: 'demo_org', status: 'active', registeredAt: now, capabilities: ['task:execute', 'network:http'] })
-  db.collection('policies').doc('policy_demo').set({ id: 'policy_demo', name: 'Demo Policy', orgId: 'demo_org', status: 'active', priority: 10, scope: { agentId: 'agent_demo', environment: ['*'] }, rules: { allowedTools: [{ toolName: 'lookup_order', parameterConstraints: { orderId: { type: 'string' } } }], deniedTools: ['send_email'], allowedDomains: [{ pattern: '*.demo.com', methods: ['GET'] }], deniedDomains: ['*.evil.com'], dataRestrictions: {} }, createdAt: now, updatedAt: now })
+  db.collection('policies').doc('policy_demo').set({ id: 'policy_demo', name: 'Demo Support Policy', orgId: 'demo_org', status: 'active', priority: 10, scope: { agentId: 'agent_demo', environment: ['*'] }, rules: {
+    allowedTools: [
+      { toolName: 'lookup_order', parameterConstraints: { orderId: { type: 'string', minLength: 1 } } },
+      { toolName: 'check_inventory', parameterConstraints: { sku: { type: 'string', minLength: 1 } } },
+      { toolName: 'http_request', parameterConstraints: { url: { type: 'string' } } },
+    ],
+    deniedTools: ['send_email', 'delete_record', 'exec_code'],
+    allowedDomains: [{ pattern: '*.demo.com', methods: ['GET'] }, { pattern: '*.internal.com', methods: ['GET', 'POST'] }],
+    deniedDomains: ['*.evil.com', '169.254.169.254', 'localhost', '127.0.0.1'],
+    dataRestrictions: { denyPiiInParameters: true, denySecretsInParameters: true },
+  }, createdAt: now, updatedAt: now })
 }

