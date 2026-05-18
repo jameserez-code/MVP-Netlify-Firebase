@@ -16,6 +16,7 @@
     "schema:seed": "tsx src/seed.ts",
     "dev": "tsx src/server.ts",
     "demo": "tsx src/demo-server.ts",
+    "demo:guided": "tsx src/guided-demo.ts",
     "build": "tsc",
     "tui": "tsx src/tui.ts",
     "worker": "tsx src/worker.ts",

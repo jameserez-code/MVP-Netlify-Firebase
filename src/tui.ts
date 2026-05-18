@@ -107,19 +107,17 @@ interface AppState {
   policies: any[]
   connected: boolean
   mode: string
-  // Navigation
   selectedList: 'queue' | 'agents' | 'policies' | 'events'
   selectedIdx: number
-  // Detail
   detailItem: any | null
   detailType: string
-  // Command mode
   commandMode: boolean
   commandBuffer: string
   commandHistory: string[]
-  // Messages
   lastAction: string
   lastActionTime: number
+  filter: 'all' | 'failures' | 'active' | 'denied'
+  notifications: Array<{ level: string; message: string; time: number }>
 }
 
 const state: AppState = {
@@ -129,6 +127,7 @@ const state: AppState = {
   detailItem: null, detailType: '',
   commandMode: false, commandBuffer: '', commandHistory: [],
   lastAction: '', lastActionTime: 0,
+  filter: 'all', notifications: [],
 }
 
 // ===========================================================================
@@ -251,11 +250,16 @@ function renderQueuePanel(s: Screen, height: number, offset: number): string[][]
 
   const pending = state.tasks.filter(t => t.status === 'pending' || t.status === 'queued')
   const failed = state.tasks.filter(t => t.status === 'failed')
+  const active = state.tasks.filter(t => t.status === 'running')
 
-  rows.push(`${BOLD}Queue${RESET}${DIM}  pending:${pending.length}  failed:${failed.length}${RESET}`)
+  const filterLabel = state.filter !== 'all' ? ` ${DIM}[${state.filter}]${RESET}` : ''
+  rows.push(`${BOLD}Queue${filterLabel}${RESET}${DIM}  pending:${pending.length}  failed:${failed.length}  active:${active.length}${RESET}`)
   rows.push(DIM + line(w, '·') + RESET)
 
-  const items = [...pending.slice(0, 6), ...(pending.length < 4 ? failed.slice(0, 3) : [])]
+  let items: any[]
+  if (state.filter === 'failures') items = failed
+  else if (state.filter === 'active') items = active
+  else items = [...pending.slice(0, 8), ...(pending.length < 4 ? failed.slice(0, 4) : [])]
   for (let i = 0; i < Math.min(items.length, height - 3); i++) {
     const item = items[i]
     const isSelected = state.selectedList === 'queue' && state.selectedIdx === i
@@ -347,14 +351,22 @@ function renderCommandBar(s: Screen): string[] {
 
   if (state.commandMode) {
     bars.push(`${BG(C.bgl)}${FG(C.green)} : ${state.commandBuffer}${RESET}${' '.repeat(Math.max(cols - state.commandBuffer.length - 4, 0))}`)
-  } else if (state.lastAction && Date.now() - state.lastActionTime < 5000) {
-    bars.push(`${BG(C.bgl)}${FG(C.amber)} ${trunc(state.lastAction, cols - 2)}${RESET}`)
+  } else if (state.notifications.length > 0 && Date.now() - state.notifications[state.notifications.length - 1].time < 4000) {
+    const last = state.notifications[state.notifications.length - 1]
+    const color = last.level === 'error' ? FG(C.red) : last.level === 'success' ? FG(C.green) : FG(C.amber)
+    bars.push(`${BG(C.bgl)}${color} ${trunc(last.message, cols - 2)}${RESET}`)
   } else {
-    const shortcuts = `[↑↓j/k]nav  [enter]inspect  [esc]back  [:]cmd  [s]seed  [r]retry  [q]quit`
+    const filterLabel = state.filter !== 'all' ? ` [filter: ${state.filter}]` : ''
+    const shortcuts = `[↑↓jk]nav  [enter]inspect  [esc]back  [f]ailures  [a]ctive  [p]replay  [s]eed  [:]cmd${filterLabel}  [q]uit`
     bars.push(`${BG(C.bgl)}${DIM} ${trunc(shortcuts, cols - 2)}${RESET}`)
   }
 
   return bars
+}
+
+function addNotification(level: string, message: string) {
+  state.notifications.push({ level, message, time: Date.now() })
+  if (state.notifications.length > 10) state.notifications.shift()
 }
 
 // ===========================================================================
@@ -494,7 +506,22 @@ function setupKeyboard(s: Screen) {
           }
           break
         }
-        case 's': await opSeedDemos(); break
+        case 's': await opSeedDemos(); addNotification('info', '3 demo tasks created'); break
+        case 'p': {
+          const list = getList()
+          if (list[state.selectedIdx]) {
+            const item = list[state.selectedIdx]
+            const tid = item.taskId || item.id
+            await authPost('/task', { payload: item.payload || {} })
+            addNotification('success', 'Task replayed')
+            await new Promise(r => setTimeout(r, 500))
+            await fetchAll()
+          }
+          break
+        }
+        case 'f': state.filter = state.filter === 'failures' ? 'all' : 'failures'; state.selectedIdx = 0; addNotification('info', `Filter: ${state.filter}`); break
+        case 'a': state.filter = state.filter === 'active' ? 'all' : 'active'; state.selectedIdx = 0; addNotification('info', `Filter: ${state.filter}`); break
+        case 'c': state.filter = 'all'; state.selectedIdx = 0; addNotification('info', 'Filter cleared'); break
         case 'tab': {
           const lists: Array<'queue'|'agents'|'policies'|'events'> = ['queue', 'agents', 'policies', 'events']
           const idx = lists.indexOf(state.selectedList)
