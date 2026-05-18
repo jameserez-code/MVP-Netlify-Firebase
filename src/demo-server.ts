@@ -234,7 +234,7 @@ app.get('/*', async (request: any, reply: any) => {
   const url = (request.url || '/').split('?')[0]
   const staticFiles = ['index.html', 'landing.html', 'operator.html', 'admin-portal.html',
     'agents.html', 'dev-dashboard.html', 'verify-demo.html', 'sdk-demo.html',
-    'tutorial.html', 'tui-tutorial.html']
+    'tutorial.html', 'tui-tutorial.html', 'metrics.html']
   if (staticFiles.includes(url.substring(1))) {
     try {
       const path = resolve(process.cwd(), url.substring(1))

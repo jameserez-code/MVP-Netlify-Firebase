@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Passport Agent — Metrics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Geist,sans-serif;background:#0d1117;color:#c9d1d9;min-height:100vh}
+    body::after{content:"";position:fixed;inset:0;background:linear-gradient(to bottom,transparent 50%,rgba(46,160,67,.008) 50%);background-size:100% 4px;pointer-events:none;z-index:9999}
+    header{background:rgba(13,17,23,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(46,160,67,.15);position:sticky;top:0;z-index:100;padding:14px 28px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:#2ea043}
+    header a{font-family:"JetBrains Mono",monospace;font-size:10px;color:#8b949e;text-decoration:none;padding:4px 10px;border:1px solid transparent;border-radius:3px}
+    header a:hover{color:#2ea043;border-color:rgba(46,160,67,.2)}
+    main{max-width:1000px;margin:0 auto;padding:28px}
+    .section-title{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#2ea043;margin-bottom:14px}
+    .section-title::before{content:"// ";color:#30363d}
+    .card{background:rgba(22,27,34,.7);border:1px solid rgba(48,54,61,.5);border-radius:6px;padding:20px;margin-bottom:16px}
+    .row{display:flex;align-items:flex-end;gap:12px;margin:12px 0}
+    .bar{flex:1;min-width:8px;border-radius:3px 3px 0 0;transition:height .4s ease}
+    .bar-g{background:#2ea043}.bar-r{background:#f85149}.bar-a{background:#d2991d}.bar-b{background:#58a6ff}
+    .bar-label{font-family:"JetBrains Mono",monospace;font-size:9px;color:#8b949e;text-align:center;margin-top:4px}
+    .stat{text-align:center;padding:12px;border-left:2px solid}
+    .stat-g{border-color:#2ea043}.stat-r{border-color:#f85149}.stat-a{border-color:#d2991d}.stat-b{border-color:#58a6ff}
+    .stat-value{font-family:"JetBrains Mono",monospace;font-size:22px;font-weight:700}
+    .stat-label{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#8b949e}
+    .mono{font-family:"JetBrains Mono",monospace}
+    .dim{color:#8b949e;font-size:11px}
+    .table-row{display:flex;padding:6px 0;border-bottom:1px solid rgba(48,54,61,.15);font-size:12px;font-family:"JetBrains Mono",monospace}
+    .table-row:hover{background:rgba(46,160,67,.03)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    .live-dot{width:7px;height:7px;border-radius:50%;background:#2ea043;display:inline-block;animation:pulse 2s infinite;margin-right:6px}
+  </style>
+</head>
+<body>
+  <header><h1>Metrics</h1><div><a href="/">Dashboard</a><a href="/operator.html">Console</a><a href="/metrics.html">Metrics</a></div></header>
+  <main>
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px" id="statsGrid"></div>
+
+    <!-- Throughput chart -->
+    <div class="card">
+      <div class="section-title">Task Throughput <span class="live-dot"></span><span class="dim">live — last 20 tasks</span></div>
+      <div id="throughputChart"></div>
+    </div>
+
+    <!-- Agent workload -->
+    <div class="card">
+      <div class="section-title">Agent Workload</div>
+      <div id="agentWorkload"></div>
+    </div>
+
+    <!-- Recent timeline -->
+    <div class="card">
+      <div class="section-title">Recent Activity</div>
+      <div id="recentActivity"></div>
+    </div>
+
+    <div class="dim" style="text-align:right" id="refreshTime">auto-refresh 5s</div>
+  </main>
+
+  <script>
+    var API = 'http://localhost:3000';
+    var history = [];
+
+    async function refresh() {
+      var m = await fetch(API + '/metrics').then(r => r.json()).catch(() => null);
+      var tl = await fetch(API + '/audit/timeline?limit=30').then(r => r.json()).catch(() => null);
+      var ag = await fetch(API + '/agents').then(r => r.json()).catch(() => null);
+      if (!m || m.error) return;
+
+      var t = m.tasks || {};
+      var r = m.runs || {};
+      document.getElementById('statsGrid').innerHTML =
+        '<div class="stat stat-g"><div class="stat-value" style="color:#2ea043">'+(t.total||0)+'</div><div class="stat-label">Tasks</div></div>'+
+        '<div class="stat stat-b"><div class="stat-value" style="color:#58a6ff">'+(t.active||0)+'</div><div class="stat-label">Active</div></div>'+
+        '<div class="stat stat-a"><div class="stat-value" style="color:#d2991d">'+(t.pending||0)+'</div><div class="stat-label">Pending</div></div>'+
+        '<div class="stat stat-r"><div class="stat-value" style="color:#f85149">'+(t.failed||0)+'</div><div class="stat-label">Failed</div></div>'+
+        '<div class="stat stat-g"><div class="stat-value" style="color:#2ea043">'+(t.completed||0)+'</div><div class="stat-label">Done</div></div>'+
+        '<div class="stat stat-b"><div class="stat-value" style="color:#58a6ff">'+(r.active||0)+'</div><div class="stat-label">Runs</div></div>';
+
+      // Throughput bar chart
+      if (tl && tl.timeline) {
+        var now = Date.now();
+        var buckets = Array.from({length:20}, function(_,i){ return {time:now-(19-i)*3000, count:0}; });
+        tl.timeline.forEach(function(e){ var t = new Date(e.timestamp).getTime(); var b = buckets.find(function(b){return Math.abs(b.time-t)<3000}); if(b)b.count++; });
+        var max = Math.max.apply(null, buckets.map(function(b){return b.count})) || 1;
+        document.getElementById('throughputChart').innerHTML = '<div class="row">' +
+          buckets.map(function(b){ var h = Math.max(Math.round((b.count/max)*60), 2); return '<div style="flex:1;text-align:center"><div class="bar bar-g" style="height:'+h+'px"></div><div class="bar-label">'+(b.count||'')+'</div></div>'; }).join('') + '</div>';
+      }
+
+      // Agent workload
+      var agents = ag && ag.data ? ag.data : [];
+      document.getElementById('agentWorkload').innerHTML = agents.length === 0
+        ? '<div class="dim">No agents registered</div>'
+        : agents.map(function(a){ return '<div class="table-row"><span style="width:180px">'+a.name+'</span><span style="width:100px" class="dim">'+a.model+'</span><span class="dim">'+(a.status||'?')+'</span><span style="margin-left:auto;font-size:10px" class="dim">'+(a.passport?.passportNumber||'')+'</span></div>'; }).join('');
+
+      // Recent activity
+      var events = tl && tl.timeline ? tl.timeline.slice(0, 12) : [];
+      document.getElementById('recentActivity').innerHTML = events.length === 0
+        ? '<div class="dim">No recent activity</div>'
+        : events.map(function(e){ var s = Math.round((now-new Date(e.timestamp).getTime())/1000); var c = e.decision==='allow'?'#2ea043':e.decision==='deny'?'#f85149':'#d2991d'; return '<div class="table-row"><span style="width:60px;color:#484f58">-'+(s<60?s+'s':Math.round(s/60)+'m')+'</span><span style="width:180px;color:'+c+'">'+(e.tool||'')+'</span><span class="dim" style="flex:1">'+(e.reason||'')+'</span></div>'; }).join('');
+
+      document.getElementById('refreshTime').textContent = 'updated ' + new Date().toLocaleTimeString();
+    }
+
+    refresh();
+    setInterval(refresh, 5000);
+  </script>
+</body>
+</html>
