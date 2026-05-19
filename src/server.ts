@@ -426,7 +426,8 @@ app.get('/*', async (request, reply) => {
 
 // Start
 const PORT = parseInt(process.env.PORT || '3000', 10)
-app.listen({ port: PORT }, (listenErr) => {
+const HOST = '0.0.0.0'
+app.listen({ port: PORT, host: HOST }, (listenErr) => {
   if (listenErr) { log.error('server start failed', { error: listenErr.message }); process.exit(1) }
-  console.log(`\n  server → http://localhost:${PORT}`)
+  console.log(`\n  server → http://${HOST}:${PORT}`)
 })
