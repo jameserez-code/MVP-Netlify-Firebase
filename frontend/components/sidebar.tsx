@@ -40,6 +40,8 @@ export default function Sidebar({
   const [loggedIn, setLoggedIn] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
+  const touchStartX = useRef<number>(0)
 
   useEffect(() => {
     setLoggedIn(isLoggedIn())
@@ -55,6 +57,48 @@ export default function Sidebar({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Swipe to open/close sidebar on mobile
+  useEffect(() => {
+    function handleTouchStart(e: TouchEvent) {
+      touchStartX.current = e.touches[0].clientX
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      const touchEndX = e.changedTouches[0].clientX
+      const diff = touchEndX - touchStartX.current
+      const threshold = 80
+      const screenWidth = window.innerWidth
+
+      // Swipe right from left edge to open
+      if (diff > threshold && touchStartX.current < 40 && !mobileOpen && screenWidth < 1024) {
+        setMobileOpen(true)
+      }
+      // Swipe left to close
+      if (diff < -threshold && mobileOpen && screenWidth < 1024) {
+        setMobileOpen(false)
+      }
+    }
+
+    document.addEventListener('touchstart', handleTouchStart)
+    document.addEventListener('touchend', handleTouchEnd)
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart)
+      document.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [mobileOpen])
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
+
   function handleLogout() {
     clearToken()
     window.location.href = '/login'
@@ -65,8 +109,10 @@ export default function Sidebar({
       {/* Mobile toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 glass-panel rounded-passport text-passport-muted hover:text-passport-text transition-colors"
-        aria-label="Toggle menu"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 glass-panel rounded-passport text-passport-muted hover:text-passport-text transition-colors min-touch-target flex items-center justify-center"
+        aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+        aria-expanded={mobileOpen}
+        aria-controls="sidebar-nav"
       >
         {mobileOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
@@ -76,18 +122,22 @@ export default function Sidebar({
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-30"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside
+        ref={sidebarRef}
+        id="sidebar-nav"
         className={`fixed top-0 left-0 h-full z-40 border-r border-passport-border bg-passport-surface/95 backdrop-blur-xl flex flex-col transition-all duration-200 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${collapsed ? 'w-16' : 'w-60'}`}
+        aria-label="Main navigation"
       >
         {/* Brand */}
         <div className="p-4 border-b border-passport-border flex items-center justify-between">
-          <Link href="/" className={`flex items-center gap-3 group ${collapsed ? 'justify-center w-full' : ''}`}>
+          <Link href="/" className={`flex items-center gap-3 group ${collapsed ? 'justify-center w-full' : ''}`} prefetch={false}>
             <Shield size={22} className="text-passport-green group-hover:drop-shadow-[0_0_6px_rgba(46,160,67,0.4)] transition-all shrink-0" />
             {!collapsed && (
               <div className="overflow-hidden">
@@ -103,7 +153,8 @@ export default function Sidebar({
           {!collapsed && onToggle && (
             <button
               onClick={onToggle}
-              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors"
+              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+              aria-label="Collapse sidebar"
             >
               <ChevronLeft size={16} />
             </button>
@@ -111,7 +162,8 @@ export default function Sidebar({
           {collapsed && onToggle && (
             <button
               onClick={onToggle}
-              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors absolute right-[-10px] top-5 bg-passport-surface border border-passport-border rounded-full p-0.5"
+              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors absolute right-[-10px] top-5 bg-passport-surface border border-passport-border rounded-full p-1"
+              aria-label="Expand sidebar"
             >
               <ChevronRight size={14} />
             </button>
@@ -131,7 +183,7 @@ export default function Sidebar({
         )}
 
         {/* Nav */}
-        <nav className="flex-1 p-2 space-y-1">
+        <nav className="flex-1 p-2 space-y-1" aria-label="Dashboard navigation">
           {navItems.map((item) => {
             const active = pathname === item.href
             const Icon = item.icon
@@ -139,18 +191,20 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-passport text-sm font-medium transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-passport text-sm font-medium transition-all duration-150 min-touch-target ${
                   active
                     ? 'bg-passport-green/10 text-passport-green border border-passport-green/20'
                     : 'text-passport-muted hover:text-passport-text hover:bg-passport-surface-2'
                 } ${collapsed ? 'justify-center' : ''}`}
                 title={collapsed ? item.label : undefined}
+                aria-current={active ? 'page' : undefined}
               >
-                <Icon size={16} />
+                <Icon size={18} aria-hidden="true" />
                 {!collapsed && <span>{item.label}</span>}
                 {!collapsed && active && (
-                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" />
+                  <span className="ml-auto w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" aria-hidden="true" />
                 )}
               </Link>
             )
@@ -164,22 +218,26 @@ export default function Sidebar({
             <div className="relative" ref={userRef}>
               <button
                 onClick={() => setUserOpen(!userOpen)}
-                className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150 ${
+                className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150 min-touch-target ${
                   collapsed ? 'justify-center' : ''
                 }`}
+                aria-expanded={userOpen}
+                aria-haspopup="menu"
+                aria-label="Account menu"
               >
                 <div className="w-6 h-6 rounded-full bg-passport-green/20 flex items-center justify-center shrink-0">
-                  <User size={14} className="text-passport-green" />
+                  <User size={14} className="text-passport-green" aria-hidden="true" />
                 </div>
                 {!collapsed && <span className="truncate">Account</span>}
               </button>
               {userOpen && (
-                <div className="absolute bottom-full left-0 w-48 mb-1 glass-panel border-passport-border overflow-hidden">
+                <div className="absolute bottom-full left-0 w-48 mb-1 glass-panel border-passport-border overflow-hidden" role="menu">
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-3 px-3 py-2.5 w-full text-sm text-passport-muted hover:text-passport-coral hover:bg-passport-red/5 transition-all"
+                    className="flex items-center gap-3 px-3 py-2.5 w-full text-sm text-passport-muted hover:text-passport-coral hover:bg-passport-red/5 transition-all min-touch-target"
+                    role="menuitem"
                   >
-                    <LogOut size={16} />
+                    <LogOut size={16} aria-hidden="true" />
                     <span>Sign Out</span>
                   </button>
                 </div>
@@ -189,9 +247,9 @@ export default function Sidebar({
           {!loggedIn && !collapsed && (
             <Link
               href="/login"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150 min-touch-target"
             >
-              <LogOut size={16} />
+              <LogOut size={16} aria-hidden="true" />
               <span>Sign In</span>
             </Link>
           )}

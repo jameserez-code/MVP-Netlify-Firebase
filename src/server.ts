@@ -26,6 +26,8 @@ import enforceRoutes from './routes/enforce.js'
 import healthRoutes from './routes/health.js'
 import apiKeysRoutes from './routes/api-keys.js'
 import analyticsRoutes from './routes/analytics.js'
+import webhooksRoutes from './routes/webhooks.js'
+import { deliverWebhook } from './lib/webhook-deliverer.js'
 
 // Validate environment before starting
 validateEnv()
@@ -427,6 +429,15 @@ app.patch('/run/:id/fail', async (request, reply) => {
   const requestId = generateId('req_', 8)
   try {
     await failRunWithError(db, id, runError || 'Unknown error', requestId)
+    const run = await fetchDoc('runs', id) as any
+    deliverWebhook(db, 'run.failed', {
+      event: 'run.failed',
+      timestamp: new Date().toISOString(),
+      runId: id,
+      agentId: run?.agentId || null,
+      taskId: run?.taskId || null,
+      error: runError || 'Unknown error',
+    }, run?.orgId || process.env.DEFAULT_ORG_ID).catch(() => {})
     return { id, status: 'failed' }
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
@@ -512,16 +523,17 @@ app.get('/org/metrics', async (request, reply) => {
   catch (e: any) { reply.code(500); return { error: { code: 'metrics_failed', message: e.message } } }
 })
 
-// Register sub-routes, security, observability
-agentsRoutes(app, db)
-policiesRoutes(app, db)
-enforceRoutes(app, db)
-healthRoutes(app, db)
-apiKeysRoutes(app, db)
-hardenAuth(app, db)
-auditTimeline(app, db)
-runTrace(app, db)
-metrics(app, db)
+  // Register sub-routes, security, observability
+  agentsRoutes(app, db)
+  policiesRoutes(app, db)
+  enforceRoutes(app, db)
+  healthRoutes(app, db)
+  apiKeysRoutes(app, db)
+  webhooksRoutes(app, db)
+  hardenAuth(app, db)
+  auditTimeline(app, db)
+  runTrace(app, db)
+  metrics(app, db)
 
 // Serve static HTML files (catch-all for unmatched GETs)
 app.get('/*', async (request, reply) => {

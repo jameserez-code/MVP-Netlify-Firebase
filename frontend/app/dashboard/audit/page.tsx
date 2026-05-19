@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
 import { getAudit } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
@@ -81,33 +83,23 @@ function exportToCSV(entries: AuditEntry[]) {
 
 export default function AuditPage() {
   const { addToast } = useToast()
-  const [entries, setEntries] = useState<AuditEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
   const [decisionFilter, setDecisionFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(0)
 
-  async function loadAudit() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await getAudit({ decision: decisionFilter || undefined, limit: 500 })
-      const list = Array.isArray(data) ? data : data.data || []
-      setEntries(list)
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data, error, isLoading, mutate } = useSWR(
+    ['/audit', decisionFilter],
+    () => getAudit({ decision: decisionFilter || undefined, limit: 500 }),
+    swrDashboardConfig
+  )
+  const entries: AuditEntry[] = Array.isArray(data) ? data : data?.data || []
+  const loading = isLoading
 
-  useEffect(() => {
-    loadAudit()
-  }, [decisionFilter])
+  function loadAudit() {
+    mutate()
+  }
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
@@ -220,11 +212,11 @@ export default function AuditPage() {
             className="btn-secondary"
             disabled={filtered.length === 0}
           >
-            <Download size={14} />
+            <Download size={14} aria-hidden="true" />
             Export CSV
           </button>
           <button onClick={loadAudit} className="btn-secondary" disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
             Refresh
           </button>
         </div>
@@ -397,17 +389,19 @@ export default function AuditPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="btn-secondary py-1.5 px-2 disabled:opacity-40"
+                  className="btn-secondary py-1.5 px-2 disabled:opacity-40 min-touch-target"
+                  aria-label="Previous page"
                 >
                   <ChevronLeft size={14} />
                 </button>
-                <span className="font-mono text-xs text-passport-muted">
+                <span className="font-mono text-xs text-passport-muted" aria-live="polite">
                   {page + 1} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
-                  className="btn-secondary py-1.5 px-2 disabled:opacity-40"
+                  className="btn-secondary py-1.5 px-2 disabled:opacity-40 min-touch-target"
+                  aria-label="Next page"
                 >
                   <ChevronRight size={14} />
                 </button>

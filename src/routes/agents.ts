@@ -6,6 +6,7 @@ import {
   generateAgentSecretKey, generatePassportNumber, hashKey, hashSystemPrompt,
   generateId,
 } from '../lib/crypto.js'
+import { deliverWebhook } from '../lib/webhook-deliverer.js'
 
 export default async function agentsRoutes(app: FastifyInstance, db: Firestore) {
 
@@ -69,6 +70,14 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       })
 
       log.success('agent registered', { agentId, passportNumber, model })
+      deliverWebhook(db, 'agent.registered', {
+        event: 'agent.registered',
+        timestamp: new Date().toISOString(),
+        agentId,
+        name,
+        model,
+        provider,
+      }, orgId).catch(() => {})
       reply.code(201)
       return {
         agentId,
@@ -138,6 +147,12 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       revokedReason: reason || 'No reason provided',
     })
     log.success('agent revoked', { agentId: id, reason })
+    deliverWebhook(db, 'agent.revoked', {
+      event: 'agent.revoked',
+      timestamp: new Date().toISOString(),
+      agentId: id,
+      reason: reason || 'No reason provided',
+    }, process.env.DEFAULT_ORG_ID).catch(() => {})
     return { id, status: 'revoked' }
   })
 

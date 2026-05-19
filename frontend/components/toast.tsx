@@ -49,17 +49,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[320px] max-w-[calc(100vw-2rem)]">
+      {/* aria-live region for screen readers */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {toasts.length > 0 && toasts[toasts.length - 1].message}
+      </div>
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[320px] max-w-[calc(100vw-2rem)]" role="region" aria-label="Notifications">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`glass-panel p-3 flex items-start gap-2.5 ${toastStyles[toast.type]} animate-toast-in`}
+            role="alert"
           >
             {toastIcons[toast.type]}
             <span className="text-sm text-passport-text flex-1 leading-relaxed">{toast.message}</span>
             <button
               onClick={() => removeToast(toast.id)}
               className="text-passport-dim hover:text-passport-text transition-colors shrink-0 mt-0.5"
+              aria-label="Dismiss notification"
             >
               <X size={14} />
             </button>

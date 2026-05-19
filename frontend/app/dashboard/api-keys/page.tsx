@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
+import { useFocusTrap } from '@/lib/use-focus-trap'
 import { listApiKeys, createApiKey, deleteApiKey, rotateApiKey } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
@@ -42,16 +45,19 @@ const SCOPES = [
 
 export default function ApiKeysPage() {
   const { addToast } = useToast()
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data, error, isLoading, mutate } = useSWR('/api-keys', listApiKeys, swrDashboardConfig)
+  const keys: ApiKey[] = Array.isArray(data) ? data : data?.data || []
+  const loading = isLoading
+
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({ name: '', scopes: ['read', 'write'] })
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
   const [newKey, setNewKey] = useState<any>(null)
   const [copied, setCopied] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
+  const revokeModalRef = useFocusTrap(!!revokeConfirmId)
 
   useEffect(() => {
     if (newKey) {
@@ -60,29 +66,14 @@ export default function ApiKeysPage() {
     }
   }, [newKey?.id])
 
-  async function loadKeys() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await listApiKeys()
-      const list = Array.isArray(data) ? data : data.data || []
-      setKeys(list)
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
+  function loadKeys() {
+    mutate()
   }
-
-  useEffect(() => {
-    loadKeys()
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
-    setError('')
+    setFormError('')
     try {
       const data = await createApiKey({
         name: formData.name,
@@ -94,7 +85,7 @@ export default function ApiKeysPage() {
       addToast('API key created successfully', 'success')
       loadKeys()
     } catch (err: any) {
-      setError(err.message)
+      setFormError(err.message)
       addToast(err.message, 'error')
     } finally {
       setSubmitting(false)
@@ -206,7 +197,8 @@ export default function ApiKeysPage() {
             </div>
             <button
               onClick={() => setNewKey(null)}
-              className="text-passport-dim hover:text-passport-text transition-colors"
+              className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+              aria-label="Dismiss key display"
             >
               <X size={16} />
             </button>
@@ -228,15 +220,15 @@ export default function ApiKeysPage() {
                 </code>
                 <button
                   onClick={() => setShowSecret(!showSecret)}
-                  className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0"
-                  title={showSecret ? 'Hide' : 'Show'}
+                  className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0 min-touch-target"
+                  aria-label={showSecret ? 'Hide API key' : 'Show API key'}
                 >
                   {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
                 <button
                   onClick={copySecret}
-                  className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0"
-                  title="Copy to clipboard"
+                  className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0 min-touch-target"
+                  aria-label="Copy API key to clipboard"
                 >
                   {copied ? <CheckCircle size={14} className="text-passport-green" /> : <Copy size={14} />}
                 </button>
@@ -271,7 +263,8 @@ export default function ApiKeysPage() {
             <h2 className="text-lg font-semibold text-passport-text">Create New API Key</h2>
             <button
               onClick={() => setShowForm(false)}
-              className="text-passport-dim hover:text-passport-text transition-colors"
+              className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+              aria-label="Close key creation form"
             >
               <X size={18} />
             </button>
@@ -286,6 +279,8 @@ export default function ApiKeysPage() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="input-field"
                 placeholder="e.g. Production SDK"
+                autoComplete="off"
+                autoCapitalize="words"
                 required
               />
             </div>
@@ -314,6 +309,12 @@ export default function ApiKeysPage() {
               </div>
             </div>
 
+            {formError && (
+              <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2">
+                <AlertTriangle size={14} className="text-passport-red shrink-0" />
+                <span className="text-xs text-passport-red">{formError}</span>
+              </div>
+            )}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">
                 Cancel
@@ -434,15 +435,15 @@ export default function ApiKeysPage() {
                           <>
                             <button
                               onClick={() => handleRotate(key.id)}
-                              className="p-1.5 rounded-passport text-passport-dim hover:text-passport-azure hover:bg-passport-azure/5 transition-all"
-                              title="Rotate"
+                              className="p-1.5 rounded-passport text-passport-dim hover:text-passport-azure hover:bg-passport-azure/5 transition-all min-touch-target"
+                              aria-label={`Rotate API key ${key.name}`}
                             >
                               <RefreshCw size={14} />
                             </button>
                             <button
                               onClick={() => setRevokeConfirmId(key.id)}
-                              className="p-1.5 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all"
-                              title="Revoke"
+                              className="p-1.5 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all min-touch-target"
+                              aria-label={`Revoke API key ${key.name}`}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -460,11 +461,11 @@ export default function ApiKeysPage() {
 
       {/* Revoke confirmation dialog */}
       {revokeConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <GlassCard className="max-w-sm w-full" hover={false}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="revoke-title">
+          <GlassCard className="max-w-sm w-full" hover={false} ref={revokeModalRef as any}>
             <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={18} className="text-passport-red" />
-              <h3 className="text-lg font-semibold text-passport-text">Revoke Key</h3>
+              <AlertTriangle size={18} className="text-passport-red" aria-hidden="true" />
+              <h3 id="revoke-title" className="text-lg font-semibold text-passport-text">Revoke Key</h3>
             </div>
             <p className="text-sm text-passport-muted mb-4">
               Are you sure you want to revoke this API key? Any integrations using it will stop working immediately.

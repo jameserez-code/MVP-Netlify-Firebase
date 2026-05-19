@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
+import dynamic from 'next/dynamic'
 import GlassCard from '@/components/glass-card'
 import { SkeletonCard } from '@/components/loading'
 import { useToast } from '@/components/toast'
-import GenericLineChart from '@/components/charts/line-chart'
-import GenericBarChart from '@/components/charts/bar-chart'
-import GenericPieChart from '@/components/charts/pie-chart'
-import ChartCard from '@/components/charts/chart-card'
 import {
   getAnalyticsOverview,
   getAnalyticsTrends,
@@ -28,6 +27,11 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react'
+
+const GenericLineChart = dynamic(() => import('@/components/charts/line-chart'), { ssr: false })
+const GenericBarChart = dynamic(() => import('@/components/charts/bar-chart'), { ssr: false })
+const GenericPieChart = dynamic(() => import('@/components/charts/pie-chart'), { ssr: false })
+const ChartCard = dynamic(() => import('@/components/charts/chart-card'), { ssr: false })
 
 type Period = '7d' | '30d' | '90d'
 type Tab = 'overview' | 'trends' | 'agents' | 'policies'
@@ -155,40 +159,39 @@ export default function AnalyticsPage() {
   const { addToast } = useToast()
   const [period, setPeriod] = useState<Period>('7d')
   const [tab, setTab] = useState<Tab>('overview')
-  const [overview, setOverview] = useState<any>(null)
-  const [trends, setTrends] = useState<any>(null)
-  const [agents, setAgents] = useState<any>(null)
-  const [policies, setPolicies] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  async function loadData() {
-    setLoading(true)
-    setError('')
-    try {
-      const [o, t, a, p] = await Promise.all([
-        getAnalyticsOverview(period).catch(() => null),
-        getAnalyticsTrends(period).catch(() => null),
-        getAnalyticsAgents(period).catch(() => null),
-        getAnalyticsPolicies(period).catch(() => null),
-      ])
-      setOverview(o)
-      setTrends(t)
-      setAgents(a)
-      setPolicies(p)
-      setLastUpdated(new Date())
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: overview, error: overviewError, isLoading: overviewLoading, mutate: mutateOverview } = useSWR(
+    ['/analytics/overview', period],
+    () => getAnalyticsOverview(period),
+    swrDashboardConfig
+  )
+  const { data: trends, error: trendsError, isLoading: trendsLoading, mutate: mutateTrends } = useSWR(
+    ['/analytics/trends', period],
+    () => getAnalyticsTrends(period),
+    swrDashboardConfig
+  )
+  const { data: agents, error: agentsError, isLoading: agentsLoading, mutate: mutateAgents } = useSWR(
+    ['/analytics/agents', period],
+    () => getAnalyticsAgents(period),
+    swrDashboardConfig
+  )
+  const { data: policies, error: policiesError, isLoading: policiesLoading, mutate: mutatePolicies } = useSWR(
+    ['/analytics/policies', period],
+    () => getAnalyticsPolicies(period),
+    swrDashboardConfig
+  )
 
-  useEffect(() => {
-    loadData()
-  }, [period])
+  const loading = overviewLoading || trendsLoading || agentsLoading || policiesLoading
+  const error = overviewError?.message || trendsError?.message || agentsError?.message || policiesError?.message || ''
+
+  function loadData() {
+    mutateOverview()
+    mutateTrends()
+    mutateAgents()
+    mutatePolicies()
+    setLastUpdated(new Date())
+  }
 
   const allowedRate = overview
     ? Math.round((overview.allowed / Math.max(overview.totalEnforcements, 1)) * 100)

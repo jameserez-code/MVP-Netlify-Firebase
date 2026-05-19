@@ -3,6 +3,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { createRequire } from 'module'
 import { log } from '../lib/logger.js'
 import { generateGatewayTicket, TICKET_TTL_SECONDS } from '../lib/crypto.js'
+import { deliverWebhook } from '../lib/webhook-deliverer.js'
 
 const require = createRequire(import.meta.url)
 const { evaluateIntent } = require('../../netlify/functions/src/engine/evaluator.js')
@@ -69,6 +70,19 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         decisionReason: decision.reason || null, violatedRule: decision.violatedRule || null,
         createdAt: new Date().toISOString(),
       }).catch(() => {})
+
+      if (decision.decision === 'deny') {
+        deliverWebhook(db, 'policy.violation', {
+          event: 'policy.violation',
+          timestamp: new Date().toISOString(),
+          intentId: intent.intentId,
+          agentId: intent.agentId,
+          tool: intent.tool,
+          decision: decision.decision,
+          reason: decision.reason,
+          violatedRule: decision.violatedRule,
+        }, agentOrgId).catch(() => {})
+      }
 
       log.info('enforce', { intentId: intent.intentId, decision: decision.decision })
       return response

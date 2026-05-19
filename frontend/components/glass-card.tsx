@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode } from 'react'
+import { ReactNode, forwardRef } from 'react'
 
 interface GlassCardProps {
   children: ReactNode
@@ -9,16 +9,21 @@ interface GlassCardProps {
   delay?: number
 }
 
-export default function GlassCard({ children, className = '', hover = true, delay = 0 }: GlassCardProps) {
-  return (
-    <div
-      className={`glass-panel p-5 ${hover ? 'glass-panel-hover' : ''} ${className}`}
-      style={{
-        animation: `slideUp 0.4s ease both`,
-        animationDelay: `${delay}s`,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
+const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
+  function GlassCard({ children, className = '', hover = true, delay = 0 }, ref) {
+    return (
+      <div
+        ref={ref}
+        className={`glass-panel p-5 ${hover ? 'glass-panel-hover' : ''} ${className}`}
+        style={{
+          animation: `slideUp 0.4s ease both`,
+          animationDelay: `${delay}s`,
+        }}
+      >
+        {children}
+      </div>
+    )
+  }
+)
+
+export default GlassCard

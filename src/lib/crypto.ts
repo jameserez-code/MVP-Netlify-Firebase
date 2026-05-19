@@ -1,4 +1,4 @@
-import { createHmac, pbkdf2Sync, randomBytes, createHash, timingSafeEqual } from 'crypto'
+import { createHmac, pbkdf2Sync, randomBytes, createHash, timingSafeEqual, createCipheriv, createDecipheriv, scryptSync } from 'crypto'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -146,3 +146,30 @@ function verifyJWT(token: string, secret: string): Record<string, unknown> {
 }
 
 export const TICKET_TTL_SECONDS = TICKET_TTL
+
+// ---------------------------------------------------------------------------
+// Webhook secret encryption — AES-256-GCM
+// ---------------------------------------------------------------------------
+const WEBHOOK_KEY = process.env.WEBHOOK_ENCRYPTION_KEY || process.env.JWT_SECRET || ''
+if (!WEBHOOK_KEY) throw new Error('JWT_SECRET or WEBHOOK_ENCRYPTION_KEY environment variable is required')
+
+const WEBHOOK_MASTER_KEY = scryptSync(WEBHOOK_KEY, 'webhook_salt', 32)
+
+export function encryptWebhookSecret(plaintext: string): { ciphertext: string; iv: string; tag: string } {
+  const iv = randomBytes(16)
+  const cipher = createCipheriv('aes-256-gcm', WEBHOOK_MASTER_KEY, iv)
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return {
+    ciphertext: encrypted.toString('base64'),
+    iv: iv.toString('base64'),
+    tag: tag.toString('base64'),
+  }
+}
+
+export function decryptWebhookSecret(ciphertext: string, iv: string, tag: string): string {
+  const decipher = createDecipheriv('aes-256-gcm', WEBHOOK_MASTER_KEY, Buffer.from(iv, 'base64'))
+  decipher.setAuthTag(Buffer.from(tag, 'base64'))
+  const decrypted = Buffer.concat([decipher.update(Buffer.from(ciphertext, 'base64')), decipher.final()])
+  return decrypted.toString('utf8')
+}

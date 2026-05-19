@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
+import dynamic from 'next/dynamic'
 import { listAgents, registerAgent, revokeAgent, suspendAgent } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
-import QRCodeDisplay from '@/components/qrcode-display'
 import EmptyState from '@/components/empty-state'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
@@ -24,6 +26,11 @@ import {
   QrCode,
 } from 'lucide-react'
 
+const QRCodeDisplay = dynamic(() => import('@/components/qrcode-display'), {
+  ssr: false,
+  loading: () => <div className="w-[140px] h-[140px] rounded-passport bg-passport-surface-2 animate-pulse" />,
+})
+
 interface Agent {
   id: string
   name: string
@@ -38,9 +45,10 @@ const PROVIDERS = ['OpenAI', 'Anthropic', 'Google', 'Cohere', 'Mistral', 'Local'
 
 export default function AgentsPage() {
   const { addToast } = useToast()
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data, error, isLoading, mutate } = useSWR('/agents', listAgents, swrDashboardConfig)
+  const agents: Agent[] = Array.isArray(data) ? data : data?.data || []
+  const loading = isLoading
+
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -49,6 +57,7 @@ export default function AgentsPage() {
     systemPrompt: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState('')
   const [newAgent, setNewAgent] = useState<any>(null)
   const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState('')
@@ -61,29 +70,14 @@ export default function AgentsPage() {
     }
   }, [newAgent?.id])
 
-  async function loadAgents() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await listAgents()
-      const list = Array.isArray(data) ? data : data.data || []
-      setAgents(list)
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
+  function loadAgents() {
+    mutate()
   }
-
-  useEffect(() => {
-    loadAgents()
-  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSubmitting(true)
-    setError('')
+    setFormError('')
     try {
       const data = await registerAgent({
         name: formData.name,
@@ -97,7 +91,7 @@ export default function AgentsPage() {
       addToast('Agent registered successfully', 'success')
       loadAgents()
     } catch (err: any) {
-      setError(err.message)
+      setFormError(err.message)
       addToast(err.message, 'error')
     } finally {
       setSubmitting(false)
@@ -208,7 +202,8 @@ export default function AgentsPage() {
             </div>
             <button
               onClick={() => setNewAgent(null)}
-              className="text-passport-dim hover:text-passport-text transition-colors"
+              className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+              aria-label="Dismiss agent registration"
             >
               <X size={16} />
             </button>
@@ -231,15 +226,15 @@ export default function AgentsPage() {
                   </code>
                   <button
                     onClick={() => setShowSecret(!showSecret)}
-                    className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0"
-                    title={showSecret ? 'Hide' : 'Show'}
+                    className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0 min-touch-target"
+                    aria-label={showSecret ? 'Hide secret key' : 'Show secret key'}
                   >
                     {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                   <button
                     onClick={copySecret}
-                    className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0"
-                    title="Copy"
+                    className="p-1.5 rounded-passport hover:bg-passport-surface-2 text-passport-muted hover:text-passport-text transition-colors shrink-0 min-touch-target"
+                    aria-label="Copy secret key to clipboard"
                   >
                     {copied ? <CheckCircle size={14} className="text-passport-green" /> : <Copy size={14} />}
                   </button>
@@ -271,7 +266,8 @@ export default function AgentsPage() {
             <h2 className="text-lg font-semibold text-passport-text">Register New Agent</h2>
             <button
               onClick={() => setShowForm(false)}
-              className="text-passport-dim hover:text-passport-text transition-colors"
+              className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+              aria-label="Close registration form"
             >
               <X size={18} />
             </button>
@@ -286,6 +282,8 @@ export default function AgentsPage() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="input-field"
                 placeholder="My Assistant"
+                autoComplete="off"
+                autoCapitalize="words"
                 required
               />
             </div>
@@ -323,6 +321,12 @@ export default function AgentsPage() {
                 placeholder="You are a helpful assistant..."
               />
             </div>
+            {formError && (
+              <div className="sm:col-span-2 p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2">
+                <AlertTriangle size={14} className="text-passport-red shrink-0" />
+                <span className="text-xs text-passport-red">{formError}</span>
+              </div>
+            )}
             <div className="sm:col-span-2 flex justify-end gap-2">
               <button
                 type="button"
@@ -440,8 +444,8 @@ export default function AgentsPage() {
                         {agent.status === 'active' && (
                           <button
                             onClick={() => handleSuspend(agent.id)}
-                            className="p-1.5 rounded-passport text-passport-dim hover:text-passport-amber hover:bg-passport-amber/5 transition-all"
-                            title="Suspend"
+                            className="p-1.5 rounded-passport text-passport-dim hover:text-passport-amber hover:bg-passport-amber/5 transition-all min-touch-target"
+                            aria-label={`Suspend agent ${agent.name}`}
                           >
                             <Pause size={14} />
                           </button>
@@ -449,8 +453,8 @@ export default function AgentsPage() {
                         {agent.status !== 'revoked' && (
                           <button
                             onClick={() => handleRevoke(agent.id)}
-                            className="p-1.5 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all"
-                            title="Revoke"
+                            className="p-1.5 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all min-touch-target"
+                            aria-label={`Revoke agent ${agent.name}`}
                           >
                             <Trash2 size={14} />
                           </button>

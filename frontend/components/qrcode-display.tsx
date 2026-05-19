@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import QRCode from 'qrcode'
 
 interface QRCodeDisplayProps {
@@ -26,12 +27,13 @@ export default function QRCodeDisplay({ value, size = 160, className = '' }: QRC
   if (!dataUrl) return null
 
   return (
-    <img
+    <Image
       src={dataUrl}
-      alt="QR Code"
+      alt="QR Code for agent configuration"
       className={`rounded-passport border border-passport-border ${className}`}
       width={size}
       height={size}
+      priority={false}
     />
   )
 }

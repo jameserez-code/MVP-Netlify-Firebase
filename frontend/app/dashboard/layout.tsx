@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
+import ActivityFeed from '@/components/activity-feed'
 import { isLoggedIn } from '@/lib/api'
 import { ChevronRight } from 'lucide-react'
 
@@ -19,7 +20,7 @@ function Breadcrumbs() {
   }
 
   return (
-    <nav className="flex items-center gap-1.5 text-xs text-passport-dim mb-4">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-passport-dim mb-4">
       <span className="font-mono uppercase tracking-wider">{labels[segments[0]] || segments[0]}</span>
       {segments.length > 1 && (
         <>
@@ -38,6 +39,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const mainRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -47,6 +49,12 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-passport-bg">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-passport-green focus:text-white focus:rounded-passport focus:outline-none"
+      >
+        Skip to main content
+      </a>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       {/* Shimmer bar */}
       <div
@@ -58,12 +66,17 @@ export default function DashboardLayout({
         }}
       />
       <main
+        id="main-content"
+        ref={mainRef}
         className={`min-h-screen transition-all duration-200 ${
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
         }`}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <Breadcrumbs />
+          <div className="flex items-center justify-between mb-2">
+            <Breadcrumbs />
+            <ActivityFeed />
+          </div>
           {children}
         </div>
       </main>

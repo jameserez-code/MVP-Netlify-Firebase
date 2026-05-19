@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
 import GlassCard from '@/components/glass-card'
 import { SkeletonCard } from '@/components/loading'
 import { useToast } from '@/components/toast'
@@ -41,39 +42,30 @@ function StatCard({ label, value, icon, color = 'text-passport-green', delay = 0
 
 export default function DashboardPage() {
   const { addToast } = useToast()
-  const [metrics, setMetrics] = useState<any>(null)
-  const [diagnostics, setDiagnostics] = useState<any>(null)
-  const [report, setReport] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  async function loadData() {
-    setLoading(true)
-    setError('')
-    try {
-      const [m, d, r] = await Promise.all([
-        getMetrics().catch(() => null),
-        getDiagnostics().catch(() => null),
-        getReport().catch(() => null),
-      ])
-      setMetrics(m)
-      setDiagnostics(d)
-      setReport(r)
-      setLastUpdated(new Date())
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
+  const { data: metrics, error: metricsError, isLoading: metricsLoading, mutate: mutateMetrics } = useSWR(
+    '/metrics',
+    getMetrics,
+    swrDashboardConfig
+  )
+  const { data: diagnostics, error: diagnosticsError, isLoading: diagnosticsLoading } = useSWR(
+    '/diagnostics',
+    getDiagnostics,
+    swrDashboardConfig
+  )
+  const { data: report, error: reportError, isLoading: reportLoading } = useSWR(
+    '/report',
+    getReport,
+    swrDashboardConfig
+  )
+
+  const loading = metricsLoading || diagnosticsLoading || reportLoading
+  const error = metricsError?.message || diagnosticsError?.message || reportError?.message || ''
+  const lastUpdated = new Date()
+
+  function loadData() {
+    mutateMetrics()
   }
-
-  useEffect(() => {
-    loadData()
-    const interval = setInterval(loadData, 10000)
-    return () => clearInterval(interval)
-  }, [])
 
   const healthy = diagnostics?.overall === 'healthy'
 

@@ -1,3 +1,5 @@
+import { captureApiError } from './sentry'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 // Token storage
@@ -34,12 +36,14 @@ async function fetchJson(path: string, options?: RequestInit) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     const message = err.error?.message || err.message
-    if (message) throw new Error(message)
+    const error = new Error(message || `Request failed (HTTP ${res.status})`)
+    captureApiError(error, { path, status: res.status }).catch(() => {})
+    if (message) throw error
     if (res.status === 403) throw new Error('Access denied. You do not have permission.')
     if (res.status === 404) throw new Error('Resource not found.')
     if (res.status === 409) throw new Error('Conflict: resource already exists.')
     if (res.status >= 500) throw new Error('Server error. Please try again later.')
-    throw new Error(`Request failed (HTTP ${res.status})`)
+    throw error
   }
 
   return res.json()
@@ -262,6 +266,48 @@ export async function deleteApiKey(id: string) {
 
 export async function rotateApiKey(id: string) {
   return fetchJson(`/api-keys/${id}/rotate`, {
+    method: 'POST',
+  })
+}
+
+// Onboarding
+export async function completeOnboarding() {
+  return fetchJson('/onboarding/complete', {
+    method: 'POST',
+    body: JSON.stringify({ completedAt: new Date().toISOString() }),
+  })
+}
+
+// Webhooks
+export async function listWebhooks() {
+  return fetchJson('/webhooks')
+}
+
+export async function getWebhook(id: string) {
+  return fetchJson(`/webhooks/${id}`)
+}
+
+export async function createWebhook(data: { name: string; url: string; events: string[]; secret?: string; active?: boolean }) {
+  return fetchJson('/webhooks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteWebhook(id: string) {
+  return fetchJson(`/webhooks/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function testWebhook(id: string) {
+  return fetchJson(`/webhooks/${id}/test`, {
+    method: 'POST',
+  })
+}
+
+export async function rotateWebhook(id: string) {
+  return fetchJson(`/webhooks/${id}/rotate`, {
     method: 'POST',
   })
 }

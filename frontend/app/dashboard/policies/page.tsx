@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import useSWR from 'swr'
+import { swrDashboardConfig } from '@/lib/swr-config'
 import { listPolicies, createPolicy, deletePolicy } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
@@ -94,32 +96,18 @@ function buildRules(form: FormState): Record<string, any> {
 
 export default function PoliciesPage() {
   const { addToast } = useToast()
-  const [policies, setPolicies] = useState<Policy[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { data, error, isLoading, mutate } = useSWR('/policies', listPolicies, swrDashboardConfig)
+  const policies: Policy[] = Array.isArray(data) ? data : data?.data || []
+  const loading = isLoading
+
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
-  async function loadPolicies() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await listPolicies()
-      const list = Array.isArray(data) ? data : data.data || []
-      setPolicies(list)
-    } catch (err: any) {
-      setError(err.message)
-      addToast(err.message, 'error')
-    } finally {
-      setLoading(false)
-    }
+  function loadPolicies() {
+    mutate()
   }
-
-  useEffect(() => {
-    loadPolicies()
-  }, [])
 
   function validate(): boolean {
     const errors: Record<string, string> = {}
@@ -144,7 +132,6 @@ export default function PoliciesPage() {
     e.preventDefault()
     if (!validate()) return
     setSubmitting(true)
-    setError('')
     try {
       await createPolicy({ name: form.name, rules: buildRules(form) })
       addToast('Policy created successfully', 'success')
@@ -152,7 +139,6 @@ export default function PoliciesPage() {
       setForm(DEFAULT_FORM)
       loadPolicies()
     } catch (err: any) {
-      setError(err.message)
       addToast(err.message, 'error')
     } finally {
       setSubmitting(false)
@@ -237,7 +223,8 @@ export default function PoliciesPage() {
               <h2 className="text-lg font-semibold text-passport-text">Create Policy</h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="text-passport-dim hover:text-passport-text transition-colors"
+                className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
+                aria-label="Close policy form"
               >
                 <X size={18} />
               </button>
@@ -252,6 +239,8 @@ export default function PoliciesPage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className={`input-field ${validationErrors.name ? 'border-passport-red' : ''}`}
                   placeholder="e.g. Standard Agent"
+                  autoComplete="off"
+                  autoCapitalize="words"
                 />
                 {validationErrors.name && (
                   <p className="text-xs text-passport-red mt-1">{validationErrors.name}</p>
@@ -520,8 +509,8 @@ export default function PoliciesPage() {
                   </span>
                   <button
                     onClick={() => handleDelete(policy.id, policy.name)}
-                    className="p-2 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all"
-                    title="Delete policy"
+                    className="p-2 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all min-touch-target"
+                    aria-label={`Delete policy ${policy.name}`}
                   >
                     <Trash2 size={14} />
                   </button>
