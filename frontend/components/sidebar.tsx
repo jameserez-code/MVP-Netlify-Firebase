@@ -8,6 +8,7 @@ import {
   Bot,
   FileText,
   ClipboardList,
+  KeyRound,
   LogOut,
   Menu,
   X,
@@ -24,6 +25,7 @@ const navItems = [
   { href: '/dashboard/agents', label: 'Agents', icon: Bot },
   { href: '/dashboard/policies', label: 'Policies', icon: FileText },
   { href: '/dashboard/audit', label: 'Audit', icon: ClipboardList },
+  { href: '/dashboard/api-keys', label: 'API Keys', icon: KeyRound },
 ]
 
 export default function Sidebar({

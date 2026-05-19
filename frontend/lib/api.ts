@@ -142,6 +142,23 @@ export async function getAuditTimeline() {
   return fetchJson('/audit/timeline')
 }
 
+// Analytics
+export async function getAnalyticsOverview(period = '7d') {
+  return fetchJson(`/analytics/overview?period=${encodeURIComponent(period)}`)
+}
+
+export async function getAnalyticsTrends(period = '7d') {
+  return fetchJson(`/analytics/trends?period=${encodeURIComponent(period)}`)
+}
+
+export async function getAnalyticsAgents(period = '7d') {
+  return fetchJson(`/analytics/agents?period=${encodeURIComponent(period)}`)
+}
+
+export async function getAnalyticsPolicies(period = '7d') {
+  return fetchJson(`/analytics/policies?period=${encodeURIComponent(period)}`)
+}
+
 // Metrics & Diagnostics
 export async function getMetrics() {
   return fetchJson('/metrics')
@@ -222,5 +239,29 @@ export async function gatewayExecute(gatewayTicket: string, action: Record<strin
   return fetchJson('/gateway/execute', {
     method: 'POST',
     body: JSON.stringify({ gatewayTicket, action }),
+  })
+}
+
+// API Keys
+export async function listApiKeys() {
+  return fetchJson('/api-keys')
+}
+
+export async function createApiKey(data: { name: string; scopes?: string[] }) {
+  return fetchJson('/api-keys', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteApiKey(id: string) {
+  return fetchJson(`/api-keys/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function rotateApiKey(id: string) {
+  return fetchJson(`/api-keys/${id}/rotate`, {
+    method: 'POST',
   })
 }

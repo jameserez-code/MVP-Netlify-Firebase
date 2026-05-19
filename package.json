@@ -19,6 +19,7 @@
     "tasks:seed": "tsx src/tasks.ts",
     "schema:seed": "tsx src/seed.ts",
     "demo:seed": "tsx scripts/seed-demo.ts",
+    "setup:prod": "tsx scripts/setup-production.ts",
     "dev": "tsx watch src/server.ts",
     "demo": "tsx src/demo-server.ts",
     "demo:guided": "tsx src/guided-demo.ts",

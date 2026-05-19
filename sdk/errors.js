@@ -45,4 +45,24 @@ class GatewayError extends Error {
   }
 }
 
-module.exports = { PermissionError, GatewayError };
+/**
+ * Thrown when an API request fails after all retries.
+ */
+class RequestError extends Error {
+  constructor(code, message, statusCode) {
+    super(message);
+    this.name = 'RequestError';
+    this.code = code;
+    this.statusCode = statusCode || null;
+  }
+
+  toJSON() {
+    return {
+      error: this.code,
+      message: this.message,
+      statusCode: this.statusCode,
+    };
+  }
+}
+
+module.exports = { PermissionError, GatewayError, RequestError };

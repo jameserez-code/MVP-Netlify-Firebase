@@ -15,6 +15,7 @@ function Breadcrumbs() {
     agents: 'Agents',
     policies: 'Policies',
     audit: 'Audit',
+    'api-keys': 'API Keys',
   }
 
   return (

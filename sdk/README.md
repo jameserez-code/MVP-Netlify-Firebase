@@ -1,116 +1,190 @@
-# Passport Agent SDK
+# @passport-agent/sdk
 
-Embed enforcement into any AI agent in 3 lines.
+AI Agent Passport SDK — enforce policies on AI agent tool calls.
 
-## Install
+## Installation
 
 ```bash
 npm install @passport-agent/sdk
 ```
 
-## Quickstart
+## Quick Start
 
 ```javascript
-import OpenAI from 'openai'
-import { AgentControlPlane } from '@passport-agent/sdk'
+const { AgentControlPlane } = require('@passport-agent/sdk');
 
-// Initialize with your agent credentials
-const acp = new AgentControlPlane({
-  agentId: process.env.ACP_AGENT_ID,
-  secretKey: process.env.ACP_SECRET_KEY,
-  endpoint: 'http://localhost:3000',   // or your deployed API URL
-  model: 'gpt-4o',
+const cp = new AgentControlPlane({
+  agentId: 'agent_abc123',
+  secretKey: 'ak_live_...',
+  endpoint: 'https://api.passport-agent.example.com',
+  model: 'gpt-4',
   provider: 'openai',
-})
+});
 
-const session = acp.startSession('Answer customer questions')
-const openai = new OpenAI()
+// Start a session
+cp.startSession('Summarize news');
 
-// Define your tools as usual
-const tools = [
-  { type: 'function', function: { name: 'lookup_order', parameters: { ... } } }
-]
-const toolImpls = {
-  lookup_order: async ({ orderId }) => fetchOrder(orderId),
-}
+// Wrap any tool with enforcement
+const webSearch = cp.wrapTool('web_search', async ({ query }) => {
+  // ... real implementation
+  return { results: [] };
+});
 
-// Normal chat loop — enforcement is automatic
-while (true) {
-  const response = await openai.chat.completions.create({ model: 'gpt-4o', messages, tools })
-
-  if (response.choices[0].finish_reason === 'tool_calls') {
-    // This single line enforces all tool calls against your policies
-    const results = await acp.processToolCalls(
-      response.choices[0].message.tool_calls,
-      toolImpls
-    )
-    messages.push(...results)
-  } else {
-    break
-  }
+try {
+  const result = await webSearch({ query: 'latest AI news' });
+} catch (err) {
+  console.error('Blocked:', err.reason);
 }
 ```
 
 ## API Reference
 
-### `new AgentControlPlane(config)`
+### `new AgentControlPlane(options)`
 
-| Param | Type | Required | Description |
-|-------|------|----------|-------------|
-| `agentId` | string | Yes | Registered agent ID |
-| `secretKey` | string | Yes | Agent secret key (from registration) |
-| `endpoint` | string | Yes | ACP API base URL |
-| `model` | string | No | Model identifier |
-| `provider` | string | No | Provider name |
-| `systemPrompt` | string | No | System prompt (hashed for verification) |
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `agentId` | `string` | Yes | Unique agent identifier |
+| `secretKey` | `string` | Yes | HMAC signing secret |
+| `endpoint` | `string` | Yes | API base URL |
+| `apiKey` | `string` | No | API key for authentication |
+| `model` | `string` | No | Model name (default: `'unknown'`) |
+| `provider` | `string` | No | Provider name (default: `'unknown'`) |
+| `systemPrompt` | `string` | No | System prompt for hashing |
 
-### `acp.wrapTool(toolName, toolFn)`
+### `startSession(taskHint?)`
 
-Wraps a tool function so it goes through enforcement before execution.
+Starts a new session. Returns `{ sessionId, taskHint }`.
+
+### `endSession()`
+
+Ends the active session. Returns `{ sessionId, completedAt }`.
+
+### `wrapTool(toolName, toolFn)`
+
+Wraps a tool function with policy enforcement. Returns a new async function with the same signature.
+
+### `processToolCalls(toolCalls, toolImpls, opts?)`
+
+Processes OpenAI `tool_calls` arrays through enforcement.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `useWrapped` | `boolean` | `false` | If `true`, uses `wrapTool()` for each call (slower, more secure). If `false`, executes directly (faster). |
+
+### `listAgents()`
+
+Returns a paginated list of registered agents.
+
+### `getAuditLog(options?)`
+
+Queries the audit log.
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `decision` | `'allow' \| 'deny' \| 'modify'` | Filter by decision |
+| `tool` | `string` | Filter by tool name |
+| `limit` | `number` | Page size |
+| `offset` | `number` | Page offset |
+
+### `revokeAgent(id)`
+
+Revokes an agent by ID. Returns `{ id, status }`.
+
+## Error Handling
+
+The SDK throws three error types:
+
+### `PermissionError`
+
+Thrown when a tool call is denied by policy.
 
 ```javascript
-const safeFetch = acp.wrapTool('http_request', fetch)
-const result = await safeFetch({ url: 'https://api.example.com', method: 'GET' })
-// If denied: throws PermissionError({ reason, violatedRule, intentId })
-```
-
-### `acp.processToolCalls(toolCalls, toolImpls, opts?)`
-
-Processes OpenAI `tool_calls` array. Returns tool response messages ready to push into `messages[]`. Denied calls return error tool responses that the LLM can see.
-
-```javascript
-const results = await acp.processToolCalls(
-  response.choices[0].message.tool_calls,
-  {
-    lookup_order: async ({ orderId }) => db.find(orderId),
-    send_email: async ({ to, body }) => mailer.send(to, body),
-  }
-)
-messages.push(...results)
-```
-
-### `acp.startSession(taskHint?)` / `acp.endSession()`
-
-Manage sessions for audit grouping. Every action logged during a session is correlated.
-
-### Error Classes
-
-```javascript
-import { PermissionError, GatewayError } from '@passport-agent/sdk'
-
 try {
-  await wrappedTool(params)
+  await wrappedTool(params);
 } catch (err) {
-  if (err instanceof PermissionError) {
-    console.log('Blocked:', err.reason, err.violatedRule)
+  if (err.name === 'PermissionError') {
+    console.log(err.code);        // 'PERMISSION_DENIED'
+    console.log(err.reason);      // e.g. 'tool_not_allowed'
+    console.log(err.violatedRule); // e.g. 'allowedTools'
+    console.log(err.intentId);    // intent ID for audit
+    console.log(err.tool);        // tool name
   }
 }
 ```
 
-## Local Development
+### `GatewayError`
+
+Thrown when the enforcement gateway is unreachable or returns an unexpected error.
+
+```javascript
+catch (err) {
+  if (err.name === 'GatewayError') {
+    console.log(err.code);    // 'ENFORCE_UNAVAILABLE' or 'GATEWAY_UNAVAILABLE'
+    console.log(err.message); // human-readable description
+  }
+}
+```
+
+### `RequestError`
+
+Thrown when an API request fails after all retries (including network errors, timeouts, 5xx responses).
+
+```javascript
+catch (err) {
+  if (err.name === 'RequestError') {
+    console.log(err.code);        // 'REQUEST_FAILED'
+    console.log(err.statusCode);  // HTTP status code, if available
+    console.log(err.message);
+  }
+}
+```
+
+## Configuration Options
+
+### Timeout
+
+The SDK uses a 30-second default timeout for all HTTP requests. This is configurable at the `_apiCall` level but is intentionally kept as a sensible default.
+
+### Retries
+
+All API calls automatically retry up to 3 times with exponential backoff:
+- Retry 1: 1 second delay
+- Retry 2: 2 seconds delay
+- Retry 3: 4 seconds delay
+
+Retries are triggered on network errors, timeouts, and 5xx HTTP responses.
+
+### API Key Authentication
+
+You can authenticate using an API key instead of (or in addition to) JWT bearer tokens:
+
+```javascript
+const cp = new AgentControlPlane({
+  agentId: 'agent_abc123',
+  secretKey: 'ak_live_...',
+  endpoint: 'https://api.passport-agent.example.com',
+  apiKey: 'passport_...', // Added in v1.0.0-beta.1
+});
+```
+
+When `apiKey` is provided, the `X-API-Key` header is automatically sent with every request.
+
+## CLI
+
+The SDK ships with a CLI:
 
 ```bash
-npm run dev              # Start Fastify server on :3000
-node demo/malicious-agent.js  # Run the 8-beat demo scenario
-npm test                 # Run crypto + evaluator unit tests (30 passing)
+npx passport-agent init                # Create .passport-agent.json
+npx passport-agent agent create --name "My Agent"
+npx passport-agent enforce --tool "web_search" --param '{"query":"test"}'
+npx passport-agent audit --limit 10
+npx passport-agent status
 ```
+
+CLI configuration is read from `.passport-agent.json` or environment variables:
+- `PASSPORT_API_KEY`
+- `PASSPORT_API_URL`
+
+## License
+
+MIT

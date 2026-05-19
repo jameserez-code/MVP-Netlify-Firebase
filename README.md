@@ -343,33 +343,60 @@ npm start          # Start production server
 
 ## Deployment
 
-### Render (Recommended for API)
+### Render (Backend API)
 
-1. Connect GitHub repo to Render
-2. Create a **Web Service**
-3. Configure:
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+1. Click the **Deploy to Render** button above (or create a new Web Service manually)
+2. Connect your GitHub repository
+3. Render will auto-detect `render.yaml` and configure:
    - **Runtime:** Node
    - **Build Command:** `npm install && npm run build`
    - **Start Command:** `npm start`
+   - **Health Check Path:** `/health`
    - **Plan:** Standard (or Free for testing)
-4. Add all environment variables from `.env.example`
-5. **Important:** Render auto-detects ports. Ensure `PORT` env var is set.
+4. Add required environment variables in the Render dashboard (or run `./scripts/setup-render.sh`):
+   - `FIREBASE_PROJECT_ID`
+   - `FIREBASE_CLIENT_EMAIL`
+   - `FIREBASE_PRIVATE_KEY`
+   - `ALLOWED_ORIGINS` (your frontend URL)
+5. Deploy
+
+After first deploy, seed the production database:
+```bash
+# From your local machine (with Render env vars loaded)
+npm run setup:prod
+```
+
+Then verify with the integration test:
+```bash
+API_URL=https://passport-agent-api.onrender.com ADMIN_PASSWORD=<your-password> npm run test:integration
+```
+
+### Netlify (Frontend)
+
+1. Connect the repo to Netlify
+2. Set **Base directory:** `frontend`
+3. Set **Build command:** `npm run build`
+4. Set **Publish directory:** `dist`
+5. Add environment variable:
+   - `NEXT_PUBLIC_API_URL=https://passport-agent-api.onrender.com`
 6. Deploy
 
-The Dockerfile includes a `HEALTHCHECK` that pings `/health` every 30 seconds.
+Netlify will use `frontend/netlify.toml` for redirect rules (API proxy + SPA fallback).
 
-### Netlify (Frontend + Serverless)
+### Vercel (Frontend)
 
-1. Connect GitHub repo to Netlify
-2. Configure build settings:
-   - **Build command:** `cd frontend && npm install && npm run build`
-   - **Publish directory:** `frontend/out` or `frontend/.next`
-3. Add environment variables in Netlify dashboard
-4. Deploy
+1. Import the repo into Vercel
+2. Set **Root Directory:** `frontend`
+3. Set **Framework Preset:** Next.js
+4. Add environment variable:
+   - `NEXT_PUBLIC_API_URL=https://passport-agent-api.onrender.com`
+5. Deploy
 
-Netlify Functions are in `netlify/functions/` for serverless API endpoints.
+Vercel will use `frontend/vercel.json` for rewrite rules.
 
-### Docker
+### Docker (Self-Hosted)
 
 ```bash
 # Build and run

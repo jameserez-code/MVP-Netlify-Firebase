@@ -4,15 +4,19 @@ const crypto = require('crypto');
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
-const { PermissionError, GatewayError } = require('./errors');
+const { PermissionError, GatewayError, RequestError } = require('./errors');
 
 // Generate a unique intent ID for each action
 function generateIntentId() {
   return 'int_' + crypto.randomBytes(10).toString('hex').substring(0, 12);
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 class AgentControlPlane {
-  constructor({ agentId, secretKey, endpoint, model, provider, systemPrompt }) {
+  constructor({ agentId, secretKey, endpoint, apiKey, model, provider, systemPrompt }) {
     if (!agentId) throw new Error('agentId is required');
     if (!secretKey) throw new Error('secretKey is required');
     if (!endpoint) throw new Error('endpoint is required');
@@ -20,6 +24,7 @@ class AgentControlPlane {
     this.agentId = agentId;
     this.secretKey = secretKey;
     this.endpoint = endpoint.replace(/\/$/, '');
+    this.apiKey = apiKey || null;
     this.model = model || 'unknown';
     this.provider = provider || 'unknown';
     this.systemPrompt = systemPrompt || '';
@@ -192,25 +197,68 @@ class AgentControlPlane {
   }
 
   // -------------------------------------------------------------------------
-  // HTTP layer
+  // Agent management
   // -------------------------------------------------------------------------
 
-  async _apiCall(method, path, body) {
-    return new Promise((resolve, reject) => {
-      const url = new URL(path, this.endpoint);
-      const lib = url.protocol === 'https:' ? https : http;
+  /**
+   * List all registered agents.
+   */
+  async listAgents() {
+    return this._apiCall('GET', '/agents', null);
+  }
 
-      const payload = JSON.stringify(body);
+  /**
+   * Query the audit log.
+   * @param {Object} [options]
+   * @param {string} [options.decision] — filter by decision
+   * @param {string} [options.tool]     — filter by tool name
+   * @param {number} [options.limit]    — page size
+   * @param {number} [options.offset]   — page offset
+   */
+  async getAuditLog(options = {}) {
+    const search = new URLSearchParams();
+    if (options.decision) search.set('decision', options.decision);
+    if (options.tool) search.set('tool', options.tool);
+    if (options.limit) search.set('limit', String(options.limit));
+    if (options.offset) search.set('offset', String(options.offset));
+    const query = search.toString();
+    return this._apiCall('GET', '/audit' + (query ? `?${query}` : ''), null);
+  }
+
+  /**
+   * Revoke an agent by ID.
+   */
+  async revokeAgent(id) {
+    return this._apiCall('PATCH', `/agents/${id}/revoke`, {});
+  }
+
+  // -------------------------------------------------------------------------
+  // HTTP layer with retries and timeout
+  // -------------------------------------------------------------------------
+
+  async _apiCall(method, path, body, attempt = 1) {
+    const url = new URL(path, this.endpoint);
+    const lib = url.protocol === 'https:' ? https : http;
+
+    const payload = body ? JSON.stringify(body) : null;
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Agent-Key': this.secretKey,
+    };
+    if (this.apiKey) {
+      headers['X-API-Key'] = this.apiKey;
+    }
+    if (payload) {
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
+
+    return new Promise((resolve, reject) => {
       const req = lib.request(
         url,
         {
           method,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Agent-Key': this.secretKey,
-            'Content-Length': Buffer.byteLength(payload),
-          },
-          timeout: 15000,
+          headers,
+          timeout: 30000,
         },
         (res) => {
           let data = '';
@@ -219,7 +267,11 @@ class AgentControlPlane {
             try {
               const json = JSON.parse(data);
               if (res.statusCode >= 400) {
-                reject(new Error(json.message || json.error || 'API error ' + res.statusCode));
+                const err = new Error(json.message || json.error || 'API error ' + res.statusCode);
+                // Attach metadata for downstream handling
+                err.statusCode = res.statusCode;
+                err.code = json.code || 'API_ERROR';
+                reject(err);
               } else {
                 resolve(json);
               }
@@ -230,10 +282,38 @@ class AgentControlPlane {
         }
       );
 
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
-      req.write(payload);
+      req.on('error', (err) => {
+        reject(new Error('Network error: ' + err.message));
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Request timeout'));
+      });
+
+      if (payload) req.write(payload);
       req.end();
+    }).catch(async (err) => {
+      const isRetryable =
+        err.message.includes('Network error') ||
+        err.message.includes('Request timeout') ||
+        (err.statusCode >= 500 && err.statusCode < 600);
+
+      if (isRetryable && attempt < 3) {
+        const delay = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
+        await sleep(delay);
+        return this._apiCall(method, path, body, attempt + 1);
+      }
+
+      if (attempt >= 3) {
+        throw new RequestError(
+          err.code || 'REQUEST_FAILED',
+          err.message,
+          err.statusCode || null
+        );
+      }
+
+      throw err;
     });
   }
 

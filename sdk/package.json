@@ -1,10 +1,14 @@
 {
   "name": "@passport-agent/sdk",
-  "version": "1.0.0",
-  "description": "Agent Control Plane SDK — embed enforcement into any AI agent in 3 lines",
+  "version": "1.0.0-beta.1",
+  "description": "AI Agent Passport SDK — enforce policies on AI agent tool calls",
   "main": "index.js",
-  "files": ["index.js", "errors.js"],
-  "keywords": ["ai-agent", "permissions", "enforcement", "tool-calling", "openai"],
-  "license": "MIT",
-  "engines": { "node": ">=18.0.0" }
+  "types": "index.d.ts",
+  "bin": {
+    "passport-agent": "./bin/cli.js"
+  },
+  "files": ["index.js", "index.d.ts", "bin/", "README.md"],
+  "engines": { "node": ">=18" },
+  "keywords": ["ai", "agent", "security", "policy", "enforcement"],
+  "license": "MIT"
 }

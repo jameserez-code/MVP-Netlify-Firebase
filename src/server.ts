@@ -23,6 +23,9 @@ import { paginate, parsePaginationQuery } from './lib/pagination.js'
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
 import enforceRoutes from './routes/enforce.js'
+import healthRoutes from './routes/health.js'
+import apiKeysRoutes from './routes/api-keys.js'
+import analyticsRoutes from './routes/analytics.js'
 
 // Validate environment before starting
 validateEnv()
@@ -66,7 +69,7 @@ app.addHook('onRequest', async (request, reply) => {
     reply.header('Access-Control-Allow-Origin', origin)
   }
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
+  reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key, X-API-Key')
   if (request.method === 'OPTIONS') { reply.code(204).send(); return }
   const ip = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
   const result = await rateLimiter.check(ip, request.url)
@@ -117,14 +120,59 @@ app.setErrorHandler((error: any, request, reply) => {
 })
 
 // Auth middleware
-interface Claims { sub: string; role: string; iat: number; exp: number; jti: string }
+interface Claims { sub: string; role: string; orgId?: string; scopes?: string[]; iat: number; exp: number; jti: string }
 async function requireAuth(request: any, reply: any): Promise<Claims | null> {
+  // Check JWT first
   const header = (request.headers.authorization || '') as string
   const token = header.startsWith('Bearer ') ? header.substring(7) : null
-  if (!token) { reply.code(401).send({ error: { code: 'unauthorized', message: 'missing Authorization header' } }); return null }
-  const claims = verify(token)
-  if (!claims) { reply.code(401).send({ error: { code: 'unauthorized', message: 'invalid or expired token' } }); return null }
-  return claims as Claims
+  if (token) {
+    const claims = verify(token)
+    if (!claims) { reply.code(401).send({ error: { code: 'unauthorized', message: 'invalid or expired token' } }); return null }
+    request.claims = claims as Claims
+    return claims as Claims
+  }
+
+  // Fall back to API key
+  const apiKey = (request.headers['x-api-key'] || '') as string
+  if (apiKey) {
+    const keySnap = await db.collection('apiKeys').get()
+    let matchedDoc: any = null
+    for (const doc of keySnap.docs) {
+      const data = doc.data() as any
+      if (data.status !== 'active') continue
+      const { verifyKey } = await import('./lib/crypto.js')
+      if (verifyKey(apiKey, data.keyHash, data.keySalt, data.iterations || 50000)) {
+        matchedDoc = { id: doc.id, ...data }
+        break
+      }
+    }
+
+    if (!matchedDoc) {
+      reply.code(401).send({ error: { code: 'unauthorized', message: 'invalid API key' } })
+      return null
+    }
+
+    // Update usage stats (fire-and-forget)
+    db.collection('apiKeys').doc(matchedDoc.id).update({
+      requestCount: (matchedDoc.requestCount || 0) + 1,
+      lastUsedAt: new Date().toISOString(),
+    }).catch(() => {})
+
+    const claims: Claims = {
+      sub: matchedDoc.orgId || matchedDoc.name || matchedDoc.id,
+      role: 'api_key',
+      orgId: matchedDoc.orgId,
+      scopes: matchedDoc.scopes || ['read'],
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      jti: matchedDoc.id,
+    }
+    request.claims = claims
+    return claims
+  }
+
+  reply.code(401).send({ error: { code: 'unauthorized', message: 'missing Authorization header or X-API-Key header' } })
+  return null
 }
 
 function err(reply: any, code: number, category: string, message: string, detail?: Record<string, unknown>) {
@@ -244,33 +292,6 @@ countUp(document.getElementById("tRuns"),ra.active||0);countUp(document.getEleme
 document.getElementById("dot").style.background="#2ea043";document.getElementById("statusText").textContent="healthy"}}catch(e){document.getElementById("dot").style.background="#f85149";document.getElementById("statusText").textContent="offline"}}
 refresh();setInterval(refresh,10000)
 </script></body></html>`
-})
-
-// GET /health — enhanced liveness probe (no auth)
-app.get('/health', async (_request, reply) => {
-  const used = process.memoryUsage()
-  const usedMB = Math.round(used.heapUsed / 1024 / 1024)
-
-  let firebaseStatus = 'unknown'
-  try {
-    await db.collection('tasks').limit(1).get()
-    firebaseStatus = 'connected'
-  } catch {
-    firebaseStatus = 'disconnected'
-  }
-
-  return {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    version: '2.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    uptime: Math.floor(process.uptime()),
-    checks: {
-      firebase: firebaseStatus,
-      memory: `ok (${usedMB}MB used)`,
-      disk: 'ok',
-    },
-  }
 })
 
 // POST /auth/login
@@ -495,6 +516,8 @@ app.get('/org/metrics', async (request, reply) => {
 agentsRoutes(app, db)
 policiesRoutes(app, db)
 enforceRoutes(app, db)
+healthRoutes(app, db)
+apiKeysRoutes(app, db)
 hardenAuth(app, db)
 auditTimeline(app, db)
 runTrace(app, db)
