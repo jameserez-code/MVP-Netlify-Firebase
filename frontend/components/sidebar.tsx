@@ -16,6 +16,7 @@ import {
   ChevronRight,
   User,
   Building2,
+  Settings,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { isLoggedIn, clearToken } from '@/lib/api'
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/dashboard/policies', label: 'Policies', icon: FileText },
   { href: '/dashboard/audit', label: 'Audit', icon: ClipboardList },
   { href: '/dashboard/api-keys', label: 'API Keys', icon: KeyRound },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar({

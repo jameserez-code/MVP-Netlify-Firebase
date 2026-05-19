@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import useSWR from 'swr'
 import { swrActivityConfig } from '@/lib/swr-config'
+import { useRealtime } from '@/lib/websocket'
 import { getAudit } from '@/lib/api'
 import {
   Bot,
@@ -102,16 +103,33 @@ export default function ActivityFeed() {
   const panelRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number>(0)
 
-  const { data } = useSWR(
+  const { data: wsData, connected: wsConnected } = useRealtime(
+    'audit',
     '/activity',
     () => getAudit({ limit: 10 }),
     swrActivityConfig
   )
 
-  const entries = Array.isArray(data) ? data : data?.data || []
+  const [entries, setEntries] = useState<any[]>([])
+
+  useEffect(() => {
+    if (!wsConnected && wsData) {
+      const list = Array.isArray(wsData) ? wsData : wsData?.data || []
+      setEntries(list)
+    }
+  }, [wsConnected, wsData])
+
+  useEffect(() => {
+    if (wsConnected && wsData) {
+      setEntries((prev) => {
+        const next = [wsData, ...prev]
+        return next.slice(0, 50)
+      })
+    }
+  }, [wsConnected, wsData])
 
   const events: ActivityEvent[] = entries.map((entry: any) => ({
-    id: entry.id,
+    id: entry.id || entry.intentId || Math.random().toString(36).slice(2),
     type: inferEventType(entry),
     description: entry.reason || inferDescription(entry),
     timestamp: entry.timestamp || entry.createdAt || new Date().toISOString(),
@@ -264,7 +282,7 @@ export default function ActivityFeed() {
             {/* Footer */}
             <div className="p-3 border-t border-passport-border text-center">
               <span className="text-[10px] text-passport-dim font-mono">
-                Refreshes every 5 seconds
+                {wsConnected ? 'Real-time updates' : 'Refreshes every 5 seconds'}
               </span>
             </div>
           </div>

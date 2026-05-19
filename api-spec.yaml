@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Passport Agent — Agent Control Plane API",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "description": "AI agent identity + permission enforcement API. 15 endpoints for agent lifecycle management, task execution, policy enforcement, and observability."
   },
   "servers": [{ "url": "http://localhost:3000", "description": "Local development" }],

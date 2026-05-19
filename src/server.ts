@@ -6,7 +6,7 @@ import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
 import { transitionTask, transitionRun, failRunWithError } from './transitions.js'
 import { generateId } from './lib/crypto.js'
-import { attachRequestId, auditTimeline, runTrace, metrics } from './observability.js'
+import { attachRequestId, auditTimeline, runTrace, metrics, getMetricsData } from './observability.js'
 import { hardenAuth } from './security.js'
 import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
 import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
@@ -27,7 +27,10 @@ import healthRoutes from './routes/health.js'
 import apiKeysRoutes from './routes/api-keys.js'
 import analyticsRoutes from './routes/analytics.js'
 import webhooksRoutes from './routes/webhooks.js'
+import notificationsRoutes from './routes/notifications.js'
 import { deliverWebhook } from './lib/webhook-deliverer.js'
+import { initWebSocketServer } from './lib/websocket.js'
+import { publishEvent } from './lib/events.js'
 
 // Validate environment before starting
 validateEnv()
@@ -187,6 +190,19 @@ async function fetchDoc(collection: string, id: string) {
   return snap.exists ? { id, ...snap.data() } : null
 }
 
+function getOrgId(claims: Claims | null): string {
+  return claims?.orgId || process.env.DEFAULT_ORG_ID || 'default'
+}
+
+async function broadcastMetrics(orgId: string) {
+  try {
+    const data = await getMetricsData(db)
+    publishEvent(orgId, 'metrics', data)
+  } catch {
+    // silent fail
+  }
+}
+
 // ==================== ENDPOINTS ====================
 
 // GET / — root (live mini-dashboard)
@@ -277,7 +293,7 @@ footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;fon
 </div>
 <div class="refresh">auto-refreshing every 10s</div>
 </main>
-<footer>Passport Agent v2.0 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
+<footer>Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
 <script>
 function countUp(el,target){if(!el)return;var cur=parseInt(el.textContent)||0;if(cur===target)return;var step=Math.ceil(Math.abs(target-cur)/20);if(step<1)step=1;var go=function(){cur+=step;if((step>0&&cur>=target)||(step<0&&cur<=target)){el.textContent=target;return}el.textContent=cur;requestAnimationFrame(go)};go()}
 async function refresh(){try{var r=await fetch("/metrics"),d=await r.json();if(!d.error){var t=d.tasks||{},ra=d.runs||{},ag=d.agents||{};
@@ -330,6 +346,7 @@ app.post('/task', async (request, reply) => {
     const now = new Date().toISOString()
     await docRef.set({ payload, status: 'pending', createdAt: now, updatedAt: now, queuedAt: null, startedAt: null, completedAt: null, failedAt: null, cancelledAt: null, error: null, runCount: 0 })
     log.success('task created', { taskId: docRef.id })
+    broadcastMetrics(getOrgId(claims))
     reply.code(201); return { id: docRef.id, payload, status: 'pending', createdAt: now }
   } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
 })
@@ -374,6 +391,7 @@ app.post('/agent/run', async (request, reply) => {
     })
     await db.collection('tasks').doc(taskId).update({ runCount: (task.runCount || 0) + 1 })
     log.success('run started', { runId: docRef.id, agentId, taskId, requestId })
+    broadcastMetrics(getOrgId(claims))
     reply.code(201); return { id: docRef.id, agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now }
   } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
 })
@@ -405,6 +423,7 @@ app.post('/run/:id/log', async (request, reply) => {
     tx.update(db.collection('runs').doc(id), { totalActions: run.totalActions + 1, allowedActions: run.allowedActions + (decision === 'allow' ? 1 : 0), deniedActions: run.deniedActions + (decision === 'deny' ? 1 : 0) })
   })
   log.success('action logged', { runId: id, tool, decision })
+  broadcastMetrics(getOrgId(claims))
   reply.code(201); return { id: logRef.id, ...logDoc }
 })
 
@@ -417,6 +436,7 @@ app.patch('/run/:id/complete', async (request, reply) => {
   try {
     await transitionRun(db, id, 'completed', {}, requestId)
     if (run.taskId) await transitionTask(db, run.taskId, 'completed', { runId: id }, requestId)
+    broadcastMetrics(getOrgId(claims))
     return { id, status: 'completed', taskId: run.taskId }
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
@@ -438,6 +458,7 @@ app.patch('/run/:id/fail', async (request, reply) => {
       taskId: run?.taskId || null,
       error: runError || 'Unknown error',
     }, run?.orgId || process.env.DEFAULT_ORG_ID).catch(() => {})
+    broadcastMetrics(getOrgId(claims))
     return { id, status: 'failed' }
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
@@ -530,6 +551,7 @@ app.get('/org/metrics', async (request, reply) => {
   healthRoutes(app, db)
   apiKeysRoutes(app, db)
   webhooksRoutes(app, db)
+  notificationsRoutes(app, db)
   hardenAuth(app, db)
   auditTimeline(app, db)
   runTrace(app, db)
@@ -558,4 +580,5 @@ const HOST = '0.0.0.0'
 app.listen({ port: PORT, host: HOST }, (listenErr) => {
   if (listenErr) { log.error('server start failed', { error: listenErr.message }); process.exit(1) }
   console.log(`\n  server → http://${HOST}:${PORT}`)
+  initWebSocketServer(app.server)
 })

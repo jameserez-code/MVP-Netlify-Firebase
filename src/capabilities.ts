@@ -122,6 +122,25 @@ export async function seedOrg(
   }
 
   log.success('org seeded', { orgId, orgName, agentId: agentRef.id });
+
+  // Send welcome email (best-effort)
+  ;(async () => {
+    try {
+      const { sendEmail } = await import('./lib/email.js')
+      const { welcomeTemplate } = await import('./lib/email-templates.js')
+      const { html, text } = welcomeTemplate({ orgName, email: orgEmail })
+      await sendEmail({
+        to: orgEmail,
+        subject: 'Welcome to Passport Agent',
+        html,
+        text,
+        orgId,
+      })
+    } catch {
+      // Silently fail — email is best-effort
+    }
+  })()
+
   return { orgId, agentId: agentRef.id, userId: orgEmail };
 }
 

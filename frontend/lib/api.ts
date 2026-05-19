@@ -311,3 +311,29 @@ export async function rotateWebhook(id: string) {
     method: 'POST',
   })
 }
+
+// Notifications
+export async function getNotificationSettings() {
+  return fetchJson('/notifications/settings')
+}
+
+export async function updateNotificationSettings(data: {
+  email: {
+    policyViolations: boolean
+    agentRevocations: boolean
+    systemAlerts: boolean
+    weeklyDigest: boolean
+  }
+  webhookEnabled: boolean
+}) {
+  return fetchJson('/notifications/settings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function sendTestEmail() {
+  return fetchJson('/notifications/test', {
+    method: 'POST',
+  })
+}

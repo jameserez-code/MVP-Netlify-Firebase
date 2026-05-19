@@ -173,7 +173,7 @@ const result = await agent.run({
         <div className="max-w-5xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/20 bg-passport-green/5 text-passport-green text-xs font-mono mb-8">
             <span className="w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" />
-            v2.0 — Now with Policy Enforcement
+            v2.1 — Now with Policy Enforcement
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-passport-text tracking-tight leading-[1.1] mb-6">
@@ -648,7 +648,7 @@ const result = await agent.run({
       {/* Footer */}
       <footer className="py-8 px-4 text-center border-t border-passport-border">
         <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.0 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
+          Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
         </p>
       </footer>
     </div>

@@ -7,6 +7,7 @@ import {
   generateId,
 } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
+import { publishEvent } from '../lib/events.js'
 
 export default async function agentsRoutes(app: FastifyInstance, db: Firestore) {
 
@@ -70,6 +71,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       })
 
       log.success('agent registered', { agentId, passportNumber, model })
+      publishEvent(orgId, 'agents', { type: 'registered', agentId, name, model, provider, timestamp: new Date().toISOString() })
       deliverWebhook(db, 'agent.registered', {
         event: 'agent.registered',
         timestamp: new Date().toISOString(),
@@ -141,18 +143,50 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
     const snap = await db.collection('agents').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'agent not found' } } }
 
+    const claims = (request as any).claims
+    const revokedBy = claims?.sub || claims?.orgId || 'system'
+    const agentData = snap.data() as any
+    const orgId = agentData?.orgId || process.env.DEFAULT_ORG_ID
+
     await db.collection('agents').doc(id).update({
       status: 'revoked',
       revokedAt: new Date().toISOString(),
       revokedReason: reason || 'No reason provided',
+      revokedBy,
     })
-    log.success('agent revoked', { agentId: id, reason })
+    log.success('agent revoked', { agentId: id, reason, revokedBy })
+    publishEvent(orgId || process.env.DEFAULT_ORG_ID || 'default', 'agents', { type: 'revoked', agentId: id, reason: reason || 'No reason provided', timestamp: new Date().toISOString() })
     deliverWebhook(db, 'agent.revoked', {
       event: 'agent.revoked',
       timestamp: new Date().toISOString(),
       agentId: id,
       reason: reason || 'No reason provided',
-    }, process.env.DEFAULT_ORG_ID).catch(() => {})
+    }, orgId).catch(() => {})
+
+    // Send email notification to org admins
+    ;(async () => {
+      try {
+        const { sendEmail, getOrgAdminEmails } = await import('../lib/email.js')
+        const { agentRevokedTemplate } = await import('../lib/email-templates.js')
+        const adminEmails = await getOrgAdminEmails(db, orgId || '')
+        if (adminEmails.length === 0) return
+        const { html, text } = agentRevokedTemplate({
+          agentName: agentData?.name || id,
+          revokedBy,
+          timestamp: new Date().toISOString(),
+        })
+        await sendEmail({
+          to: adminEmails,
+          subject: 'Passport Agent — Agent Access Revoked',
+          html,
+          text,
+          orgId,
+        })
+      } catch {
+        // Silently fail — email is best-effort
+      }
+    })()
+
     return { id, status: 'revoked' }
   })
 

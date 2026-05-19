@@ -245,7 +245,7 @@ async function seedAgents(orgId: string, now: string) {
       revokedAt: agentDef.status === 'revoked' ? now : null,
       revokedBy: agentDef.status === 'revoked' ? ADMIN_EMAIL : null,
       revokedReason: agentDef.status === 'revoked' ? 'Decommissioned for upgrade' : null,
-      metadata: { seeded: true, version: '2.0.0' },
+      metadata: { seeded: true, version: '2.1.0' },
     })
 
     agentIds.push(agentId)
@@ -473,7 +473,7 @@ function printSummary(
 async function main() {
   console.log('')
   console.log(color('  ╔══════════════════════════════════════════════════════════════╗', C.cyan + C.bright))
-  console.log(color('  ║           Passport Agent — Demo Data Seeder v2.0             ║', C.cyan + C.bright))
+  console.log(color('  ║           Passport Agent — Demo Data Seeder v2.1             ║', C.cyan + C.bright))
   console.log(color('  ╚══════════════════════════════════════════════════════════════╝', C.cyan + C.bright))
 
   const now = new Date().toISOString()

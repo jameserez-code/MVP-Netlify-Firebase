@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
+import { useRealtime } from '@/lib/websocket'
 import GlassCard from '@/components/glass-card'
 import { SkeletonCard } from '@/components/loading'
 import { useToast } from '@/components/toast'
@@ -43,11 +44,13 @@ function StatCard({ label, value, icon, color = 'text-passport-green', delay = 0
 export default function DashboardPage() {
   const { addToast } = useToast()
 
-  const { data: metrics, error: metricsError, isLoading: metricsLoading, mutate: mutateMetrics } = useSWR(
-    '/metrics',
-    getMetrics,
-    swrDashboardConfig
-  )
+  const {
+    data: metrics,
+    error: metricsError,
+    isLoading: metricsLoading,
+    mutate: mutateMetrics,
+    connected: wsConnected,
+  } = useRealtime('metrics', '/metrics', getMetrics, swrDashboardConfig)
   const { data: diagnostics, error: diagnosticsError, isLoading: diagnosticsLoading } = useSWR(
     '/diagnostics',
     getDiagnostics,
@@ -81,13 +84,13 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
           {/* Live indicator */}
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-passport border border-passport-green/20 bg-passport-green/5">
+          <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-passport border ${wsConnected ? 'border-passport-green/20 bg-passport-green/5' : 'border-passport-dim/20 bg-passport-surface-2'}`}>
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-passport-green opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-passport-green" />
+              {wsConnected && <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-passport-green opacity-75" />}
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${wsConnected ? 'bg-passport-green' : 'bg-passport-dim'}`} />
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-wider text-passport-green">
-              Live
+            <span className={`font-mono text-[10px] uppercase tracking-wider ${wsConnected ? 'text-passport-green' : 'text-passport-dim'}`}>
+              {wsConnected ? 'Live' : 'Offline'}
             </span>
           </div>
           {lastUpdated && (

@@ -12,7 +12,7 @@ app.addHook('onRequest', async (_req: any, reply: any) => {
 
 app.get('/api', async () => ({
   name: 'Passport Agent',
-  version: '2.0.0',
+  version: '2.1.0',
   mode: 'serverless',
   status: 'running',
   timestamp: new Date().toISOString(),

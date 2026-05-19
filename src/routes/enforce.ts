@@ -4,6 +4,7 @@ import { createRequire } from 'module'
 import { log } from '../lib/logger.js'
 import { generateGatewayTicket, TICKET_TTL_SECONDS } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
+import { publishEvent } from '../lib/events.js'
 
 const require = createRequire(import.meta.url)
 const { evaluateIntent } = require('../../netlify/functions/src/engine/evaluator.js')
@@ -63,13 +64,15 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         if (decision.modifiedParameters) response.modifiedParameters = decision.modifiedParameters
       }
 
-      db.collection('actionIntents').doc(intent.intentId).set({
+      const auditEntry = {
         intentId: intent.intentId, orgId: agentOrgId,
         agentId: intent.agentId, tool: intent.tool,
         parameters: intent.parameters || {}, decision: decision.decision,
         decisionReason: decision.reason || null, violatedRule: decision.violatedRule || null,
         createdAt: new Date().toISOString(),
-      }).catch(() => {})
+      }
+      db.collection('actionIntents').doc(intent.intentId).set(auditEntry).catch(() => {})
+      publishEvent(agentOrgId, 'audit', auditEntry)
 
       if (decision.decision === 'deny') {
         deliverWebhook(db, 'policy.violation', {
@@ -82,6 +85,31 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
           reason: decision.reason,
           violatedRule: decision.violatedRule,
         }, agentOrgId).catch(() => {})
+
+        // Send email notification to org admins
+        ;(async () => {
+          try {
+            const { sendEmail, getOrgAdminEmails } = await import('../lib/email.js')
+            const { policyViolationTemplate } = await import('../lib/email-templates.js')
+            const adminEmails = await getOrgAdminEmails(db, agentOrgId)
+            if (adminEmails.length === 0) return
+            const { html, text } = policyViolationTemplate({
+              agentName: (agent as any).name || intent.agentId,
+              tool: intent.tool,
+              reason: decision.reason || 'Policy rule violation',
+              timestamp: new Date().toISOString(),
+            })
+            await sendEmail({
+              to: adminEmails,
+              subject: 'Passport Agent — Policy Violation Detected',
+              html,
+              text,
+              orgId: agentOrgId,
+            })
+          } catch {
+            // Silently fail — email is best-effort
+          }
+        })()
       }
 
       log.info('enforce', { intentId: intent.intentId, decision: decision.decision })
