@@ -1,5 +1,5 @@
 [build]
-  command = "npm install"
+  command = "pnpm install --no-frozen-lockfile"
   publish = "."
   functions = "netlify/functions"
 
