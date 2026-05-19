@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { generateId } from './lib/crypto.js'
 import { log } from './lib/logger.js'
+import { withCache } from './lib/cache.js'
 
 // ---------------------------------------------------------------------------
 // Request ID middleware — every API call gets a unique ID propagated to logs
@@ -74,43 +75,45 @@ export async function runTrace(app: FastifyInstance, db: Firestore) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /metrics — lightweight operational metrics
+// GET /metrics — lightweight operational metrics (cached 30s)
 // ---------------------------------------------------------------------------
 export async function metrics(app: FastifyInstance, db: Firestore) {
-  app.get('/metrics', async (_request, reply) => {
-    try {
-      const [tasksSnap, runsSnap, agentsSnap, logsSnap] = await Promise.all([
-        db.collection('tasks').get(),
-        db.collection('runs').where('status', '==', 'running').get(),
-        db.collection('agents').where('status', '==', 'active').get(),
-        db.collection('logs').orderBy('timestamp', 'desc').limit(100).get(),
-      ])
+  app.get('/metrics', {
+    handler: withCache(async (_request, reply) => {
+      try {
+        const [tasksSnap, runsSnap, agentsSnap, logsSnap] = await Promise.all([
+          db.collection('tasks').get(),
+          db.collection('runs').where('status', '==', 'running').get(),
+          db.collection('agents').where('status', '==', 'active').get(),
+          db.collection('logs').orderBy('timestamp', 'desc').limit(100).get(),
+        ])
 
-      const tasks = tasksSnap.docs.map(d => d.data())
-      const total = tasks.length
-      const completed = tasks.filter((t: any) => t.status === 'completed').length
-      const failed = tasks.filter((t: any) => t.status === 'failed').length
-      const active = tasks.filter((t: any) => t.status === 'running').length
+        const tasks = tasksSnap.docs.map(d => d.data())
+        const total = tasks.length
+        const completed = tasks.filter((t: any) => t.status === 'completed').length
+        const failed = tasks.filter((t: any) => t.status === 'failed').length
+        const active = tasks.filter((t: any) => t.status === 'running').length
 
-      // Calculate avg duration for completed runs
-      const completedRuns = await db.collection('runs').where('status', '==', 'completed').get()
-      const durations = completedRuns.docs
-        .map(d => d.data().durationMs as number)
-        .filter(Boolean)
-      const avgDurationMs = durations.length > 0
-        ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-        : 0
+        // Calculate avg duration for completed runs
+        const completedRuns = await db.collection('runs').where('status', '==', 'completed').get()
+        const durations = completedRuns.docs
+          .map(d => d.data().durationMs as number)
+          .filter(Boolean)
+        const avgDurationMs = durations.length > 0
+          ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+          : 0
 
-      return {
-        tasks: { total, completed, failed, active, pending: total - completed - failed - active },
-        runs: { active: runsSnap.size },
-        agents: { active: agentsSnap.size },
-        avgDurationMs,
-        recentLogs: logsSnap.size,
+        return {
+          tasks: { total, completed, failed, active, pending: total - completed - failed - active },
+          runs: { active: runsSnap.size },
+          agents: { active: agentsSnap.size },
+          avgDurationMs,
+          recentLogs: logsSnap.size,
+        }
+      } catch (e: any) {
+        reply.code(503)
+        return { error: { code: 'firestore', message: e.message } }
       }
-    } catch (e: any) {
-      reply.code(503)
-      return { error: { code: 'firestore', message: e.message } }
-    }
+    }, 30),
   })
 }

@@ -40,6 +40,9 @@ const config: Config = {
         'count-in': 'countIn 0.6s ease',
         'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
         'border-pulse': 'borderPulse 2s ease-in-out infinite',
+        'toast-in': 'toastIn 0.3s ease both',
+        'toast-out': 'toastOut 0.3s ease both',
+        'live-pulse': 'livePulse 2s ease-in-out infinite',
       },
       keyframes: {
         blink: {
@@ -69,6 +72,18 @@ const config: Config = {
         borderPulse: {
           '0%, 100%': { borderColor: 'rgba(46,160,67,0.15)' },
           '50%': { borderColor: 'rgba(46,160,67,0.35)' },
+        },
+        toastIn: {
+          from: { opacity: '0', transform: 'translateX(100%)' },
+          to: { opacity: '1', transform: 'translateX(0)' },
+        },
+        toastOut: {
+          from: { opacity: '1', transform: 'translateX(0)' },
+          to: { opacity: '0', transform: 'translateX(100%)' },
+        },
+        livePulse: {
+          '0%, 100%': { opacity: '1', boxShadow: '0 0 0 0 rgba(46,160,67,0.4)' },
+          '50%': { opacity: '0.8', boxShadow: '0 0 0 6px rgba(46,160,67,0)' },
         },
       },
       borderRadius: {

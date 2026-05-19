@@ -28,12 +28,18 @@ async function fetchJson(path: string, options?: RequestInit) {
       localStorage.removeItem('passport_token')
       window.location.href = '/login'
     }
-    throw new Error('Unauthorized')
+    throw new Error('Session expired. Please sign in again.')
   }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || `HTTP ${res.status}`)
+    const message = err.error?.message || err.message
+    if (message) throw new Error(message)
+    if (res.status === 403) throw new Error('Access denied. You do not have permission.')
+    if (res.status === 404) throw new Error('Resource not found.')
+    if (res.status === 409) throw new Error('Conflict: resource already exists.')
+    if (res.status >= 500) throw new Error('Server error. Please try again later.')
+    throw new Error(`Request failed (HTTP ${res.status})`)
   }
 
   return res.json()
@@ -100,6 +106,12 @@ export async function revokeAgent(id: string) {
   })
 }
 
+export async function suspendAgent(id: string) {
+  return fetchJson(`/agents/${id}/suspend`, {
+    method: 'PATCH',
+  })
+}
+
 // Policies
 export async function listPolicies() {
   return fetchJson('/policies')
@@ -109,6 +121,12 @@ export async function createPolicy(data: { name: string; rules: Record<string, u
   return fetchJson('/policies', {
     method: 'POST',
     body: JSON.stringify(data),
+  })
+}
+
+export async function deletePolicy(id: string) {
+  return fetchJson(`/policies/${id}`, {
+    method: 'DELETE',
   })
 }
 

@@ -3,30 +3,38 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { seedOrg, setToken } from '@/lib/api'
+import { seedOrg, setToken, login } from '@/lib/api'
+import { useToast } from '@/components/toast'
 import { Terminal, Shield, AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const { addToast } = useToast()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {}
+    if (!name.trim()) errors.name = 'Organization name is required'
+    if (!email.trim()) errors.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email'
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!validate()) return
     setError('')
     setLoading(true)
     try {
       // First login as demo user to get a token
-      const loginRes = await fetch('http://localhost:3000/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'demo@passport.local', password: 'demo123' }),
-      })
-      const loginData = await loginRes.json()
+      const loginData = await login('demo@passport.local', 'demo123')
       if (loginData.token) {
         setToken(loginData.token)
       }
@@ -34,8 +42,11 @@ export default function RegisterPage() {
       const data = await seedOrg(name, email)
       setResult(data)
       setSuccess(true)
+      addToast('Organization created successfully', 'success')
     } catch (err: any) {
-      setError(err.message || 'Registration failed')
+      const msg = err.message || 'Registration failed'
+      setError(msg)
+      addToast(msg, 'error')
     } finally {
       setLoading(false)
     }
@@ -54,11 +65,15 @@ export default function RegisterPage() {
               Your isolated demo environment is ready.
             </p>
 
-            <div className="text-left bg-passport-bg rounded-passport p-4 border border-passport-border mb-6">
-              <div className="label-text mb-1">Organization ID</div>
-              <div className="font-mono text-sm text-passport-text break-all">{result.orgId}</div>
-              <div className="label-text mt-3 mb-1">Admin Email</div>
-              <div className="font-mono text-sm text-passport-text">{email}</div>
+            <div className="text-left bg-passport-bg rounded-passport p-4 border border-passport-border mb-6 space-y-3">
+              <div>
+                <div className="label-text mb-1">Organization ID</div>
+                <div className="font-mono text-sm text-passport-text break-all">{result.orgId}</div>
+              </div>
+              <div>
+                <div className="label-text mb-1">Admin Email</div>
+                <div className="font-mono text-sm text-passport-text">{email}</div>
+              </div>
             </div>
 
             <button
@@ -103,17 +118,19 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <label className="label-text">Organization Name</label>
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="input-field"
+                onChange={(e) => { setName(e.target.value); setFieldErrors((prev) => ({ ...prev, name: '' })) }}
+                className={`input-field ${fieldErrors.name ? 'border-passport-red' : ''}`}
                 placeholder="Acme Corp"
-                required
               />
+              {fieldErrors.name && (
+                <p className="text-xs text-passport-red mt-1">{fieldErrors.name}</p>
+              )}
             </div>
 
             <div>
@@ -121,11 +138,13 @@ export default function RegisterPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="input-field"
+                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: '' })) }}
+                className={`input-field ${fieldErrors.email ? 'border-passport-red' : ''}`}
                 placeholder="admin@example.com"
-                required
               />
+              {fieldErrors.email && (
+                <p className="text-xs text-passport-red mt-1">{fieldErrors.email}</p>
+              )}
             </div>
 
             <button

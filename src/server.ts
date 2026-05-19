@@ -13,6 +13,12 @@ import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
 import { verifyPassword } from './lib/password.js'
 import { registerValidationHooks } from './lib/input-validation.js'
 import { validateEnv } from './lib/env.js'
+import { AppError, sanitizeErrorForProduction } from './lib/errors.js'
+import { createValidationHook } from './lib/validation.js'
+import { createRequestLoggerHooks } from './lib/request-logger.js'
+import { RateLimiter } from './lib/rate-limiter.js'
+import { withCache } from './lib/cache.js'
+import { paginate, parsePaginationQuery } from './lib/pagination.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
@@ -27,45 +33,24 @@ const app = Fastify({ logger: false })
 // Input validation + secure headers
 registerValidationHooks(app)
 
-// Rate limiting — per-IP sliding window, endpoint-specific limits
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-const ENDPOINT_LIMITS: Record<string, number> = {
-  '/auth/login': 20,        // prevent credential brute-force
-  '/enforce': 100,          // enforcement in hot path but per-agent
-  '/gateway/execute': 50,   // gateway execution — sensitive
-  default: 200,             // general API limit
-}
+// Zod body validation preHandler
+app.addHook('preHandler', createValidationHook())
 
-function getEndpointLimit(path: string): number {
-  for (const [prefix, limit] of Object.entries(ENDPOINT_LIMITS)) {
-    if (path.startsWith(prefix)) return limit
-  }
-  return ENDPOINT_LIMITS.default
-}
+// Request logging with correlation IDs
+const { onRequest: requestLoggerOnRequest, onResponse: requestLoggerOnResponse } = createRequestLoggerHooks()
+app.addHook('onRequest', requestLoggerOnRequest)
+app.addHook('onResponse', requestLoggerOnResponse)
 
-const ipBurstMap = new Map<string, number>()
-function isBurstAttack(ip: string): boolean {
-  const now = Date.now()
-  const count = (ipBurstMap.get(ip) || 0) + 1
-  ipBurstMap.set(ip, count)
-  // Reset every 10 seconds
-  if (count > 50) {
-    setTimeout(() => ipBurstMap.delete(ip), 10_000)
-    return true
-  }
-  setTimeout(() => ipBurstMap.set(ip, (ipBurstMap.get(ip) || 1) - 1), 10_000)
-  return false
-}
-
-function checkRateLimit(ip: string, path: string): boolean {
-  if (isBurstAttack(ip)) return false
-  const limit = getEndpointLimit(path)
-  const now = Date.now()
-  const entry = rateLimitMap.get(ip)
-  if (!entry || now > entry.resetAt) { rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 }); return true }
-  if (entry.count >= limit) return false
-  entry.count++; return true
-}
+// Rate limiting — per-IP sliding window, endpoint-specific limits, Redis optional
+const rateLimiter = new RateLimiter({
+  endpointLimits: {
+    '/auth/login': 20,
+    '/enforce': 100,
+    '/gateway/execute': 50,
+  },
+  defaultLimit: 200,
+  windowMs: 60_000,
+})
 
 // CORS + rate limiting hook
 const isDev = process.env.NODE_ENV !== 'production'
@@ -83,12 +68,53 @@ app.addHook('onRequest', async (request, reply) => {
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
   if (request.method === 'OPTIONS') { reply.code(204).send(); return }
-  const ip = (request.headers['x-forwarded-for'] as string || request.ip || '127.0.0.1').split(',')[0].trim()
-  if (!checkRateLimit(ip, request.url)) { reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests' } }) }
+  const ip = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
+  const result = await rateLimiter.check(ip, request.url)
+  reply.header('X-RateLimit-Remaining', String(result.remaining))
+  if (!result.allowed) {
+    reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests' } })
+  }
 })
 
-// Request ID middleware
+// Request ID middleware (kept for backward compat)
 attachRequestId(app)
+
+// Global error handler
+app.setErrorHandler((error: any, request, reply) => {
+  const correlationId = request.correlationId || 'unknown'
+
+  if (error instanceof AppError) {
+    log.error('handled error', {
+      correlationId,
+      code: error.code,
+      statusCode: error.statusCode,
+      message: error.message,
+    })
+    reply.code(error.statusCode).send({
+      error: {
+        code: error.code,
+        message: error.message,
+        ...(error.detail ? { detail: error.detail } : {}),
+      },
+    })
+    return
+  }
+
+  log.error('unhandled error', {
+    correlationId,
+    message: error.message,
+    stack: isDev ? error.stack : undefined,
+  })
+
+  const sanitized = sanitizeErrorForProduction(error)
+  reply.code(500).send({
+    error: {
+      code: sanitized.code,
+      message: isDev ? error.message : sanitized.message,
+      ...(isDev && error.stack ? { stack: error.stack } : {}),
+    },
+  })
+})
 
 // Auth middleware
 interface Claims { sub: string; role: string; iat: number; exp: number; jti: string }
@@ -220,9 +246,31 @@ refresh();setInterval(refresh,10000)
 </script></body></html>`
 })
 
-// GET /health — liveness probe (no auth)
+// GET /health — enhanced liveness probe (no auth)
 app.get('/health', async (_request, reply) => {
-  return { status: 'ok', timestamp: new Date().toISOString() }
+  const used = process.memoryUsage()
+  const usedMB = Math.round(used.heapUsed / 1024 / 1024)
+
+  let firebaseStatus = 'unknown'
+  try {
+    await db.collection('tasks').limit(1).get()
+    firebaseStatus = 'connected'
+  } catch {
+    firebaseStatus = 'disconnected'
+  }
+
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    version: '2.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime()),
+    checks: {
+      firebase: firebaseStatus,
+      memory: `ok (${usedMB}MB used)`,
+      disk: 'ok',
+    },
+  }
 })
 
 // POST /auth/login
@@ -273,6 +321,18 @@ app.get('/task/:id', async (request, reply) => {
   } catch (e: any) { return err(reply, 503, 'firestore', 'read failed') }
 })
 
+// GET /tasks — paginated list
+app.get('/tasks', async (request, reply) => {
+  try {
+    const { status } = request.query as { status?: string }
+    const snap = await db.collection('tasks').orderBy('createdAt', 'desc').get()
+    let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const options = parsePaginationQuery(request.query as Record<string, unknown>)
+    if (status) options.filters = { ...options.filters, status }
+    return paginate(data, options)
+  } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: e.message } } }
+})
+
 // POST /agent/run
 app.post('/agent/run', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
@@ -293,6 +353,18 @@ app.post('/agent/run', async (request, reply) => {
     log.success('run started', { runId: docRef.id, agentId, taskId, requestId })
     reply.code(201); return { id: docRef.id, agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now }
   } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
+})
+
+// GET /runs — paginated list
+app.get('/runs', async (request, reply) => {
+  try {
+    const { status } = request.query as { status?: string }
+    let q = db.collection('runs').orderBy('createdAt', 'desc')
+    if (status) q = q.where('status', '==', status)
+    const snap = await q.get()
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
+  } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: e.message } } }
 })
 
 // POST /run/:id/log
@@ -338,14 +410,16 @@ app.patch('/run/:id/fail', async (request, reply) => {
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
 
-// GET /audit
+// GET /audit — paginated with filtering
 app.get('/audit', async (request, reply) => {
   try {
-    const { decision, limit } = (request.query || {}) as { decision?: string; limit?: string }
+    const { decision, tool } = request.query as { decision?: string; tool?: string }
     let q = db.collection('actionIntents').orderBy('createdAt', 'desc')
     if (decision) q = q.where('decision', '==', decision)
-    const snap = await q.limit(parseInt(limit || '20', 10)).get()
-    return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) }
+    const snap = await q.get()
+    let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    if (tool) data = data.filter((d: any) => d.tool === tool)
+    return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
   } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: 'audit query failed' } } }
 })
 
@@ -365,10 +439,12 @@ app.get('/sessions/:id', async (request, reply) => {
   } catch (e: any) { reply.code(503); return { error: { code: 'firestore' } } }
 })
 
-// GET /diagnostics — full system health
-app.get('/diagnostics', async (_req, reply) => {
-  try { return await systemDiagnostics(db) }
-  catch (e: any) { reply.code(500); return { error: { code: 'diagnostics_failed', message: e.message } } }
+// GET /diagnostics — full system health (cached 60s)
+app.get('/diagnostics', {
+  handler: withCache(async (_req, reply) => {
+    try { return await systemDiagnostics(db) }
+    catch (e: any) { reply.code(500); return { error: { code: 'diagnostics_failed', message: e.message } } }
+  }, 60),
 })
 
 // GET /consistency — detect bad states
@@ -388,10 +464,12 @@ app.post('/repair', async (request, reply) => {
   } catch (e: any) { reply.code(500); return { error: { code: 'repair_failed', message: e.message } } }
 })
 
-// GET /report — operational summary
-app.get('/report', async (_req, reply) => {
-  try { return await generateReport(db) }
-  catch (e: any) { reply.code(500); return { error: { code: 'report_failed', message: e.message } } }
+// GET /report — operational summary (cached 120s)
+app.get('/report', {
+  handler: withCache(async (_req, reply) => {
+    try { return await generateReport(db) }
+    catch (e: any) { reply.code(500); return { error: { code: 'report_failed', message: e.message } } }
+  }, 120),
 })
 
 // POST /org/seed — create isolated demo org

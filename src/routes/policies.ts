@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from '../lib/logger.js'
+import { paginate, parsePaginationQuery } from '../lib/pagination.js'
 import { generateId } from '../lib/crypto.js'
 
 export default async function policiesRoutes(app: FastifyInstance, db: Firestore) {
@@ -68,10 +69,13 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       if (status) data = data.filter((p: any) => p.status === status)
       if (agentId) data = data.filter((p: any) => (p.scope?.agentId === agentId || p.scope?.agentId === '*'))
-      data.sort((a: any, b: any) => (a.priority || 999) - (b.priority || 999))
 
-      log.info('policies list', { count: data.length })
-      return { data, total: data.length }
+      const options = parsePaginationQuery(request.query as Record<string, unknown>)
+      if (status) options.filters = { ...options.filters, status }
+      const result = paginate(data, options)
+
+      log.info('policies list', { count: result.data.length, total: result.pagination.total })
+      return result
     } catch (e: any) {
       log.error('policies list failed', { error: e.message })
       reply.code(503)

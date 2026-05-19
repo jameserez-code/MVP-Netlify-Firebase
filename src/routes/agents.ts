@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from '../lib/logger.js'
+import { paginate, parsePaginationQuery } from '../lib/pagination.js'
 import {
   generateAgentSecretKey, generatePassportNumber, hashKey, hashSystemPrompt,
   generateId,
@@ -99,10 +100,13 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       const snap = await q.get()
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       if (status) data = data.filter((a: any) => a.status === status)
-      data.sort((a: any, b: any) => (b.registeredAt || '').localeCompare(a.registeredAt || ''))
 
-      log.info('agents list', { count: data.length })
-      return { data, total: data.length }
+      const options = parsePaginationQuery(request.query as Record<string, unknown>)
+      if (status) options.filters = { ...options.filters, status }
+      const result = paginate(data, options)
+
+      log.info('agents list', { count: result.data.length, total: result.pagination.total })
+      return result
     } catch (e: any) {
       log.error('agents list failed', { error: e.message })
       reply.code(503)

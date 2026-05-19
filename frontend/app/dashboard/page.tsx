@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import GlassCard from '@/components/glass-card'
+import { SkeletonCard } from '@/components/loading'
+import { useToast } from '@/components/toast'
 import { getMetrics, getDiagnostics, getReport } from '@/lib/api'
 import {
   Activity,
@@ -38,11 +40,13 @@ function StatCard({ label, value, icon, color = 'text-passport-green', delay = 0
 }
 
 export default function DashboardPage() {
+  const { addToast } = useToast()
   const [metrics, setMetrics] = useState<any>(null)
   const [diagnostics, setDiagnostics] = useState<any>(null)
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   async function loadData() {
     setLoading(true)
@@ -56,8 +60,10 @@ export default function DashboardPage() {
       setMetrics(m)
       setDiagnostics(d)
       setReport(r)
+      setLastUpdated(new Date())
     } catch (err: any) {
       setError(err.message)
+      addToast(err.message, 'error')
     } finally {
       setLoading(false)
     }
@@ -81,56 +87,102 @@ export default function DashboardPage() {
             System overview and operational metrics
           </p>
         </div>
-        <button
-          onClick={loadData}
-          disabled={loading}
-          className="btn-secondary self-start sm:self-auto"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-passport border border-passport-green/20 bg-passport-green/5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-passport-green opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-passport-green" />
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-passport-green">
+              Live
+            </span>
+          </div>
+          {lastUpdated && (
+            <span className="font-mono text-[10px] text-passport-dim flex items-center gap-1">
+              <Clock size={10} />
+              {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="btn-secondary"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2">
           <AlertTriangle size={16} className="text-passport-red" />
-          <span className="text-sm text-passport-red">{error}</span>
+          <span className="text-sm text-passport-red flex-1">{error}</span>
+          <button onClick={loadData} className="text-xs text-passport-red underline hover:no-underline">
+            Retry
+          </button>
         </div>
       )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          label="Total Tasks"
-          value={metrics?.tasks?.total ?? '—'}
-          icon={<FileText size={18} />}
-          delay={0.05}
-        />
-        <StatCard
-          label="Active Runs"
-          value={metrics?.runs?.active ?? '—'}
-          icon={<Activity size={18} />}
-          color="text-passport-azure"
-          delay={0.1}
-        />
-        <StatCard
-          label="Active Agents"
-          value={metrics?.agents?.active ?? '—'}
-          icon={<Bot size={18} />}
-          color="text-passport-coral"
-          delay={0.15}
-        />
-        <StatCard
-          label="System Health"
-          value={healthy ? 'Healthy' : diagnostics?.overall ?? 'Unknown'}
-          icon={healthy ? <CheckCircle size={18} /> : <XCircle size={18} />}
-          color={healthy ? 'text-passport-green' : 'text-passport-red'}
-          delay={0.2}
-        />
+        {loading && !metrics ? (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Total Tasks"
+              value={metrics?.tasks?.total ?? '—'}
+              icon={<FileText size={18} />}
+              delay={0.05}
+            />
+            <StatCard
+              label="Active Runs"
+              value={metrics?.runs?.active ?? '—'}
+              icon={<Activity size={18} />}
+              color="text-passport-azure"
+              delay={0.1}
+            />
+            <StatCard
+              label="Active Agents"
+              value={metrics?.agents?.active ?? '—'}
+              icon={<Bot size={18} />}
+              color="text-passport-coral"
+              delay={0.15}
+            />
+            <StatCard
+              label="System Health"
+              value={healthy ? 'Healthy' : diagnostics?.overall ?? 'Unknown'}
+              icon={healthy ? <CheckCircle size={18} /> : <XCircle size={18} />}
+              color={healthy ? 'text-passport-green' : 'text-passport-red'}
+              delay={0.2}
+            />
+          </>
+        )}
       </div>
 
       {/* Diagnostics */}
-      {diagnostics && (
+      {loading && !diagnostics ? (
+        <GlassCard>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-passport bg-passport-bg border border-passport-border animate-pulse">
+                <div className="w-4 h-4 rounded-full bg-passport-surface-2" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-24 rounded bg-passport-surface-2" />
+                  <div className="h-2 w-48 rounded bg-passport-surface-2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      ) : diagnostics ? (
         <GlassCard>
           <div className="flex items-center gap-2 mb-4">
             <Shield size={18} className="text-passport-green" />
@@ -180,10 +232,21 @@ export default function DashboardPage() {
             </div>
           )}
         </GlassCard>
-      )}
+      ) : null}
 
       {/* Report */}
-      {report && (
+      {loading && !report ? (
+        <GlassCard delay={0.1}>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="p-3 rounded-passport bg-passport-bg border border-passport-border animate-pulse space-y-2">
+                <div className="h-2 w-16 rounded bg-passport-surface-2" />
+                <div className="h-3 w-full rounded bg-passport-surface-2" />
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      ) : report ? (
         <GlassCard delay={0.1}>
           <div className="flex items-center gap-2 mb-4">
             <FileText size={18} className="text-passport-azure" />
@@ -204,7 +267,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </GlassCard>
-      )}
+      ) : null}
     </div>
   )
 }

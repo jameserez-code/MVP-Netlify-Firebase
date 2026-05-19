@@ -2,8 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, LayoutDashboard, Bot, FileText, ClipboardList, LogOut, Menu, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import {
+  Shield,
+  LayoutDashboard,
+  Bot,
+  FileText,
+  ClipboardList,
+  LogOut,
+  Menu,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Building2,
+} from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 import { isLoggedIn, clearToken } from '@/lib/api'
 
 const navItems = [
@@ -13,14 +26,32 @@ const navItems = [
   { href: '/dashboard/audit', label: 'Audit', icon: ClipboardList },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({
+  collapsed,
+  onToggle,
+}: {
+  collapsed?: boolean
+  onToggle?: () => void
+}) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
+  const [userOpen, setUserOpen] = useState(false)
+  const userRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setLoggedIn(isLoggedIn())
   }, [pathname])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userRef.current && !userRef.current.contains(e.target as Node)) {
+        setUserOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   function handleLogout() {
     clearToken()
@@ -48,27 +79,57 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-60 z-40 border-r border-passport-border bg-passport-surface/95 backdrop-blur-xl flex flex-col transition-transform duration-200 ${
+        className={`fixed top-0 left-0 h-full z-40 border-r border-passport-border bg-passport-surface/95 backdrop-blur-xl flex flex-col transition-all duration-200 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
+        } ${collapsed ? 'w-16' : 'w-60'}`}
       >
         {/* Brand */}
-        <div className="p-5 border-b border-passport-border">
-          <Link href="/" className="flex items-center gap-3 group">
-            <Shield size={22} className="text-passport-green group-hover:drop-shadow-[0_0_6px_rgba(46,160,67,0.4)] transition-all" />
-            <div>
-              <div className="font-mono text-sm font-bold text-passport-green tracking-wider uppercase">
-                Passport
+        <div className="p-4 border-b border-passport-border flex items-center justify-between">
+          <Link href="/" className={`flex items-center gap-3 group ${collapsed ? 'justify-center w-full' : ''}`}>
+            <Shield size={22} className="text-passport-green group-hover:drop-shadow-[0_0_6px_rgba(46,160,67,0.4)] transition-all shrink-0" />
+            {!collapsed && (
+              <div className="overflow-hidden">
+                <div className="font-mono text-sm font-bold text-passport-green tracking-wider uppercase">
+                  Passport
+                </div>
+                <div className="font-mono text-[10px] text-passport-dim tracking-widest uppercase">
+                  Agent Control
+                </div>
               </div>
-              <div className="font-mono text-[10px] text-passport-dim tracking-widest uppercase">
-                Agent Control
-              </div>
-            </div>
+            )}
           </Link>
+          {!collapsed && onToggle && (
+            <button
+              onClick={onToggle}
+              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )}
+          {collapsed && onToggle && (
+            <button
+              onClick={onToggle}
+              className="hidden lg:flex text-passport-dim hover:text-passport-text transition-colors absolute right-[-10px] top-5 bg-passport-surface border border-passport-border rounded-full p-0.5"
+            >
+              <ChevronRight size={14} />
+            </button>
+          )}
         </div>
 
+        {/* Org name */}
+        {!collapsed && (
+          <div className="px-4 py-2 border-b border-passport-border">
+            <div className="flex items-center gap-2 text-passport-dim">
+              <Building2 size={12} />
+              <span className="font-mono text-[10px] uppercase tracking-wider truncate">
+                Organization
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-2 space-y-1">
           {navItems.map((item) => {
             const active = pathname === item.href
             const Icon = item.icon
@@ -81,11 +142,12 @@ export default function Sidebar() {
                   active
                     ? 'bg-passport-green/10 text-passport-green border border-passport-green/20'
                     : 'text-passport-muted hover:text-passport-text hover:bg-passport-surface-2'
-                }`}
+                } ${collapsed ? 'justify-center' : ''}`}
+                title={collapsed ? item.label : undefined}
               >
                 <Icon size={16} />
-                <span>{item.label}</span>
-                {active && (
+                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && active && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" />
                 )}
               </Link>
@@ -94,16 +156,35 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-passport-border">
-          {loggedIn ? (
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2.5 w-full rounded-passport text-sm text-passport-muted hover:text-passport-coral hover:bg-passport-red/5 transition-all duration-150"
-            >
-              <LogOut size={16} />
-              <span>Sign Out</span>
-            </button>
-          ) : (
+        <div className="p-2 border-t border-passport-border space-y-1">
+          {/* User avatar dropdown */}
+          {loggedIn && (
+            <div className="relative" ref={userRef}>
+              <button
+                onClick={() => setUserOpen(!userOpen)}
+                className={`flex items-center gap-3 px-3 py-2.5 w-full rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150 ${
+                  collapsed ? 'justify-center' : ''
+                }`}
+              >
+                <div className="w-6 h-6 rounded-full bg-passport-green/20 flex items-center justify-center shrink-0">
+                  <User size={14} className="text-passport-green" />
+                </div>
+                {!collapsed && <span className="truncate">Account</span>}
+              </button>
+              {userOpen && (
+                <div className="absolute bottom-full left-0 w-48 mb-1 glass-panel border-passport-border overflow-hidden">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-3 py-2.5 w-full text-sm text-passport-muted hover:text-passport-coral hover:bg-passport-red/5 transition-all"
+                  >
+                    <LogOut size={16} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {!loggedIn && !collapsed && (
             <Link
               href="/login"
               className="flex items-center gap-3 px-3 py-2.5 rounded-passport text-sm text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all duration-150"

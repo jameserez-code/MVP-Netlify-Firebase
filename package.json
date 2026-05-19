@@ -9,13 +9,16 @@
     "test:integration": "tsx tests/integration/enforce.test.ts",
     "test:security": "tsx tests/integration/security.test.ts",
     "test:resilience": "tsx tests/integration/resilience.test.ts",
-    "test:e2e": "tsx tests/integration/e2e.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:full-api": "tsx tests/integration/full-api.test.ts",
     "test:policy": "tsx tests/integration/policy.test.ts",
     "demo:lifecycle": "tsx demo/lifecycle.ts",
     "healthcheck": "tsx src/healthcheck.ts",
     "tasks:verify": "tsx src/tasks-verify.ts",
     "tasks:seed": "tsx src/tasks.ts",
     "schema:seed": "tsx src/seed.ts",
+    "demo:seed": "tsx scripts/seed-demo.ts",
     "dev": "tsx watch src/server.ts",
     "demo": "tsx src/demo-server.ts",
     "demo:guided": "tsx src/guided-demo.ts",
@@ -23,15 +26,28 @@
     "start": "node dist/server.js",
     "tui": "tsx src/tui.ts",
     "worker": "tsx src/worker.ts",
-    "setup": "tsx src/bootstrap.ts"
+    "setup": "tsx src/bootstrap.ts",
+    "prepare": "husky install",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
-"dependencies": {
+  "dependencies": {
     "fastify": "^5.8.5",
     "firebase-admin": "^12.0.0",
-    "tsx": "^4.21.0"
+    "ioredis": "^5.10.1",
+    "tsx": "^4.21.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.7.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.5",
     "typescript": "^6.0.3"
   },
   "engines": {
