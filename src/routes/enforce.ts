@@ -5,6 +5,7 @@ import { log } from '../lib/logger.js'
 import { generateGatewayTicket, TICKET_TTL_SECONDS } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
 import { publishEvent } from '../lib/events.js'
+import { checkLimit, incrementEnforcement } from '../lib/usage.js'
 
 const require = createRequire(import.meta.url)
 const { evaluateIntent } = require('../../netlify/functions/src/engine/evaluator.js')
@@ -37,6 +38,13 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         reply.code(500)
         return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
       }
+
+      const limitCheck = await checkLimit(db, agentOrgId, 'enforcements')
+      if (!limitCheck.allowed) {
+        reply.code(429)
+        return { error: { code: 'limit_exceeded', message: 'Daily enforcement limit reached. Upgrade to Pro.', plan: 'free' } }
+      }
+
       const snap = await db.collection('policies').where('orgId', '==', agentOrgId).get()
       const policies = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter((p: any) => p.status === 'active')
@@ -112,6 +120,7 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         })()
       }
 
+      incrementEnforcement(db, agentOrgId).catch(() => {})
       log.info('enforce', { intentId: intent.intentId, decision: decision.decision })
       return response
 

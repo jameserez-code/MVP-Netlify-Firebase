@@ -1,12 +1,16 @@
 import { captureApiError } from './sentry'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 // Token storage
 let token: string | null = null
 
 if (typeof window !== 'undefined') {
   token = localStorage.getItem('passport_token')
+}
+
+export function getBaseUrl(): string {
+  return API_BASE
 }
 
 function getHeaders(): Record<string, string> {
@@ -19,34 +23,100 @@ function getHeaders(): Record<string, string> {
   return headers
 }
 
-async function fetchJson(path: string, options?: RequestInit) {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { ...getHeaders(), ...(options?.headers || {}) },
-  })
+const DEBUG_API = process.env.NEXT_PUBLIC_DEBUG_API === 'true' || process.env.DEBUG_API === 'true'
 
-  if (res.status === 401) {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('passport_token')
-      window.location.href = '/login'
-    }
-    throw new Error('Session expired. Please sign in again.')
+function stripAuth(headers: Record<string, string>): Record<string, string> {
+  const sanitized = { ...headers }
+  delete sanitized['Authorization']
+  delete sanitized['authorization']
+  return sanitized
+}
+
+function mergeHeaders(base: Record<string, string>, extra?: HeadersInit): Record<string, string> {
+  const merged = { ...base }
+  if (!extra) return merged
+  if (Array.isArray(extra)) {
+    for (const [k, v] of extra) merged[k] = v
+  } else if ('entries' in (extra as any)) {
+    for (const [k, v] of (extra as Headers).entries()) merged[k] = v
+  } else {
+    Object.assign(merged, extra)
   }
+  return merged
+}
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const message = err.error?.message || err.message
-    const error = new Error(message || `Request failed (HTTP ${res.status})`)
-    captureApiError(error, { path, status: res.status }).catch(() => {})
-    if (message) throw error
-    if (res.status === 403) throw new Error('Access denied. You do not have permission.')
-    if (res.status === 404) throw new Error('Resource not found.')
-    if (res.status === 409) throw new Error('Conflict: resource already exists.')
-    if (res.status >= 500) throw new Error('Server error. Please try again later.')
+async function fetchJson(path: string, options?: RequestInit) {
+  const url = `${API_BASE}${path}`
+  const start = DEBUG_API ? performance.now() : 0
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => {
+    controller.abort()
+  }, 10_000)
+
+  const allHeaders = mergeHeaders(getHeaders(), options?.headers)
+
+  try {
+    if (DEBUG_API) {
+      console.log(`[API] → ${options?.method || 'GET'} ${url}`, {
+        headers: stripAuth({ ...allHeaders }),
+        body: options?.body,
+      })
+    }
+
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: allHeaders,
+    })
+
+    clearTimeout(timeoutId)
+
+    const duration = DEBUG_API ? Math.round(performance.now() - start) : 0
+    if (DEBUG_API) {
+      console.log(`[API] ← ${options?.method || 'GET'} ${url} — ${res.status} (${duration}ms)`)
+    }
+
+    if (res.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('passport_token')
+        window.location.href = '/login'
+      }
+      throw new Error('Session expired. Please sign in again.')
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      const message = err.error?.message || err.message
+      const error = new Error(message || `Request failed (HTTP ${res.status})`)
+      captureApiError(error, { path, status: res.status }).catch(() => {})
+      if (message) throw error
+      if (res.status === 403) throw new Error('Access denied. You do not have permission.')
+      if (res.status === 404) throw new Error('Resource not found.')
+      if (res.status === 409) throw new Error('Conflict: resource already exists.')
+      if (res.status >= 500) throw new Error('Server error. Please try again later.')
+      throw error
+    }
+
+    return res.json()
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+
+    if (error.name === 'AbortError') {
+      const toastMessage = 'Request timed out. Please try again.'
+      if (typeof window !== 'undefined') {
+        // We can't use hooks here, so dispatch a custom event for the toast
+        window.dispatchEvent(
+          new CustomEvent('passport-toast', {
+            detail: { message: toastMessage, type: 'error' },
+          })
+        )
+      }
+      throw new Error(toastMessage)
+    }
+
     throw error
   }
-
-  return res.json()
 }
 
 export function setToken(t: string) {
@@ -76,6 +146,55 @@ export async function login(email: string, password: string) {
   return fetchJson('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  })
+}
+
+export async function register(name: string, email: string, password: string) {
+  return fetchJson('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password }),
+  })
+}
+
+export async function verifyEmail(token: string) {
+  return fetchJson(`/auth/verify?token=${encodeURIComponent(token)}`)
+}
+
+export async function resendVerification(email: string) {
+  return fetchJson('/auth/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function forgotPassword(email: string) {
+  return fetchJson('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  return fetchJson('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword }),
+  })
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return fetchJson('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
+export async function getSessions() {
+  return fetchJson('/auth/sessions')
+}
+
+export async function revokeSession(id: string) {
+  return fetchJson(`/auth/sessions/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   })
 }
 
@@ -336,4 +455,59 @@ export async function sendTestEmail() {
   return fetchJson('/notifications/test', {
     method: 'POST',
   })
+}
+
+// Billing
+export async function getBillingPlans() {
+  return fetchJson('/billing/plans')
+}
+
+export async function getSubscription() {
+  return fetchJson('/billing/subscription')
+}
+
+export async function getUsage() {
+  return fetchJson('/billing/usage')
+}
+
+export async function createCheckoutSession(planId: string) {
+  return fetchJson('/billing/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ planId }),
+  })
+}
+
+export async function createPortalSession() {
+  return fetchJson('/billing/portal', {
+    method: 'POST',
+  })
+}
+
+export async function getInvoices() {
+  return fetchJson('/billing/invoices')
+}
+
+export async function cancelSubscription() {
+  return fetchJson('/billing/cancel', {
+    method: 'POST',
+  })
+}
+
+// Health check helper
+export async function checkHealth(): Promise<{ ok: boolean; data?: any }> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(`${API_BASE}/health`, {
+      signal: controller.signal,
+    })
+    clearTimeout(timeoutId)
+    if (res.ok) {
+      const data = await res.json()
+      return { ok: true, data }
+    }
+    return { ok: false }
+  } catch {
+    return { ok: false }
+  }
 }

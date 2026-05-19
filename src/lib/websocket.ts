@@ -14,8 +14,11 @@ interface WsClient extends WebSocket {
 const HEARTBEAT_INTERVAL = 30000
 const HEARTBEAT_TIMEOUT = 10000
 
+let _wss: WebSocketServer | null = null
+
 export function initWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ server })
+  _wss = wss
 
   wss.on('connection', (ws: WsClient, req) => {
     // Auth via query param ?token=... or Authorization header
@@ -118,4 +121,15 @@ export function initWebSocketServer(server: Server) {
   })
 
   return wss
+}
+
+export function closeWebSocketServer() {
+  if (_wss) {
+    log.info('closing websocket server')
+    for (const client of _wss.clients) {
+      client.terminate()
+    }
+    _wss.close()
+    _wss = null
+  }
 }

@@ -11,9 +11,14 @@ import {
   createApiKey,
   deleteApiKey,
   rotateApiKey,
+  changePassword,
+  getSessions,
+  revokeSession,
+  clearToken,
 } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
@@ -24,7 +29,10 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  Lock,
+  LogOut,
   Mail,
+  Monitor,
   Plus,
   RefreshCw,
   Send,
@@ -160,9 +168,75 @@ export default function SettingsPage() {
   const [keyForm, setKeyForm] = useState({ name: '', scopes: ['read', 'write'] as string[] })
   const [keySubmitting, setKeySubmitting] = useState(false)
   const [newKey, setNewKey] = useState<any>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
+
+  // Change password
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' })
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false)
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<Record<string, string>>({})
+
+  // Sessions
+  const { data: sessionsData, mutate: mutateSessions } = useSWR('/auth/sessions', getSessions, swrDashboardConfig)
+  const sessions = sessionsData?.sessions || []
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    const errors: Record<string, string> = {}
+    if (!passwordForm.current) errors.current = 'Current password is required'
+    if (!passwordForm.new) errors.new = 'New password is required'
+    else if (passwordForm.new.length < 8) errors.new = 'Password must be at least 8 characters'
+    else if (!/\d/.test(passwordForm.new)) errors.new = 'Password must contain at least 1 number'
+    else if (!/[^a-zA-Z0-9]/.test(passwordForm.new)) errors.new = 'Password must contain at least 1 special character'
+    if (passwordForm.new !== passwordForm.confirm) errors.confirm = 'Passwords do not match'
+    setPasswordFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
+    setPasswordSubmitting(true)
+    try {
+      await changePassword(passwordForm.current, passwordForm.new)
+      addToast('Password changed successfully', 'success')
+      setShowPasswordForm(false)
+      setPasswordForm({ current: '', new: '', confirm: '' })
+    } catch (err: any) {
+      addToast(err.message || 'Failed to change password', 'error')
+    } finally {
+      setPasswordSubmitting(false)
+    }
+  }
+
+  function passwordStrength(password: string): number {
+    let score = 0
+    if (password.length >= 8) score++
+    if (/\d/.test(password)) score++
+    if (/[^a-zA-Z0-9]/.test(password)) score++
+    if (password.length >= 12) score++
+    return score
+  }
+
+  async function handleRevokeSession(id: string) {
+    try {
+      await revokeSession(id)
+      addToast('Session revoked', 'success')
+      mutateSessions()
+    } catch (err: any) {
+      addToast(err.message || 'Failed to revoke session', 'error')
+    }
+  }
+
+  async function handleLogoutAll() {
+    try {
+      await revokeSession('current')
+      clearToken()
+      addToast('Logged out of all devices', 'success')
+      window.location.href = '/login'
+    } catch (err: any) {
+      addToast(err.message || 'Failed to log out', 'error')
+    }
+  }
 
   async function handleCreateKey(e: React.FormEvent) {
     e.preventDefault()
@@ -171,6 +245,7 @@ export default function SettingsPage() {
       const data = await createApiKey({ name: keyForm.name, scopes: keyForm.scopes })
       setNewKey(data)
       setShowKeyForm(false)
+      setShowSuccess(true)
       setKeyForm({ name: '', scopes: ['read', 'write'] })
       addToast('API key created successfully', 'success')
       mutateKeys()
@@ -206,6 +281,7 @@ export default function SettingsPage() {
     try {
       const data = await rotateApiKey(id)
       setNewKey(data)
+      setShowSuccess(true)
       addToast('API key rotated', 'success')
       mutateKeys()
     } catch (err: any) {
@@ -596,6 +672,143 @@ export default function SettingsPage() {
         )}
       </GlassCard>
 
+      {/* Change Password */}
+      <GlassCard hover={false}>
+        <div className="flex items-center gap-2 mb-4">
+          <Lock size={18} className="text-passport-azure" />
+          <h2 className="text-lg font-semibold text-passport-text">Change Password</h2>
+        </div>
+
+        {!showPasswordForm ? (
+          <button
+            onClick={() => setShowPasswordForm(true)}
+            className="btn-secondary"
+          >
+            <Lock size={14} />
+            Change Password
+          </button>
+        ) : (
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="label-text">Current Password</label>
+              <input
+                type="password"
+                value={passwordForm.current}
+                onChange={(e) => { setPasswordForm({ ...passwordForm, current: e.target.value }); setPasswordFieldErrors((prev) => ({ ...prev, current: '' })) }}
+                className={`input-field ${passwordFieldErrors.current ? 'border-passport-red' : ''}`}
+                placeholder="••••••••"
+              />
+              {passwordFieldErrors.current && (
+                <p className="text-xs text-passport-red mt-1">{passwordFieldErrors.current}</p>
+              )}
+            </div>
+            <div>
+              <label className="label-text">New Password</label>
+              <input
+                type="password"
+                value={passwordForm.new}
+                onChange={(e) => { setPasswordForm({ ...passwordForm, new: e.target.value }); setPasswordFieldErrors((prev) => ({ ...prev, new: '' })) }}
+                className={`input-field ${passwordFieldErrors.new ? 'border-passport-red' : ''}`}
+                placeholder="••••••••"
+              />
+              {passwordFieldErrors.new && (
+                <p className="text-xs text-passport-red mt-1">{passwordFieldErrors.new}</p>
+              )}
+              <div className="mt-2 flex gap-1">
+                {[0, 1, 2, 3].map((i) => {
+                  const s = passwordStrength(passwordForm.new)
+                  const color = s <= 1 ? 'bg-passport-red' : s === 2 ? 'bg-passport-amber' : 'bg-passport-green'
+                  return (
+                    <div key={i} className={`h-1 flex-1 rounded-full ${i < s ? color : 'bg-passport-border'}`} />
+                  )
+                })}
+              </div>
+              <p className="text-[10px] text-passport-muted mt-1">
+                {passwordStrength(passwordForm.new) <= 1 ? 'Weak' : passwordStrength(passwordForm.new) === 2 ? 'Fair' : passwordStrength(passwordForm.new) === 3 ? 'Good' : 'Strong'}
+              </p>
+            </div>
+            <div>
+              <label className="label-text">Confirm New Password</label>
+              <input
+                type="password"
+                value={passwordForm.confirm}
+                onChange={(e) => { setPasswordForm({ ...passwordForm, confirm: e.target.value }); setPasswordFieldErrors((prev) => ({ ...prev, confirm: '' })) }}
+                className={`input-field ${passwordFieldErrors.confirm ? 'border-passport-red' : ''}`}
+                placeholder="••••••••"
+              />
+              {passwordFieldErrors.confirm && (
+                <p className="text-xs text-passport-red mt-1">{passwordFieldErrors.confirm}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setShowPasswordForm(false)} className="btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" disabled={passwordSubmitting} className="btn-primary disabled:opacity-50">
+                {passwordSubmitting ? (
+                  <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+                ) : (
+                  <Lock size={14} />
+                )}
+                Update Password
+              </button>
+            </div>
+          </form>
+        )}
+      </GlassCard>
+
+      {/* Sessions */}
+      <GlassCard hover={false}>
+        <div className="flex items-center gap-2 mb-4">
+          <Monitor size={18} className="text-passport-azure" />
+          <h2 className="text-lg font-semibold text-passport-text">Sessions</h2>
+        </div>
+
+        <div className="space-y-3">
+          {sessions.map((session: any) => (
+            <div key={session.id} className="flex items-center justify-between p-3 rounded-passport border border-passport-border bg-passport-surface/50">
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-passport bg-passport-surface-2">
+                  <Monitor size={16} className="text-passport-azure" />
+                </div>
+                <div>
+                  <div className="text-sm text-passport-text font-medium">
+                    {session.id === 'current' ? 'Current Session' : `Session ${session.id.substring(0, 8)}`}
+                  </div>
+                  <div className="text-xs text-passport-muted font-mono">
+                    {session.ip} · {session.userAgent}
+                  </div>
+                  <div className="text-[10px] text-passport-dim">
+                    {session.createdAt ? new Date(session.createdAt).toLocaleString() : '—'}
+                  </div>
+                </div>
+              </div>
+              {session.id === 'current' ? (
+                <span className="text-[10px] uppercase tracking-wider text-passport-green bg-passport-green/10 px-2 py-0.5 rounded">Active</span>
+              ) : (
+                <button
+                  onClick={() => handleRevokeSession(session.id)}
+                  className="btn-danger text-xs py-1.5 px-2"
+                >
+                  <LogOut size={12} />
+                  Revoke
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-passport-border">
+          <button
+            onClick={handleLogoutAll}
+            className="btn-danger"
+          >
+            <LogOut size={14} />
+            Logout All Devices
+          </button>
+        </div>
+      </GlassCard>
+
       {/* Danger Zone */}
       <GlassCard hover={false} className="border-passport-red/20">
         <div className="flex items-center gap-2 mb-4">
@@ -665,6 +878,13 @@ export default function SettingsPage() {
             </div>
           </GlassCard>
         </div>
+      )}
+
+      {showSuccess && (
+        <SuccessAnimation
+          message="API key operation successful"
+          onDismiss={() => setShowSuccess(false)}
+        />
       )}
     </div>
   )

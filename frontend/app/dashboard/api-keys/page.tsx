@@ -7,7 +7,8 @@ import { useFocusTrap } from '@/lib/use-focus-trap'
 import { listApiKeys, createApiKey, deleteApiKey, rotateApiKey } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
-import { SkeletonRow, PageLoader } from '@/components/loading'
+import { SuccessAnimation } from '@/components/success-animation'
+import { SkeletonRow, PageLoader, Spinner } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
   AlertTriangle,
@@ -54,6 +55,7 @@ export default function ApiKeysPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [newKey, setNewKey] = useState<any>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
@@ -81,6 +83,7 @@ export default function ApiKeysPage() {
       })
       setNewKey(data)
       setShowForm(false)
+      setShowSuccess(true)
       setFormData({ name: '', scopes: ['read', 'write'] })
       addToast('API key created successfully', 'success')
       loadKeys()
@@ -117,6 +120,7 @@ export default function ApiKeysPage() {
     try {
       const data = await rotateApiKey(id)
       setNewKey(data)
+      setShowSuccess(true)
       addToast('API key rotated', 'success')
       loadKeys()
     } catch (err: any) {
@@ -484,6 +488,13 @@ export default function ApiKeysPage() {
             </div>
           </GlassCard>
         </div>
+      )}
+
+      {showSuccess && (
+        <SuccessAnimation
+          message="API key created successfully"
+          onDismiss={() => setShowSuccess(false)}
+        />
       )}
     </div>
   )

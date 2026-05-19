@@ -7,6 +7,8 @@ import dynamic from 'next/dynamic'
 import { listAgents, registerAgent, revokeAgent, suspendAgent } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import { NoAgents } from '@/components/empty-states/no-agents'
+import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
@@ -59,6 +61,7 @@ export default function AgentsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const [newAgent, setNewAgent] = useState<any>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState('')
   const [showSecret, setShowSecret] = useState(false)
@@ -87,6 +90,7 @@ export default function AgentsPage() {
       })
       setNewAgent(data)
       setShowForm(false)
+      setShowSuccess(true)
       setFormData({ name: '', model: '', provider: '', systemPrompt: '' })
       addToast('Agent registered successfully', 'success')
       loadAgents()
@@ -372,19 +376,15 @@ export default function AgentsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={Bot}
-          title={search ? 'No agents match your search' : 'No agents registered yet'}
-          description={search ? 'Try a different search term' : 'Register your first agent to get started'}
-          action={
-            !search && (
-              <button onClick={() => setShowForm(true)} className="btn-primary">
-                <Plus size={14} />
-                Register your first agent
-              </button>
-            )
-          }
-        />
+        search ? (
+          <EmptyState
+            icon={Bot}
+            title="No agents match your search"
+            description="Try a different search term"
+          />
+        ) : (
+          <NoAgents onCreate={() => setShowForm(true)} />
+        )
       ) : (
         <div className="glass-panel overflow-hidden">
           <div className="overflow-x-auto">
@@ -467,6 +467,13 @@ export default function AgentsPage() {
             </table>
           </div>
         </div>
+      )}
+
+      {showSuccess && (
+        <SuccessAnimation
+          message="Agent registered successfully"
+          onDismiss={() => setShowSuccess(false)}
+        />
       )}
     </div>
   )

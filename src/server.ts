@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { randomUUID } from 'crypto'
 import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
@@ -10,7 +11,7 @@ import { attachRequestId, auditTimeline, runTrace, metrics, getMetricsData } fro
 import { hardenAuth } from './security.js'
 import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
 import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
-import { verifyPassword } from './lib/password.js'
+import { verifyPassword, hashPassword } from './lib/password.js'
 import { registerValidationHooks } from './lib/input-validation.js'
 import { validateEnv } from './lib/env.js'
 import { AppError, sanitizeErrorForProduction } from './lib/errors.js'
@@ -19,6 +20,8 @@ import { createRequestLoggerHooks } from './lib/request-logger.js'
 import { RateLimiter } from './lib/rate-limiter.js'
 import { withCache } from './lib/cache.js'
 import { paginate, parsePaginationQuery } from './lib/pagination.js'
+import { sendEmail } from './lib/email.js'
+import { verificationTemplate, passwordResetTemplate, accountLockedTemplate } from './lib/email-templates.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
@@ -28,15 +31,29 @@ import apiKeysRoutes from './routes/api-keys.js'
 import analyticsRoutes from './routes/analytics.js'
 import webhooksRoutes from './routes/webhooks.js'
 import notificationsRoutes from './routes/notifications.js'
+import billingRoutes from './routes/billing.js'
 import { deliverWebhook } from './lib/webhook-deliverer.js'
-import { initWebSocketServer } from './lib/websocket.js'
+import { initWebSocketServer, closeWebSocketServer } from './lib/websocket.js'
 import { publishEvent } from './lib/events.js'
+import { startThresholdChecker } from './lib/alerts.js'
+import { resetMetrics } from './lib/metrics.js'
 
 // Validate environment before starting
 validateEnv()
 
 const db = initFirebase()
 const app = Fastify({ logger: false })
+
+// Capture raw body for Stripe webhook signature verification
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+  try {
+    (req as any).rawBody = body
+    const json = JSON.parse(body as string)
+    done(null, json)
+  } catch (err) {
+    done(err as Error, undefined)
+  }
+})
 
 // Input validation + secure headers
 registerValidationHooks(app)
@@ -52,7 +69,9 @@ app.addHook('onResponse', requestLoggerOnResponse)
 // Rate limiting — per-IP sliding window, endpoint-specific limits, Redis optional
 const rateLimiter = new RateLimiter({
   endpointLimits: {
-    '/auth/login': 20,
+    '/auth/login': 5,
+    '/auth/forgot-password': 3,
+    '/auth/register': 10,
     '/enforce': 100,
     '/gateway/execute': 50,
   },
@@ -62,9 +81,14 @@ const rateLimiter = new RateLimiter({
 
 // CORS + rate limiting hook
 const isDev = process.env.NODE_ENV !== 'production'
+const defaultAllowedOrigins = [
+  'https://passport-agent.netlify.app',
+  'https://passport-agent.vercel.app',
+  'https://passport-agent-demo.onrender.com',
+]
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
-  : []
+  : defaultAllowedOrigins
 
 app.addHook('onRequest', async (request, reply) => {
   const origin = (request.headers.origin as string) || ''
@@ -75,11 +99,15 @@ app.addHook('onRequest', async (request, reply) => {
   }
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key, X-API-Key')
+  reply.header('Access-Control-Allow-Credentials', 'true')
   if (request.method === 'OPTIONS') { reply.code(204).send(); return }
   const ip = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
   const result = await rateLimiter.check(ip, request.url)
   reply.header('X-RateLimit-Remaining', String(result.remaining))
   if (!result.allowed) {
+    if (result.retryAfter) {
+      reply.header('Retry-After', String(result.retryAfter))
+    }
     reply.code(429).send({ error: { code: 'rate_limited', message: 'Too many requests' } })
   }
 })
@@ -178,6 +206,32 @@ async function requireAuth(request: any, reply: any): Promise<Claims | null> {
 
   reply.code(401).send({ error: { code: 'unauthorized', message: 'missing Authorization header or X-API-Key header' } })
   return null
+}
+
+// Require verified email middleware — allows GET for unverified, blocks mutations
+async function requireVerified(request: any, reply: any): Promise<boolean> {
+  const claims = request.claims as Claims | undefined
+  if (!claims) {
+    reply.code(401).send({ error: { code: 'unauthorized', message: 'authentication required' } })
+    return false
+  }
+  // API keys are exempt from verification
+  if (claims.role === 'api_key') return true
+
+  try {
+    const snap = await db.collection('users').where('email', '==', claims.sub).limit(1).get()
+    if (!snap.empty) {
+      const userData = snap.docs[0].data() as any
+      if (userData.verified === false) {
+        reply.code(403).send({ error: { code: 'email_not_verified', message: 'Please verify your email before performing this action' } })
+        return false
+      }
+    }
+    return true
+  } catch {
+    reply.code(503).send({ error: { code: 'firestore', message: 'auth service unavailable' } })
+    return false
+  }
 }
 
 function err(reply: any, code: number, category: string, message: string, detail?: Record<string, unknown>) {
@@ -321,24 +375,264 @@ app.post('/auth/login', async (request, reply) => {
 
     // Check against stored PBKDF2 hash
     let authenticated = false
+    let userData: any = null
+    let userDocId = ''
     if (!snap.empty) {
-      const userData = snap.docs[0].data() as any
+      userData = snap.docs[0].data() as any
+      userDocId = snap.docs[0].id
       if (userData.passwordHash && userData.passwordSalt) {
         authenticated = verifyPassword(password, userData.passwordHash, userData.passwordSalt)
       }
     }
 
-    if (!authenticated) return err(reply, 401, 'unauthorized', 'invalid credentials')
-    const userDoc = snap.docs[0]; const user = { id: userDoc.id, ...userDoc.data() }
-    const token = sign({ sub: email, role: (user as any).role || 'org_admin' })
+    // Account lockout check
+    if (userData && userData.lockedUntil) {
+      const now = Date.now()
+      const lockedUntil = new Date(userData.lockedUntil).getTime()
+      if (now < lockedUntil) {
+        const retryAfter = Math.ceil((lockedUntil - now) / 1000)
+        reply.header('Retry-After', String(retryAfter))
+        return err(reply, 403, 'account_locked', 'Too many failed attempts. Try again in 30 minutes.', { retryAfter })
+      }
+    }
+
+    if (!authenticated) {
+      // Track failed attempts
+      if (userData) {
+        const failedAttempts = (userData.failedLoginAttempts || 0) + 1
+        const update: any = { failedLoginAttempts: failedAttempts }
+        if (failedAttempts >= 5) {
+          const lockedUntil = new Date(Date.now() + 30 * 60_000).toISOString()
+          update.lockedUntil = lockedUntil
+          update.failedLoginAttempts = 0
+          // Send lockout email (best-effort)
+          ;(async () => {
+            try {
+              const { html, text } = accountLockedTemplate({ email, lockoutMinutes: 30 })
+              await sendEmail({ to: email, subject: 'Account Temporarily Locked', html, text, orgId: userData.orgId })
+            } catch {}
+          })()
+        }
+        db.collection('users').doc(userDocId).update(update).catch(() => {})
+      }
+      return err(reply, 401, 'unauthorized', 'invalid credentials')
+    }
+
+    // Reset failed attempts on success
+    if (userDocId) {
+      db.collection('users').doc(userDocId).update({ failedLoginAttempts: 0, lockedUntil: null }).catch(() => {})
+    }
+
+    const user = { id: userDocId, ...userData }
+    const token = sign({ sub: email, role: userData.role || 'org_admin' })
     log.success('login', { user: email })
-    return { token, user: { email, role: (user as any).role } }
+    return { token, user: { email, role: userData.role, verified: userData.verified ?? true } }
   } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// POST /auth/register
+app.post('/auth/register', async (request, reply) => {
+  const { name, email, password } = (request.body || {}) as { name?: string; email?: string; password?: string }
+  if (!name || !email || !password) return err(reply, 400, 'validation', 'name, email and password are required')
+  try {
+    const existing = await db.collection('users').where('email', '==', email).limit(1).get()
+    if (!existing.empty) return err(reply, 409, 'conflict', 'an account with this email already exists')
+
+    const verificationToken = `verify_${randomUUID()}`
+    const { hash, salt } = hashPassword(password)
+    const now = new Date().toISOString()
+
+    const userRef = db.collection('users').doc(email)
+    await userRef.set({
+      email,
+      displayName: name,
+      role: 'org_admin',
+      passwordHash: hash,
+      passwordSalt: salt,
+      verified: false,
+      verificationToken,
+      createdAt: now,
+    })
+
+    // Send verification email (best-effort)
+    const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
+    const verificationUrl = `${frontendUrl}/verify?token=${verificationToken}`
+    ;(async () => {
+      try {
+        const { html, text } = verificationTemplate({ email, verificationUrl })
+        await sendEmail({ to: email, subject: 'Verify Your Email — Passport Agent', html, text })
+      } catch {}
+    })()
+
+    reply.code(201)
+    return { message: 'Account created. Please check your email for verification link.', email }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// GET /auth/verify
+app.get('/auth/verify', async (request, reply) => {
+  const { token: verificationToken } = request.query as { token?: string }
+  if (!verificationToken) return err(reply, 400, 'validation', 'token is required')
+  try {
+    const snap = await db.collection('users').where('verificationToken', '==', verificationToken).limit(1).get()
+    if (snap.empty) return err(reply, 400, 'validation', 'invalid or expired token')
+
+    const userDoc = snap.docs[0]
+    const userData = userDoc.data() as any
+    const tokenCreated = userData.createdAt ? new Date(userData.createdAt).getTime() : Date.now()
+    const now = Date.now()
+    if (now - tokenCreated > 24 * 60 * 60_000) {
+      return err(reply, 400, 'validation', 'invalid or expired token')
+    }
+
+    await db.collection('users').doc(userDoc.id).update({
+      verified: true,
+      verificationToken: null,
+    })
+    return { verified: true }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// POST /auth/resend-verification
+app.post('/auth/resend-verification', async (request, reply) => {
+  const { email } = (request.body || {}) as { email?: string }
+  if (!email) return err(reply, 400, 'validation', 'email is required')
+  try {
+    const snap = await db.collection('users').where('email', '==', email).limit(1).get()
+    if (snap.empty) {
+      // Security through obscurity: return success even if email not found
+      return { message: 'If an account exists, a verification email has been sent.' }
+    }
+    const userDoc = snap.docs[0]
+    const userData = userDoc.data() as any
+    if (userData.verified) {
+      return { message: 'If an account exists, a verification email has been sent.' }
+    }
+
+    const newToken = `verify_${randomUUID()}`
+    await db.collection('users').doc(userDoc.id).update({
+      verificationToken: newToken,
+      createdAt: new Date().toISOString(),
+    })
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
+    const verificationUrl = `${frontendUrl}/verify?token=${newToken}`
+    ;(async () => {
+      try {
+        const { html, text } = verificationTemplate({ email, verificationUrl })
+        await sendEmail({ to: email, subject: 'Verify Your Email — Passport Agent', html, text })
+      } catch {}
+    })()
+
+    return { message: 'If an account exists, a verification email has been sent.' }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// POST /auth/forgot-password
+app.post('/auth/forgot-password', async (request, reply) => {
+  const { email } = (request.body || {}) as { email?: string }
+  if (!email) return err(reply, 400, 'validation', 'email is required')
+  try {
+    const snap = await db.collection('users').where('email', '==', email).limit(1).get()
+    if (!snap.empty) {
+      const userDoc = snap.docs[0]
+      const resetToken = `reset_${randomUUID()}`
+      const resetExpires = new Date(Date.now() + 60 * 60_000).toISOString()
+      await db.collection('users').doc(userDoc.id).update({
+        passwordResetToken: resetToken,
+        passwordResetExpires: resetExpires,
+      })
+
+      const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
+      const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`
+      ;(async () => {
+        try {
+          const { html, text } = passwordResetTemplate({ email, resetUrl })
+          await sendEmail({ to: email, subject: 'Reset Your Password — Passport Agent', html, text })
+        } catch {}
+      })()
+    }
+    // Security through obscurity: always return 200
+    return { message: 'If an account exists, a reset email has been sent.' }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// POST /auth/reset-password
+app.post('/auth/reset-password', async (request, reply) => {
+  const { token: resetToken, newPassword } = (request.body || {}) as { token?: string; newPassword?: string }
+  if (!resetToken || !newPassword) return err(reply, 400, 'validation', 'token and newPassword are required')
+  try {
+    const snap = await db.collection('users').where('passwordResetToken', '==', resetToken).limit(1).get()
+    if (snap.empty) return err(reply, 400, 'validation', 'invalid or expired token')
+
+    const userDoc = snap.docs[0]
+    const userData = userDoc.data() as any
+    const expires = new Date(userData.passwordResetExpires || 0).getTime()
+    if (Date.now() > expires) {
+      return err(reply, 400, 'validation', 'invalid or expired token')
+    }
+
+    const { hash, salt } = hashPassword(newPassword)
+    await db.collection('users').doc(userDoc.id).update({
+      passwordHash: hash,
+      passwordSalt: salt,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    })
+    return { message: 'Password updated successfully' }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// POST /auth/change-password
+app.post('/auth/change-password', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  const { currentPassword, newPassword } = (request.body || {}) as { currentPassword?: string; newPassword?: string }
+  if (!currentPassword || !newPassword) return err(reply, 400, 'validation', 'currentPassword and newPassword are required')
+  try {
+    const snap = await db.collection('users').where('email', '==', claims.sub).limit(1).get()
+    if (snap.empty) return err(reply, 404, 'not_found', 'user not found')
+
+    const userDoc = snap.docs[0]
+    const userData = userDoc.data() as any
+    const valid = verifyPassword(currentPassword, userData.passwordHash, userData.passwordSalt)
+    if (!valid) return err(reply, 401, 'unauthorized', 'current password is incorrect')
+
+    const { hash, salt } = hashPassword(newPassword)
+    await db.collection('users').doc(userDoc.id).update({
+      passwordHash: hash,
+      passwordSalt: salt,
+    })
+    return { message: 'Password changed successfully' }
+  } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
+})
+
+// GET /auth/sessions
+app.get('/auth/sessions', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  // Stub: return current session info
+  const now = new Date().toISOString()
+  return {
+    sessions: [{
+      id: 'current',
+      createdAt: now,
+      ip: ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim(),
+      userAgent: (request.headers['user-agent'] as string) || 'unknown',
+    }],
+  }
+})
+
+// DELETE /auth/sessions/:id
+app.delete('/auth/sessions/:id', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  const { id } = request.params as { id: string }
+  // Stub: in a full implementation, add session token to blocklist
+  return { revoked: true, sessionId: id }
 })
 
 // POST /task
 app.post('/task', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { payload } = (request.body || {}) as { payload?: Record<string, unknown> }
   if (!payload) return err(reply, 400, 'validation', 'payload is required')
   try {
@@ -376,6 +670,7 @@ app.get('/tasks', async (request, reply) => {
 // POST /agent/run
 app.post('/agent/run', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { agentId, taskId } = (request.body || {}) as { agentId?: string; taskId?: string }
   if (!agentId || !taskId) return err(reply, 400, 'validation', 'agentId and taskId are required')
   try {
@@ -411,6 +706,7 @@ app.get('/runs', async (request, reply) => {
 // POST /run/:id/log
 app.post('/run/:id/log', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { id } = request.params as { id: string }
   const { tool, decision, parameters, reason } = (request.body || {}) as any
   if (!tool || !decision) return err(reply, 400, 'validation', 'tool and decision are required')
@@ -430,6 +726,7 @@ app.post('/run/:id/log', async (request, reply) => {
 // PATCH /run/:id/complete
 app.patch('/run/:id/complete', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { id } = request.params as { id: string }
   const requestId = generateId('req_', 8)
   const run = await fetchDoc('runs', id) as any; if (!run) return err(reply, 404, 'not_found', `run ${id} not found`)
@@ -444,6 +741,7 @@ app.patch('/run/:id/complete', async (request, reply) => {
 // PATCH /run/:id/fail
 app.patch('/run/:id/fail', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { id } = request.params as { id: string }
   const { error: runError } = (request.body || {}) as { error?: string }
   const requestId = generateId('req_', 8)
@@ -509,6 +807,7 @@ app.get('/consistency', async (_req, reply) => {
 // POST /repair — safely repair common inconsistency
 app.post('/repair', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { action } = (request.body || {}) as { action?: string }
   try {
     if (action === 'orphaned') return await repairOrphanedRuns(db)
@@ -528,6 +827,7 @@ app.get('/report', {
 // POST /org/seed — create isolated demo org
 app.post('/org/seed', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
+  const verified = await requireVerified(request, reply); if (!verified) return
   const { name, email } = (request.body || {}) as { name?: string; email?: string }
   if (!name || !email) return err(reply, 400, 'validation', 'name and email are required')
   try {
@@ -552,6 +852,7 @@ app.get('/org/metrics', async (request, reply) => {
   apiKeysRoutes(app, db)
   webhooksRoutes(app, db)
   notificationsRoutes(app, db)
+  billingRoutes(app, db)
   hardenAuth(app, db)
   auditTimeline(app, db)
   runTrace(app, db)
@@ -574,6 +875,12 @@ app.get('/*', async (request, reply) => {
   reply.code(404).send({ error: { code: 'not_found', message: `Route ${request.method}:${url} not found` } })
 })
 
+// Start threshold checker
+startThresholdChecker()
+
+// Reset metrics every hour
+setInterval(resetMetrics, 60 * 60 * 1000)
+
 // Start
 const PORT = parseInt(process.env.PORT || '3000', 10)
 const HOST = '0.0.0.0'
@@ -582,3 +889,23 @@ app.listen({ port: PORT, host: HOST }, (listenErr) => {
   console.log(`\n  server → http://${HOST}:${PORT}`)
   initWebSocketServer(app.server)
 })
+
+// Graceful shutdown
+async function gracefulShutdown(signal: string) {
+  log.info(`received ${signal}, shutting down gracefully`)
+
+  // Close HTTP server
+  await app.close()
+
+  // Close WebSocket connections
+  closeWebSocketServer()
+
+  // Flush any pending logs
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  log.info('shutdown complete')
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))

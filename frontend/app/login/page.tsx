@@ -142,20 +142,25 @@ export default function LoginPage() {
               )}
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer group">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-4 h-4 rounded border border-passport-border bg-passport-bg peer-checked:bg-passport-green peer-checked:border-passport-green transition-all flex items-center justify-center">
-                {rememberMe && <CheckCircle size={10} className="text-passport-bg" />}
-              </div>
-              <span className="text-xs text-passport-muted group-hover:text-passport-text transition-colors">
-                Remember me
-              </span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-4 h-4 rounded border border-passport-border bg-passport-bg peer-checked:bg-passport-green peer-checked:border-passport-green transition-all flex items-center justify-center">
+                  {rememberMe && <CheckCircle size={10} className="text-passport-bg" />}
+                </div>
+                <span className="text-xs text-passport-muted group-hover:text-passport-text transition-colors">
+                  Remember me
+                </span>
+              </label>
+              <Link href="/forgot-password" className="text-xs text-passport-azure hover:underline">
+                Forgot password?
+              </Link>
+            </div>
 
             <button
               type="submit"

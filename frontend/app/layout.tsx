@@ -3,6 +3,8 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/toast'
 import SentryInit from '@/components/sentry-init'
+import OfflineBanner from '@/components/offline-banner'
+import ApiHealthCheck from '@/components/api-health-check'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,21 +19,18 @@ const jetbrains = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://passport-agent-demo.netlify.app'),
   title: 'AI Agent Passport',
   description: 'OAuth for AI Agents. Create policies, register agents, and enforce permissions automatically.',
   openGraph: {
     title: 'AI Agent Passport',
     description: 'Control what your AI agents can do with pre-execution policy enforcement.',
-    images: ['/og-image.png'],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
   },
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
-  },
+  manifest: '/manifest.json',
 }
 
 export const viewport: Viewport = {
@@ -48,9 +47,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={`${inter.variable} ${jetbrains.variable} antialiased`}>
         <SentryInit />
         <ToastProvider>
+          <OfflineBanner />
+          <ApiHealthCheck />
           {children}
         </ToastProvider>
       </body>

@@ -54,6 +54,14 @@ export class RateLimiter {
     return this.options.defaultLimit
   }
 
+  private getWindowMs(path: string): number {
+    // Stricter auth endpoints get custom windows
+    if (path.startsWith('/auth/login')) return 15 * 60_000 // 15 minutes
+    if (path.startsWith('/auth/forgot-password')) return 60 * 60_000 // 1 hour
+    if (path.startsWith('/auth/register')) return 60 * 60_000 // 1 hour
+    return this.options.windowMs
+  }
+
   private isBurstAttack(ip: string): boolean {
     const now = Date.now()
     const count = (this.burstMap.get(ip) || 0) + 1
@@ -66,12 +74,14 @@ export class RateLimiter {
     return false
   }
 
-  async check(ip: string, path: string): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  async check(ip: string, path: string): Promise<{ allowed: boolean; remaining: number; resetAt: number; retryAfter?: number }> {
     if (this.isBurstAttack(ip)) {
-      return { allowed: false, remaining: 0, resetAt: Date.now() + this.options.burstWindowMs }
+      const retryAfter = Math.ceil(this.options.burstWindowMs / 1000)
+      return { allowed: false, remaining: 0, resetAt: Date.now() + this.options.burstWindowMs, retryAfter }
     }
 
     const limit = this.getLimit(path)
+    const windowMs = this.getWindowMs(path)
     const now = Date.now()
     const key = `rl:${ip}:${path}`
 
@@ -82,13 +92,14 @@ export class RateLimiter {
         pipeline.pttl(key)
         const [[, countStr], [, ttl]] = await pipeline.exec()
         const count = countStr ? parseInt(countStr, 10) : 0
-        const resetAt = ttl > 0 ? now + ttl : now + this.options.windowMs
+        const resetAt = ttl > 0 ? now + ttl : now + windowMs
         if (count >= limit) {
-          return { allowed: false, remaining: 0, resetAt }
+          const retryAfter = Math.ceil((resetAt - now) / 1000)
+          return { allowed: false, remaining: 0, resetAt, retryAfter }
         }
         const multi = this.redis.multi()
         multi.incr(key)
-        if (count === 0) multi.pexpire(key, this.options.windowMs)
+        if (count === 0) multi.pexpire(key, windowMs)
         await multi.exec()
         return { allowed: true, remaining: limit - count - 1, resetAt }
       } catch {
@@ -99,12 +110,13 @@ export class RateLimiter {
     // In-memory fallback
     const entry = this.memoryMap.get(key)
     if (!entry || now > entry.resetAt) {
-      const newEntry: RateLimitEntry = { count: 1, resetAt: now + this.options.windowMs, remaining: limit - 1 }
+      const newEntry: RateLimitEntry = { count: 1, resetAt: now + windowMs, remaining: limit - 1 }
       this.memoryMap.set(key, newEntry)
       return { allowed: true, remaining: newEntry.remaining, resetAt: newEntry.resetAt }
     }
     if (entry.count >= limit) {
-      return { allowed: false, remaining: 0, resetAt: entry.resetAt }
+      const retryAfter = Math.ceil((entry.resetAt - now) / 1000)
+      return { allowed: false, remaining: 0, resetAt: entry.resetAt, retryAfter }
     }
     entry.count++
     entry.remaining = limit - entry.count

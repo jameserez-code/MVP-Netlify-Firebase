@@ -6,6 +6,8 @@ import { swrDashboardConfig } from '@/lib/swr-config'
 import { listPolicies, createPolicy, deletePolicy } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import { NoPolicies } from '@/components/empty-states/no-policies'
+import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
@@ -104,6 +106,7 @@ export default function PoliciesPage() {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showSuccess, setShowSuccess] = useState(false)
 
   function loadPolicies() {
     mutate()
@@ -136,6 +139,7 @@ export default function PoliciesPage() {
       await createPolicy({ name: form.name, rules: buildRules(form) })
       addToast('Policy created successfully', 'success')
       setShowForm(false)
+      setShowSuccess(true)
       setForm(DEFAULT_FORM)
       loadPolicies()
     } catch (err: any) {
@@ -444,17 +448,7 @@ export default function PoliciesPage() {
           ))}
         </div>
       ) : policies.length === 0 ? (
-        <EmptyState
-          icon={Shield}
-          title="No policies defined yet"
-          description="Create policies to control what your agents can do"
-          action={
-            <button onClick={() => setShowForm(true)} className="btn-primary">
-              <Plus size={14} />
-              Create your first policy
-            </button>
-          }
-        />
+        <NoPolicies onCreate={() => setShowForm(true)} />
       ) : (
         <div className="grid gap-3">
           {policies.map((policy, i) => (
@@ -519,6 +513,13 @@ export default function PoliciesPage() {
             </GlassCard>
           ))}
         </div>
+      )}
+
+      {showSuccess && (
+        <SuccessAnimation
+          message="Policy created successfully"
+          onDismiss={() => setShowSuccess(false)}
+        />
       )}
     </div>
   )

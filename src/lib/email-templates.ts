@@ -237,6 +237,98 @@ export function digestTemplate(params: {
   return { html, text }
 }
 
+export function verificationTemplate(params: {
+  email: string
+  verificationUrl: string
+}): { html: string; text: string } {
+  const { email, verificationUrl } = params
+  const html = baseTemplate(
+    'Verify Your Email',
+    `
+    <h1 style="font-size:18px;font-weight:700;color:${BRAND_COLOR};margin:0 0 16px 0;">Verify Your Email Address</h1>
+    <p style="font-size:14px;color:${TEXT_COLOR};margin:0 0 16px 0;line-height:1.5;">
+      Thanks for signing up, <strong style="color:${TEXT_COLOR};">${escapeHtml(email)}</strong>. Please verify your email address to activate your account.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td align="center">
+          <a href="${escapeHtml(verificationUrl)}" style="display:inline-block;padding:12px 24px;background:${BRAND_COLOR};color:#ffffff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Verify Email</a>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:12px;color:${MUTED_COLOR};margin:0 0 8px 0;line-height:1.5;">
+      Or copy and paste this link into your browser:
+    </p>
+    <p style="font-size:12px;color:${TEXT_COLOR};margin:0 0 16px 0;line-height:1.5;word-break:break-all;font-family:monospace;">
+      ${escapeHtml(verificationUrl)}
+    </p>
+    <p style="font-size:11px;color:${MUTED_COLOR};margin:0;line-height:1.5;">
+      This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+    </p>
+    `
+  )
+  const text = `Passport Agent — Verify Your Email\n\nThanks for signing up, ${email}.\n\nPlease verify your email address by visiting:\n${verificationUrl}\n\nThis link expires in 24 hours. If you didn't create an account, you can safely ignore this email.`
+  return { html, text }
+}
+
+export function passwordResetTemplate(params: {
+  email: string
+  resetUrl: string
+}): { html: string; text: string } {
+  const { email, resetUrl } = params
+  const html = baseTemplate(
+    'Reset Your Password',
+    `
+    <h1 style="font-size:18px;font-weight:700;color:${AMBER_COLOR};margin:0 0 16px 0;">Reset Your Password</h1>
+    <p style="font-size:14px;color:${TEXT_COLOR};margin:0 0 16px 0;line-height:1.5;">
+      We received a request to reset the password for <strong style="color:${TEXT_COLOR};">${escapeHtml(email)}</strong>.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom:16px;">
+      <tr>
+        <td align="center">
+          <a href="${escapeHtml(resetUrl)}" style="display:inline-block;padding:12px 24px;background:${AMBER_COLOR};color:#0d1117;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Reset Password</a>
+        </td>
+      </tr>
+    </table>
+    <p style="font-size:12px;color:${MUTED_COLOR};margin:0 0 8px 0;line-height:1.5;">
+      Or copy and paste this link into your browser:
+    </p>
+    <p style="font-size:12px;color:${TEXT_COLOR};margin:0 0 16px 0;line-height:1.5;word-break:break-all;font-family:monospace;">
+      ${escapeHtml(resetUrl)}
+    </p>
+    <p style="font-size:11px;color:${MUTED_COLOR};margin:0;line-height:1.5;">
+      This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+    </p>
+    `
+  )
+  const text = `Passport Agent — Reset Your Password\n\nWe received a request to reset the password for ${email}.\n\nReset your password by visiting:\n${resetUrl}\n\nThis link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.`
+  return { html, text }
+}
+
+export function accountLockedTemplate(params: {
+  email: string
+  lockoutMinutes: number
+}): { html: string; text: string } {
+  const { email, lockoutMinutes } = params
+  const html = baseTemplate(
+    'Account Locked',
+    `
+    <h1 style="font-size:18px;font-weight:700;color:${RED_COLOR};margin:0 0 16px 0;">Account Temporarily Locked</h1>
+    <p style="font-size:14px;color:${TEXT_COLOR};margin:0 0 16px 0;line-height:1.5;">
+      Your account <strong style="color:${TEXT_COLOR};">${escapeHtml(email)}</strong> has been temporarily locked due to too many failed sign-in attempts.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${BG_COLOR};border:1px solid ${BORDER_COLOR};border-radius:6px;margin-bottom:16px;">
+      <tr><td style="padding:12px 16px;"><span style="font-size:11px;color:${MUTED_COLOR};text-transform:uppercase;letter-spacing:1px;">Lockout Duration</span><div style="font-size:14px;font-weight:600;color:${RED_COLOR};margin-top:2px;">${lockoutMinutes} minutes</div></td></tr>
+    </table>
+    <p style="font-size:12px;color:${MUTED_COLOR};margin:0;line-height:1.5;">
+      Please try again after the lockout period expires. If you forgot your password, you can reset it from the sign-in page.
+    </p>
+    `
+  )
+  const text = `Passport Agent — Account Temporarily Locked\n\nYour account ${email} has been temporarily locked due to too many failed sign-in attempts.\n\nLockout Duration: ${lockoutMinutes} minutes\n\nPlease try again after the lockout period expires. If you forgot your password, you can reset it from the sign-in page.`
+  return { html, text }
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')

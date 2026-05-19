@@ -1,5 +1,7 @@
 type Level = 'info' | 'warn' | 'error' | 'success'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 const PREFIX: Record<Level, string> = {
   info:    '•',
   warn:    '⚠',
@@ -8,12 +10,12 @@ const PREFIX: Record<Level, string> = {
 }
 
 function timestamp(): string {
-  return new Date().toISOString().replace('T', ' ').substring(0, 19)
+  return new Date().toISOString()
 }
 
-function format(level: Level, message: string, context?: Record<string, unknown>): string {
+function formatPretty(level: Level, message: string, context?: Record<string, unknown>): string {
   const parts = [
-    `[${timestamp()}]`,
+    `[${timestamp().replace('T', ' ').substring(0, 19)}]`,
     PREFIX[level],
     message,
   ]
@@ -21,17 +23,55 @@ function format(level: Level, message: string, context?: Record<string, unknown>
   return parts.join(' ')
 }
 
+function formatJson(level: Level, message: string, context?: Record<string, unknown>): string {
+  const entry: Record<string, unknown> = {
+    timestamp: timestamp(),
+    level,
+    message,
+    service: 'passport-agent',
+    version: '2.1.0',
+  }
+
+  if (context) {
+    if (context.correlationId) {
+      entry.correlationId = context.correlationId
+    }
+    // Merge remaining context fields
+    for (const [key, value] of Object.entries(context)) {
+      if (key !== 'correlationId') {
+        entry[key] = value
+      }
+    }
+  }
+
+  return JSON.stringify(entry)
+}
+
+function logLine(level: Level, message: string, context?: Record<string, unknown>) {
+  const line = isProduction
+    ? formatJson(level, message, context)
+    : formatPretty(level, message, context)
+
+  if (level === 'error') {
+    console.error(line)
+  } else if (level === 'warn') {
+    console.warn(line)
+  } else {
+    console.log(line)
+  }
+}
+
 export const log = {
   info(msg: string, ctx?: Record<string, unknown>) {
-    console.log(format('info', msg, ctx))
+    logLine('info', msg, ctx)
   },
   warn(msg: string, ctx?: Record<string, unknown>) {
-    console.warn(format('warn', msg, ctx))
+    logLine('warn', msg, ctx)
   },
   error(msg: string, ctx?: Record<string, unknown>) {
-    console.error(format('error', msg, ctx))
+    logLine('error', msg, ctx)
   },
   success(msg: string, ctx?: Record<string, unknown>) {
-    console.log(format('success', msg, ctx))
+    logLine('success', msg, ctx)
   },
 }

@@ -9,6 +9,30 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
+export const registerSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters').regex(/\d/, 'Password must contain at least 1 number').regex(/[^a-zA-Z0-9]/, 'Password must contain at least 1 special character'),
+})
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email format'),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').regex(/\d/, 'Password must contain at least 1 number').regex(/[^a-zA-Z0-9]/, 'Password must contain at least 1 special character'),
+})
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').regex(/\d/, 'Password must contain at least 1 number').regex(/[^a-zA-Z0-9]/, 'Password must contain at least 1 special character'),
+})
+
+export const resendVerificationSchema = z.object({
+  email: z.string().email('Invalid email format'),
+})
+
 export const taskCreationSchema = z.object({
   payload: z.record(z.string(), z.any()).refine((v) => Object.keys(v).length > 0, { message: 'payload is required' }),
 })
@@ -94,6 +118,11 @@ export const revokeAgentSchema = z.object({
 
 const SCHEMA_MAP: Record<string, z.ZodTypeAny> = {
   'POST /auth/login': loginSchema,
+  'POST /auth/register': registerSchema,
+  'POST /auth/forgot-password': forgotPasswordSchema,
+  'POST /auth/reset-password': resetPasswordSchema,
+  'POST /auth/change-password': changePasswordSchema,
+  'POST /auth/resend-verification': resendVerificationSchema,
   'POST /task': taskCreationSchema,
   'POST /agents/register': agentRegistrationSchema,
   'POST /policies': policyCreationSchema,

@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto'
 import { log } from './logger.js'
+import { recordRequest, recordError } from './metrics.js'
 
 // ---------------------------------------------------------------------------
 // Request / Response logging with correlation IDs
@@ -50,19 +51,26 @@ export function createRequestLoggerHooks() {
       const startTime = request.startTime || Date.now()
       const elapsed = Date.now() - startTime
 
+      // Record metrics
+      const path = request.routerPath || request.url
+      recordRequest(request.method, path, statusCode, elapsed)
+
       if (statusCode >= 400) {
         log.error('request error', {
           correlationId,
           method: request.method,
-          path: request.routerPath || request.url,
+          path,
           statusCode,
           responseTimeMs: elapsed,
         })
+        if (statusCode >= 500) {
+          recordError(`HTTP ${statusCode}`, path)
+        }
       } else {
         log.info('request complete', {
           correlationId,
           method: request.method,
-          path: request.routerPath || request.url,
+          path,
           statusCode,
           responseTimeMs: elapsed,
         })

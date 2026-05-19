@@ -6,7 +6,8 @@ import { useRealtime } from '@/lib/websocket'
 import GlassCard from '@/components/glass-card'
 import { SkeletonCard } from '@/components/loading'
 import { useToast } from '@/components/toast'
-import { getMetrics, getDiagnostics, getReport } from '@/lib/api'
+import { getMetrics, getDiagnostics, getReport, getUsage } from '@/lib/api'
+import Link from 'next/link'
 import {
   Activity,
   AlertTriangle,
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   Shield,
   XCircle,
+  TrendingUp,
 } from 'lucide-react'
 
 interface StatCardProps {
@@ -37,6 +39,46 @@ function StatCard({ label, value, icon, color = 'text-passport-green', delay = 0
         <div className="label-text mb-0.5">{label}</div>
         <div className="font-mono text-2xl font-bold text-passport-text">{value}</div>
       </div>
+    </GlassCard>
+  )
+}
+
+function UsageWidget() {
+  const { data: usage, isLoading } = useSWR('/billing/usage', getUsage, swrDashboardConfig)
+
+  if (isLoading || !usage) return null
+
+  const percent = Math.min(100, Math.round((usage.count / usage.limit) * 100))
+  const nearLimit = percent > 80
+
+  return (
+    <GlassCard>
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp size={18} className="text-passport-azure" />
+        <h2 className="text-sm font-semibold text-passport-text">Usage Today</h2>
+      </div>
+      <div className="flex items-center justify-between text-sm mb-2">
+        <span className="text-passport-muted">Enforcements</span>
+        <span className="font-mono text-passport-text">
+          {usage.count} / {usage.limit}
+        </span>
+      </div>
+      <div className="h-2 w-full bg-passport-surface-2 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${
+            nearLimit ? 'bg-passport-amber' : 'bg-passport-green'
+          }`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      {nearLimit && usage.plan === 'free' && (
+        <div className="mt-2 text-xs text-passport-amber">
+          Approaching daily limit.{" "}
+          <Link href="/dashboard/billing" className="underline">
+            Upgrade to Pro
+          </Link>
+        </div>
+      )}
     </GlassCard>
   )
 }
@@ -161,6 +203,9 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Usage Widget */}
+      <UsageWidget />
 
       {/* Diagnostics */}
       {loading && !diagnostics ? (

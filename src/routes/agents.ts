@@ -8,6 +8,7 @@ import {
 } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
 import { publishEvent } from '../lib/events.js'
+import { checkLimit } from '../lib/usage.js'
 
 export default async function agentsRoutes(app: FastifyInstance, db: Firestore) {
 
@@ -33,6 +34,12 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       if (!orgId) {
         reply.code(500)
         return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+      }
+
+      const limitCheck = await checkLimit(db, orgId, 'agents')
+      if (!limitCheck.allowed) {
+        reply.code(429)
+        return { error: { code: 'agent_limit', message: 'Agent limit reached. Upgrade to Pro.' } }
       }
 
       await db.collection('agents').doc(agentId).set({

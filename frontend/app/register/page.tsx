@@ -3,19 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { seedOrg, setToken, login } from '@/lib/api'
+import { register, resendVerification, seedOrg, setToken, login } from '@/lib/api'
 import { useToast } from '@/components/toast'
-import { Terminal, Shield, AlertCircle, CheckCircle } from 'lucide-react'
+import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
   const { addToast } = useToast()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [resending, setResending] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   function validate(): boolean {
@@ -23,6 +24,10 @@ export default function RegisterPage() {
     if (!name.trim()) errors.name = 'Organization name is required'
     if (!email.trim()) errors.email = 'Email is required'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email'
+    if (!password) errors.password = 'Password is required'
+    else if (password.length < 8) errors.password = 'Password must be at least 8 characters'
+    else if (!/\d/.test(password)) errors.password = 'Password must contain at least 1 number'
+    else if (!/[^a-zA-Z0-9]/.test(password)) errors.password = 'Password must contain at least 1 special character'
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -33,16 +38,9 @@ export default function RegisterPage() {
     setError('')
     setLoading(true)
     try {
-      // First login as demo user to get a token
-      const loginData = await login('demo@passport.local', 'demo123')
-      if (loginData.token) {
-        setToken(loginData.token)
-      }
-
-      const data = await seedOrg(name, email)
-      setResult(data)
+      await register(name, email, password)
       setSuccess(true)
-      addToast('Organization created successfully', 'success')
+      addToast('Account created. Check your email for verification link.', 'success')
     } catch (err: any) {
       const msg = err.message || 'Registration failed'
       setError(msg)
@@ -52,37 +50,53 @@ export default function RegisterPage() {
     }
   }
 
-  if (success && result) {
+  async function handleResend() {
+    if (!email) return
+    setResending(true)
+    try {
+      await resendVerification(email)
+      addToast('Verification email resent', 'success')
+    } catch (err: any) {
+      addToast(err.message || 'Failed to resend', 'error')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (success) {
     return (
       <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="glass-panel p-6 sm:p-8 text-center">
-            <CheckCircle size={40} className="text-passport-green mx-auto mb-4" />
+            <Mail size={40} className="text-passport-azure mx-auto mb-4" />
             <h1 className="text-xl font-bold text-passport-text mb-2">
-              Organization Created
+              Check Your Email
             </h1>
             <p className="text-sm text-passport-muted mb-6">
-              Your isolated demo environment is ready.
+              We sent a verification link to <span className="text-passport-text font-mono">{email}</span>. Click the link to activate your account.
             </p>
-
-            <div className="text-left bg-passport-bg rounded-passport p-4 border border-passport-border mb-6 space-y-3">
-              <div>
-                <div className="label-text mb-1">Organization ID</div>
-                <div className="font-mono text-sm text-passport-text break-all">{result.orgId}</div>
-              </div>
-              <div>
-                <div className="label-text mb-1">Admin Email</div>
-                <div className="font-mono text-sm text-passport-text">{email}</div>
-              </div>
-            </div>
-
             <button
-              onClick={() => router.push('/dashboard')}
-              className="btn-primary w-full py-2.5"
+              onClick={handleResend}
+              disabled={resending}
+              className="btn-secondary w-full py-2.5 disabled:opacity-50"
             >
-              <Terminal size={14} />
-              Go to Dashboard
+              {resending ? (
+                <span className="flex items-center gap-2">
+                  <RefreshCw size={14} className="animate-spin" />
+                  Sending...
+                </span>
+              ) : (
+                <>
+                  <RefreshCw size={14} />
+                  Resend Verification Email
+                </>
+              )}
             </button>
+            <p className="text-center mt-4 text-sm text-passport-muted">
+              <Link href="/login" className="text-passport-azure hover:underline">
+                Go to Sign In
+              </Link>
+            </p>
           </div>
         </div>
       </div>
@@ -104,7 +118,7 @@ export default function RegisterPage() {
         <div className="glass-panel p-6 sm:p-8">
           <div className="mb-6">
             <h1 className="text-xl font-bold text-passport-text mb-1">
-              Create Organization
+              Create Account
             </h1>
             <p className="text-sm text-passport-muted">
               Set up your isolated agent control plane
@@ -134,7 +148,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label-text">Admin Email</label>
+              <label className="label-text">Email</label>
               <input
                 type="email"
                 value={email}
@@ -144,6 +158,20 @@ export default function RegisterPage() {
               />
               {fieldErrors.email && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.email}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="label-text">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })) }}
+                className={`input-field ${fieldErrors.password ? 'border-passport-red' : ''}`}
+                placeholder="••••••••"
+              />
+              {fieldErrors.password && (
+                <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
               )}
             </div>
 
@@ -160,7 +188,7 @@ export default function RegisterPage() {
               ) : (
                 <>
                   <Terminal size={14} />
-                  Create Organization
+                  Create Account
                 </>
               )}
             </button>

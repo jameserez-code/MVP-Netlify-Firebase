@@ -13,6 +13,7 @@
     "test:e2e:ui": "playwright test --ui",
     "test:full-api": "tsx tests/integration/full-api.test.ts",
     "test:policy": "tsx tests/integration/policy.test.ts",
+    "test:smoke": "tsx scripts/e2e-smoke-test.ts",
     "demo:lifecycle": "tsx demo/lifecycle.ts",
     "healthcheck": "tsx src/healthcheck.ts",
     "tasks:verify": "tsx src/tasks-verify.ts",
@@ -20,6 +21,7 @@
     "schema:seed": "tsx src/seed.ts",
     "demo:seed": "tsx scripts/seed-demo.ts",
     "setup:prod": "tsx scripts/setup-production.ts",
+    "migrate": "tsx scripts/migrate.ts",
     "dev": "tsx watch src/server.ts",
     "demo": "tsx src/demo-server.ts",
     "demo:guided": "tsx src/guided-demo.ts",
@@ -40,6 +42,7 @@
     "firebase-admin": "^12.0.0",
     "ioredis": "^5.10.1",
     "resend": "^6.12.3",
+    "stripe": "^22.1.1",
     "tsx": "^4.21.0",
     "ws": "^8.20.1",
     "zod": "^4.4.3"

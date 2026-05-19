@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import Navbar from '@/components/navbar'
 import GlassCard from '@/components/glass-card'
 import TerminalCursor from '@/components/terminal-cursor'
+import { isLoggedIn, createCheckoutSession } from '@/lib/api'
 import {
   Shield,
   Lock,
@@ -568,7 +569,23 @@ const result = await agent.run({
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className="btn-primary w-full text-center">Start Pro Trial</Link>
+              <button
+                onClick={async () => {
+                  if (!isLoggedIn()) {
+                    window.location.href = '/register'
+                    return
+                  }
+                  try {
+                    const { url } = await createCheckoutSession('pro')
+                    if (url) window.location.href = url
+                  } catch (e: any) {
+                    alert(e.message || 'Checkout failed')
+                  }
+                }}
+                className="btn-primary w-full text-center"
+              >
+                Start Pro Trial
+              </button>
             </GlassCard>
 
             {/* Enterprise */}

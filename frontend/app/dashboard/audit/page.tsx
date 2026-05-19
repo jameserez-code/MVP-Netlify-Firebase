@@ -6,6 +6,7 @@ import { swrDashboardConfig } from '@/lib/swr-config'
 import { getAudit } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import { NoAudit } from '@/components/empty-states/no-audit'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
@@ -306,11 +307,15 @@ export default function AuditPage() {
           ))}
         </div>
       ) : paginated.length === 0 ? (
-        <EmptyState
-          icon={ClipboardList}
-          title="No audit entries found"
-          description="Try adjusting your filters"
-        />
+        !filter && !decisionFilter && !dateFrom && !dateTo ? (
+          <NoAudit />
+        ) : (
+          <EmptyState
+            icon={ClipboardList}
+            title="No audit entries found"
+            description="Try adjusting your filters"
+          />
+        )
       ) : (
         <div className="space-y-3">
           <div className="glass-panel overflow-hidden">
