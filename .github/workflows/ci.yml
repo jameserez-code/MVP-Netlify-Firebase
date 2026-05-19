@@ -21,18 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-          run_install: false
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm ci
 
       - name: Run unit tests
-        run: pnpm test
+        run: npm test
 
       - name: Run integration tests
         env:
@@ -41,7 +36,7 @@ jobs:
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
         run: |
           if [ -n "$FIREBASE_PROJECT_ID" ] && [ -n "$FIREBASE_CLIENT_EMAIL" ] && [ -n "$FIREBASE_PRIVATE_KEY" ]; then
-            pnpm test:integration
+            npm run test:integration
           else
             echo "Skipping integration tests: no Firebase credentials in CI"
           fi
@@ -70,24 +65,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-          run_install: false
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: npm ci
 
       - name: Run lint check
-        run: pnpm run lint
+        run: npm run lint
 
       - name: Run type check
-        run: pnpm exec tsc --noEmit
+        run: npx tsc --noEmit
 
       - name: Build frontend
-        run: pnpm build
+        run: npm run build
 
   build-docker:
     name: Build Docker Image
@@ -141,18 +132,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10
-          run_install: false
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: false
 
-      - name: Run audit
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
-
-      - name: Run frontend audit
+      - name: Run frontend npm audit
         working-directory: frontend
-        run: pnpm audit --audit-level=high
-        continue-on-error: true
+        run: npm audit --audit-level=moderate
+        continue-on-error: false
