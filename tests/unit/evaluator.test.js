@@ -1,8 +1,6 @@
-'use strict';
-
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const { evaluateIntent } = require('../../netlify/functions/src/engine/evaluator');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { evaluateIntent } from '../../netlify/functions/src/engine/evaluator.js';
 
 const PRODUCTION_POLICY = {
   name: 'Customer Support Bot — Production Policy',

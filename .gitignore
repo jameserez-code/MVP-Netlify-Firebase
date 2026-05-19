@@ -26,7 +26,14 @@ Thumbs.db
 dist/
 build/
 .cache/
+frontend/.next/
+frontend/node_modules/
+frontend/out/
 
 # Patch files
 *.diff
 *.patch
+
+# Key files
+*.key
+*.pem

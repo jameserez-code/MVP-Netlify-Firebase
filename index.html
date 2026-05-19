@@ -644,7 +644,7 @@
       }
 
       if (authMode === "register") {
-        // Try API login (register via login with password 'admin')
+        // Try API login first
         try {
           var apiResult = await window.ApiClient.login(email, password);
           if (apiResult && apiResult.token) {

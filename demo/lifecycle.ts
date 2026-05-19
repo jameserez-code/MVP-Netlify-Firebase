@@ -19,8 +19,14 @@ async function run() {
 
   // 1. LOGIN
   console.log('≡ 1. AUTHENTICATE')
-  const { token } = await api('POST', '/auth/login', '', { email: 'admin@acmecorp.com', password: 'admin' })
-  console.log('   ✓ Logged in as admin@acmecorp.com\n')
+  const email = process.env.DEMO_EMAIL || 'admin@acmecorp.com'
+  const password = process.env.DEMO_PASSWORD
+  if (!password) {
+    console.error('DEMO_PASSWORD environment variable is required. Set it to the admin password.')
+    process.exit(1)
+  }
+  const { token } = await api('POST', '/auth/login', '', { email, password })
+  console.log('   ✓ Logged in as ' + email + '\n')
 
   // 2. REGISTER AGENT
   console.log('≡ 2. REGISTER AGENT')

@@ -10,12 +10,16 @@ import { attachRequestId, auditTimeline, runTrace, metrics } from './observabili
 import { hardenAuth } from './security.js'
 import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
 import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
-import { verifyPassword, DEFAULT_PASSWORD } from './lib/password.js'
+import { verifyPassword } from './lib/password.js'
 import { registerValidationHooks } from './lib/input-validation.js'
+import { validateEnv } from './lib/env.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
 import enforceRoutes from './routes/enforce.js'
+
+// Validate environment before starting
+validateEnv()
 
 const db = initFirebase()
 const app = Fastify({ logger: false })
@@ -64,8 +68,18 @@ function checkRateLimit(ip: string, path: string): boolean {
 }
 
 // CORS + rate limiting hook
+const isDev = process.env.NODE_ENV !== 'production'
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : []
+
 app.addHook('onRequest', async (request, reply) => {
-  reply.header('Access-Control-Allow-Origin', '*')
+  const origin = (request.headers.origin as string) || ''
+  if (isDev) {
+    reply.header('Access-Control-Allow-Origin', '*')
+  } else if (allowedOrigins.includes(origin)) {
+    reply.header('Access-Control-Allow-Origin', origin)
+  }
   reply.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   reply.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Agent-Key')
   if (request.method === 'OPTIONS') { reply.code(204).send(); return }
@@ -206,6 +220,11 @@ refresh();setInterval(refresh,10000)
 </script></body></html>`
 })
 
+// GET /health — liveness probe (no auth)
+app.get('/health', async (_request, reply) => {
+  return { status: 'ok', timestamp: new Date().toISOString() }
+})
+
 // POST /auth/login
 app.post('/auth/login', async (request, reply) => {
   const { email, password } = (request.body || {}) as { email?: string; password?: string }
@@ -219,10 +238,6 @@ app.post('/auth/login', async (request, reply) => {
       const userData = snap.docs[0].data() as any
       if (userData.passwordHash && userData.passwordSalt) {
         authenticated = verifyPassword(password, userData.passwordHash, userData.passwordSalt)
-      } else if (password === DEFAULT_PASSWORD) {
-        // Legacy: upgrade unhashed user on next seed
-        authenticated = true
-        log.warn('legacy user — no password hash stored', { email })
       }
     }
 

@@ -30,7 +30,12 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
       }
 
       // Fetch policies
-      const snap = await db.collection('policies').where('orgId', '==', (agent as any).orgId || 'org_seed_001').get()
+      const agentOrgId = (agent as any).orgId || process.env.DEFAULT_ORG_ID
+      if (!agentOrgId) {
+        reply.code(500)
+        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+      }
+      const snap = await db.collection('policies').where('orgId', '==', agentOrgId).get()
       const policies = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter((p: any) => p.status === 'active')
         .filter((p: any) => (p.scope?.agentId === '*' || p.scope?.agentId === intent.agentId))
@@ -58,7 +63,7 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
       }
 
       db.collection('actionIntents').doc(intent.intentId).set({
-        intentId: intent.intentId, orgId: (agent as any).orgId || 'org_seed_001',
+        intentId: intent.intentId, orgId: agentOrgId,
         agentId: intent.agentId, tool: intent.tool,
         parameters: intent.parameters || {}, decision: decision.decision,
         decisionReason: decision.reason || null, violatedRule: decision.violatedRule || null,

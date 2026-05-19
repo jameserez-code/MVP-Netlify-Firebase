@@ -1,8 +1,6 @@
-'use strict';
-
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const cp = require('../../netlify/functions/src/lib/crypto');
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import cp from '../../netlify/functions/src/lib/crypto.js';
 
 test('generateAgentSecretKey', () => {
   const key = cp.generateAgentSecretKey();

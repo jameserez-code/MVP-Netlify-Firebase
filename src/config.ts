@@ -22,7 +22,6 @@ export const config = {
   },
   auth: {
     jwtExpirySeconds: 3600,
-    defaultPassword: 'admin',  // MVP only
   },
   firebase: {
     serviceAccountPath: 'service-account.json',

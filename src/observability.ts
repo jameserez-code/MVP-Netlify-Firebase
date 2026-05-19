@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { generateId } from './lib/crypto.js'
-import { log } from '../lib/logger.js'
+import { log } from './lib/logger.js'
 
 // ---------------------------------------------------------------------------
 // Request ID middleware — every API call gets a unique ID propagated to logs
@@ -47,7 +47,7 @@ export async function runTrace(app: FastifyInstance, db: Firestore) {
       const runSnap = await db.collection('runs').doc(id).get()
       if (!runSnap.exists) { reply.code(404); return { error: { code: 'not_found' } } }
 
-      const run = { id: runSnap.id, ...runSnap.data() }
+      const run: any = { id: runSnap.id, ...runSnap.data() }
 
       // Fetch all logs for this run (both system.transition and tool calls)
       const logSnap = await db.collection('logs')

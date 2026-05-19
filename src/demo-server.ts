@@ -6,6 +6,11 @@ import { createRequire } from 'module'
 import { getDemoDb, seedDemo } from './lib/demo-store.js'
 import { sign, verify } from './lib/jwt.js'
 import { generateId } from './lib/crypto.js'
+import { verifyPassword } from './lib/password.js'
+import { validateEnv } from './lib/env.js'
+
+// Validate environment (skip Firebase since demo mode doesn't need it)
+validateEnv({ skipFirebase: true })
 
 const require = createRequire(import.meta.url)
 const { evaluateIntent } = require('../netlify/functions/src/engine/evaluator.js')
@@ -13,6 +18,8 @@ const { evaluateIntent } = require('../netlify/functions/src/engine/evaluator.js
 const db = getDemoDb()
 seedDemo(db)
 const app = Fastify({ logger: false })
+
+const DEFAULT_ORG_ID = process.env.DEFAULT_ORG_ID!
 
 // Request ID
 app.addHook('onRequest', async (request: any) => { request.requestId = generateId('req_', 8) })
@@ -74,7 +81,13 @@ app.post('/auth/login', async (req: any, reply: any) => {
   const { email, password } = (req.body || {}) as any
   if (!email || !password) return err(reply, 400, 'validation', 'email and password required')
   const snap = await db.collection('users').doc(email).get()
-  if (!snap.exists || (snap.data() as any).password !== password) return err(reply, 401, 'unauthorized', 'invalid credentials')
+  if (!snap.exists) return err(reply, 401, 'unauthorized', 'invalid credentials')
+  const userData = snap.data() as any
+  let authenticated = false
+  if (userData.passwordHash && userData.passwordSalt) {
+    authenticated = verifyPassword(password, userData.passwordHash, userData.passwordSalt)
+  }
+  if (!authenticated) return err(reply, 401, 'unauthorized', 'invalid credentials')
   return { token: sign({ sub: email, role: 'org_admin' }), user: { email, role: 'org_admin' } }
 })
 
@@ -84,7 +97,7 @@ app.post('/task', async (req: any, reply: any) => {
   const { payload } = (req.body || {}) as any
   if (!payload) return err(reply, 400, 'validation', 'payload required')
   const ref = db.collection('tasks').doc()
-  await ref.set({ payload, status: 'pending', createdAt: new Date().toISOString(), orgId: 'demo_org' })
+  await ref.set({ payload, status: 'pending', createdAt: new Date().toISOString(), orgId: DEFAULT_ORG_ID })
   await db.collection('logs').doc('log_' + ref.id + '_create').set({ taskId: ref.id, tool: 'task.created', decision: 'allow', reason: 'task submitted to queue', timestamp: new Date().toISOString() })
   return { id: ref.id, payload, status: 'pending' }
 })
@@ -158,7 +171,7 @@ app.post('/agents/register', async (req: any, reply: any) => {
   if (!name || !model || !provider) return err(reply, 400, 'validation', 'name, model, provider required')
   const id = 'agent_' + Date.now().toString(36)
   const pn = 'PP-' + Math.random().toString(16).substring(2, 6).toUpperCase() + '-' + Math.random().toString(16).substring(2, 6).toUpperCase()
-  await db.collection('agents').doc(id).set({ id, name, model, provider, orgId: 'demo_org', status: 'active', passport: { passportNumber: pn, systemPromptHash: 'sha256:demo' }, registeredAt: new Date().toISOString(), capabilities: ['task:execute', 'network:http'] })
+  await db.collection('agents').doc(id).set({ id, name, model, provider, orgId: DEFAULT_ORG_ID, status: 'active', passport: { passportNumber: pn, systemPromptHash: 'sha256:demo' }, registeredAt: new Date().toISOString(), capabilities: ['task:execute', 'network:http'] })
   return { agentId: id, passportNumber: pn, secretKey: 'ak_live_demo_' + id, secretKeyPrefix: 'ak_live_demo' }
 })
 
@@ -168,7 +181,7 @@ app.post('/policies', async (req: any, reply: any) => {
   const body = (req.body || {}) as any
   if (!body.name || !body.rules) return err(reply, 400, 'validation', 'name and rules required')
   const id = 'pol_' + Date.now().toString(36)
-  await db.collection('policies').doc(id).set({ id, name: body.name, orgId: 'demo_org', status: 'active', priority: body.priority || 10, scope: body.scope || { agentId: '*', environment: ['*'] }, rules: body.rules, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  await db.collection('policies').doc(id).set({ id, name: body.name, orgId: DEFAULT_ORG_ID, status: 'active', priority: body.priority || 10, scope: body.scope || { agentId: '*', environment: ['*'] }, rules: body.rules, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
   return { id, name: body.name }
 })
 
@@ -187,7 +200,7 @@ app.post('/templates/apply', async (req: any, reply: any) => {
   const tmpl = findTemplate(templateName)
   if (!tmpl) return err(reply, 404, 'not_found', 'template not found')
   const id = 'pol_tmpl_' + Date.now().toString(36)
-  await db.collection('policies').doc(id).set({ id, name: tmpl.name, orgId: 'demo_org', status: 'active', priority: 10, scope: { agentId: '*', environment: ['*'] }, rules: tmpl.rules, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
+  await db.collection('policies').doc(id).set({ id, name: tmpl.name, orgId: DEFAULT_ORG_ID, status: 'active', priority: 10, scope: { agentId: '*', environment: ['*'] }, rules: tmpl.rules, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() })
   return { id, name: tmpl.name, message: 'Template applied as policy' }
 })
 

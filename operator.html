@@ -134,7 +134,13 @@
 
     async function login() {
       try {
-        var r = await fetch(API+'/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@acmecorp.com',password:'admin'})});
+        // Read from input fields or prompts (never hardcode credentials)
+        var emailEl = document.getElementById('loginEmail');
+        var passEl = document.getElementById('loginPassword');
+        var email = emailEl && emailEl.value ? emailEl.value : (window.prompt('Email:', 'admin@acmecorp.com') || '');
+        var password = passEl && passEl.value ? passEl.value : (window.prompt('Password:') || '');
+        if (!email || !password) return false;
+        var r = await fetch(API+'/auth/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})});
         var d = await r.json();
         if (d.token) { token = d.token; return true; }
       } catch(e) {}

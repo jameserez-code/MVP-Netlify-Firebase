@@ -1,8 +1,16 @@
 // Integration test for enforce pipeline — run against local server
-// npx tsx tests/integration/enforce.test.ts
+// ADMIN_PASSWORD=your-password npx tsx tests/integration/enforce.test.ts
 // Requires: npm run dev running on localhost:3000
 
 const API = 'http://localhost:3000';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+if (!ADMIN_PASSWORD) {
+  console.error('\n[ERROR] ADMIN_PASSWORD environment variable is required.')
+  console.error('Set it to the admin password configured on the server.')
+  console.error('Example: ADMIN_PASSWORD=your-password npx tsx tests/integration/enforce.test.ts\n')
+  process.exit(1)
+}
+
 let token = '';
 let agentId = '';
 const runCount = { passed: 0, failed: 0 };
@@ -23,7 +31,7 @@ async function api(method: string, path: string, body?: any) {
 async function run() {
   console.log('\nEnforce Pipeline Integration Test\n');
 
-  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: 'admin' });
+  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: ADMIN_PASSWORD });
   if (login.token) { token = login.token; pass('login'); }
   else { fail('login', JSON.stringify(login)); }
 

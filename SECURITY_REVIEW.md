@@ -112,7 +112,7 @@ Trust boundary: **Server-side only.** All writes go through `firebase-admin` SDK
 
 ## Known Limitations (honest disclosure)
 
-1. **MVP password is hardcoded** — `'admin'` for seed users. Production requires real password hashing.
+1. ~~MVP password is hardcoded~~ **FIXED** — Passwords are now hashed with PBKDF2 and `ADMIN_PASSWORD` is required (or auto-generated securely) at startup.
 2. **No mTLS** — Communication between SDK and API server is HTTP (no TLS in local dev). In production, Netlify/load balancer provides TLS termination.
 3. **Single Firestore region** — Multi-region consistency not guaranteed. Acceptable for MVP scale.
 4. **No request signing** — Intent signatures exist in the agent SDK but not enforced server-side in the current Fastify server (only in Netlify Functions /enforce endpoint). Pending integration.

@@ -1,8 +1,19 @@
-import { createHmac, randomBytes } from 'crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 
-const JWT_SECRET_HEX = process.env.JWT_SECRET || randomBytes(32).toString('hex')
-const JWT_SECRET = Buffer.from(JWT_SECRET_HEX, 'hex')
+let JWT_SECRET_HEX: string | null = null
+let JWT_SECRET: Buffer | null = null
 const TTL = 3600 // 1 hour
+
+function ensureSecret(): Buffer {
+  if (!JWT_SECRET) {
+    JWT_SECRET_HEX = process.env.JWT_SECRET || ''
+    if (!JWT_SECRET_HEX) {
+      throw new Error('JWT_SECRET environment variable is required')
+    }
+    JWT_SECRET = Buffer.from(JWT_SECRET_HEX, 'hex')
+  }
+  return JWT_SECRET
+}
 
 interface Claims {
   sub: string   // userId
@@ -13,6 +24,7 @@ interface Claims {
 }
 
 export function sign(payload: Pick<Claims, 'sub' | 'role'>): string {
+  const secret = ensureSecret()
   const now = Math.floor(Date.now() / 1000)
   const claims: Claims = {
     ...payload,
@@ -25,19 +37,23 @@ export function sign(payload: Pick<Claims, 'sub' | 'role'>): string {
   const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url')
   const payloadB64 = Buffer.from(JSON.stringify(claims)).toString('base64url')
   const sigInput = `${headerB64}.${payloadB64}`
-  const sig = createHmac('sha256', JWT_SECRET).update(sigInput).digest('base64url')
+  const sig = createHmac('sha256', secret).update(sigInput).digest('base64url')
 
   return `${sigInput}.${sig}`
 }
 
 export function verify(token: string): Claims | null {
   try {
+    const secret = ensureSecret()
     const parts = token.split('.')
     if (parts.length !== 3) return null
 
     const sigInput = `${parts[0]}.${parts[1]}`
-    const expectedSig = createHmac('sha256', JWT_SECRET).update(sigInput).digest('base64url')
-    if (!timingSafeEqual(parts[2], expectedSig)) return null
+    const expectedSig = createHmac('sha256', secret).update(sigInput).digest('base64url')
+    const sigBuf = Buffer.from(parts[2])
+    const expectedBuf = Buffer.from(expectedSig)
+    if (sigBuf.length !== expectedBuf.length) return null
+    if (!timingSafeEqual(sigBuf, expectedBuf)) return null
 
     const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
     const now = Math.floor(Date.now() / 1000)
@@ -50,12 +66,6 @@ export function verify(token: string): Claims | null {
 }
 
 export function getSecret(): string {
-  return JWT_SECRET_HEX
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a)
-  const bufB = Buffer.from(b)
-  if (bufA.length !== bufB.length) return false
-  return createHmac('sha256', bufA).update(bufB).digest().equals(createHmac('sha256', bufB).update(bufA).digest())
+  ensureSecret()
+  return JWT_SECRET_HEX!
 }

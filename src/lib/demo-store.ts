@@ -139,12 +139,25 @@ export function getDemoDb(): DemoFirestore {
   return _db
 }
 
+import { hashPassword, generateSecurePassword } from './password.js'
+
 // Seed demo data (called on first run)
 export function seedDemo(db: DemoFirestore) {
   const now = new Date().toISOString()
-  db.collection('users').doc('admin@acmecorp.com').set({ email: 'admin@acmecorp.com', displayName: 'Admin', role: 'org_admin', orgId: 'demo_org', password: 'admin', createdAt: now })
-  db.collection('agents').doc('agent_demo').set({ id: 'agent_demo', name: 'Demo Bot', model: 'gpt-4o', provider: 'openai', orgId: 'demo_org', status: 'active', registeredAt: now, capabilities: ['task:execute', 'network:http'] })
-  db.collection('policies').doc('policy_demo').set({ id: 'policy_demo', name: 'Demo Support Policy', orgId: 'demo_org', status: 'active', priority: 10, scope: { agentId: 'agent_demo', environment: ['*'] }, rules: {
+  const orgId = process.env.DEFAULT_ORG_ID
+  if (!orgId) {
+    throw new Error('DEFAULT_ORG_ID environment variable is required')
+  }
+  const password = process.env.ADMIN_PASSWORD || generateSecurePassword()
+  const { hash, salt } = hashPassword(password)
+
+  db.collection('users').doc('admin@acmecorp.com').set({
+    email: 'admin@acmecorp.com', displayName: 'Admin', role: 'org_admin', orgId,
+    passwordHash: hash, passwordSalt: salt, passwordIterations: 100_000,
+    createdAt: now,
+  })
+  db.collection('agents').doc('agent_demo').set({ id: 'agent_demo', name: 'Demo Bot', model: 'gpt-4o', provider: 'openai', orgId, status: 'active', registeredAt: now, capabilities: ['task:execute', 'network:http'] })
+  db.collection('policies').doc('policy_demo').set({ id: 'policy_demo', name: 'Demo Support Policy', orgId, status: 'active', priority: 10, scope: { agentId: 'agent_demo', environment: ['*'] }, rules: {
     allowedTools: [
       { toolName: 'lookup_order', parameterConstraints: { orderId: { type: 'string', minLength: 1 } } },
       { toolName: 'check_inventory', parameterConstraints: { sku: { type: 'string', minLength: 1 } } },

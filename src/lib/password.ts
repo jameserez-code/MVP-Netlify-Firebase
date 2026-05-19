@@ -1,5 +1,4 @@
 // Password hashing — PBKDF2 with configurable iterations
-// Replaces hardcoded 'admin' password with proper hashed storage
 
 import { pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto'
 
@@ -18,6 +17,7 @@ export function verifyPassword(password: string, hash: string, salt: string): bo
   return timingSafeEqual(Buffer.from(computed), Buffer.from(hash))
 }
 
-// Default admin password — only used when seeding. Change in production.
-export const DEFAULT_PASSWORD = 'admin'
-export const HASHED_DEFAULT: { hash: string; salt: string } = hashPassword(DEFAULT_PASSWORD)
+/** Generate a cryptographically secure random password for one-time use */
+export function generateSecurePassword(length = 24): string {
+  return randomBytes(length).toString('hex')
+}

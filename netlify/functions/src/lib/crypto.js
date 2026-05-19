@@ -119,7 +119,10 @@ let ENGINE_SECRET = null;
 
 function getEngineSecret() {
   if (!ENGINE_SECRET) {
-    ENGINE_SECRET = process.env.ENGINE_SECRET || 'dev-engine-secret-change-me-in-production'
+    ENGINE_SECRET = process.env.ENGINE_SECRET
+    if (!ENGINE_SECRET) {
+      throw new Error('ENGINE_SECRET environment variable is required')
+    }
   }
   return ENGINE_SECRET;
 }

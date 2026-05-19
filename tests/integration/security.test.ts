@@ -1,8 +1,16 @@
 // Security integration tests — verify auth, org isolation, replay protection
-// Run with: npx tsx tests/integration/security.test.ts
+// Run with: ADMIN_PASSWORD=your-password npx tsx tests/integration/security.test.ts
 // Requires: server running on localhost:3000
 
 const API = 'http://localhost:3000'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+if (!ADMIN_PASSWORD) {
+  console.error('\n[ERROR] ADMIN_PASSWORD environment variable is required.')
+  console.error('Set it to the admin password configured on the server.')
+  console.error('Example: ADMIN_PASSWORD=your-password npx tsx tests/integration/security.test.ts\n')
+  process.exit(1)
+}
+
 let token = ''
 const results = { passed: 0, failed: 0 }
 function p(n: string) { results.passed++; console.log('  ✓ ' + n) }
@@ -30,7 +38,7 @@ async function run() {
   else f('invalid token', `got ${r.status}`)
 
   // 3. Login
-  var r = await fetch(API + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@acmecorp.com', password: 'admin' }) })
+  var r = await fetch(API + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@acmecorp.com', password: ADMIN_PASSWORD }) })
   var d = await r.json()
   token = d.token
   if (token) p('valid login returns token')

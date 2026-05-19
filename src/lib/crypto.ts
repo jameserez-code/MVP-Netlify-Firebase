@@ -45,7 +45,9 @@ export function verifyKey(plaintext: string, hash: string, salt: string, iterati
 export function signIntent(intentId: string, agentId: string, tool: string, parameters: Record<string, unknown>): { signature: string; timestamp: string } {
   const timestamp = new Date().toISOString()
   const payload = [intentId, agentId, tool, JSON.stringify(parameters), timestamp].join('|')
-  const hmac = createHmac('sha256', process.env.JWT_SECRET || 'dev-secret-change-me')
+  const secret = process.env.JWT_SECRET
+  if (!secret) throw new Error('JWT_SECRET environment variable is required')
+  const hmac = createHmac('sha256', secret)
   return {
     signature: `hmac-sha256:${hmac.update(payload).digest('hex')}`,
     timestamp,
@@ -86,7 +88,10 @@ let ENGINE_SECRET: string | null = null
 
 export function getEngineSecret(): string {
   if (!ENGINE_SECRET) {
-    ENGINE_SECRET = process.env.ENGINE_SECRET || 'dev-engine-secret-change-me-in-production'
+    ENGINE_SECRET = process.env.ENGINE_SECRET || null
+    if (!ENGINE_SECRET) {
+      throw new Error('ENGINE_SECRET environment variable is required')
+    }
   }
   return ENGINE_SECRET
 }

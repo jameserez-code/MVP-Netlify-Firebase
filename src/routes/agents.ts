@@ -26,12 +26,18 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       const promptHash = hashSystemPrompt(systemPrompt || '')
       const agentId = generateId('agent_')
 
+      const orgId = process.env.DEFAULT_ORG_ID
+      if (!orgId) {
+        reply.code(500)
+        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+      }
+
       await db.collection('agents').doc(agentId).set({
         id: agentId,
         name,
         model,
         provider,
-        orgId: 'org_seed_001',
+        orgId,
         status: 'active',
         passport: {
           passportNumber,
@@ -83,8 +89,13 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // ---------------------------------------------------------------------------
   app.get('/agents', async (request, reply) => {
     const { status } = (request.query || {}) as { status?: string }
+    const orgId = process.env.DEFAULT_ORG_ID
+    if (!orgId) {
+      reply.code(500)
+      return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+    }
     try {
-      let q = db.collection('agents').where('orgId', '==', 'org_seed_001')
+      let q = db.collection('agents').where('orgId', '==', orgId)
       const snap = await q.get()
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       if (status) data = data.filter((a: any) => a.status === status)

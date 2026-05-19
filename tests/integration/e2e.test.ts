@@ -1,8 +1,16 @@
 // E2E integration tests — full lifecycle scenarios
-// Run: npx tsx tests/integration/e2e.test.ts
+// Run: ADMIN_PASSWORD=your-password npx tsx tests/integration/e2e.test.ts
 // Requires: demo server running on localhost:3000
 
 const API = 'http://localhost:3000'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+if (!ADMIN_PASSWORD) {
+  console.error('\n[ERROR] ADMIN_PASSWORD environment variable is required.')
+  console.error('Set it to the admin password configured on the server.')
+  console.error('Example: ADMIN_PASSWORD=your-password npx tsx tests/integration/e2e.test.ts\n')
+  process.exit(1)
+}
+
 let token = ''
 let pass = 0, fail = 0
 function p(n: string) { pass++; console.log('  ✓ ' + n) }
@@ -20,7 +28,7 @@ async function run() {
   console.log('\nE2E Lifecycle Tests\n')
 
   // 1. Login
-  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: 'admin' })
+  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: ADMIN_PASSWORD })
   if (login.token) { token = login.token; p('login') } else { f('login', JSON.stringify(login)); return }
 
   // 2. Health check

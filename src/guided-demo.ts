@@ -80,12 +80,19 @@ async function main() {
   console.log(`  Each task goes through an 11-step enforcement engine before execution.`)
   await waitKey()
 
+  const email = process.env.DEMO_EMAIL || 'admin@acmecorp.com'
+  const password = process.env.DEMO_PASSWORD
+  if (!password) {
+    console.error('DEMO_PASSWORD environment variable is required. Set it to the admin password.')
+    process.exit(1)
+  }
+
   const tasks: string[] = []
   for (let i = 0; i < 2; i++) {
     const t = await api('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@acmecorp.com', password: 'admin' }),
+      body: JSON.stringify({ email, password }),
     })
     if (t?.token) {
       const task = await api('/task', {

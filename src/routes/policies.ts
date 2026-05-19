@@ -16,10 +16,16 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
       return { error: { code: 'validation', message: 'name and rules.allowedTools are required' } }
     }
 
+    const orgId = process.env.DEFAULT_ORG_ID
+    if (!orgId) {
+      reply.code(500)
+      return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+    }
+
     const policyId = generateId('pol_')
     const doc = {
       id: policyId,
-      orgId: 'org_seed_001',
+      orgId,
       name,
       description: description || '',
       status: 'active',
@@ -51,8 +57,13 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
   // ---------------------------------------------------------------------------
   app.get('/policies', async (request, reply) => {
     const { status, agentId } = (request.query || {}) as { status?: string; agentId?: string }
+    const orgId = process.env.DEFAULT_ORG_ID
+    if (!orgId) {
+      reply.code(500)
+      return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+    }
     try {
-      let q = db.collection('policies').where('orgId', '==', 'org_seed_001')
+      let q = db.collection('policies').where('orgId', '==', orgId)
       const snap = await q.get()
       let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       if (status) data = data.filter((p: any) => p.status === status)

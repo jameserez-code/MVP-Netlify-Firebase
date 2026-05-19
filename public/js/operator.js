@@ -13,9 +13,27 @@ function fetchJSON(path, opts) {
   return fetch(API + path, opts).then(r => r.json()).catch(() => null);
 }
 
-// Auth
+// Auth — read credentials from a login form or prompt (never hardcode)
 async function login() {
-  var r = await fetchJSON('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@acmecorp.com', password: 'admin' }) });
+  var email = '';
+  var password = '';
+  // Try to read from input fields if they exist in the parent HTML
+  var emailEl = document.getElementById('loginEmail');
+  var passEl = document.getElementById('loginPassword');
+  if (emailEl && passEl && (emailEl as HTMLInputElement).value) {
+    email = (emailEl as HTMLInputElement).value;
+    password = (passEl as HTMLInputElement).value;
+  } else {
+    // Fallback to prompts (secure for local demos — production should use a real form)
+    email = window.prompt('Email:', 'admin@acmecorp.com') || '';
+    password = window.prompt('Password:') || '';
+  }
+  if (!email || !password) {
+    $('authStatus').textContent = '● no auth';
+    $('authStatus').style.color = '#ffb4ab';
+    return;
+  }
+  var r = await fetchJSON('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email, password: password }) });
   if (r && r.token) { token = r.token; $('authStatus').textContent = '● authed'; $('authStatus').style.color = '#00e639'; }
   else { $('authStatus').textContent = '● no auth'; $('authStatus').style.color = '#ffb4ab'; }
 }

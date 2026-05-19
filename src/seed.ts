@@ -1,12 +1,23 @@
 import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
-import { hashPassword, DEFAULT_PASSWORD } from './lib/password.js'
+import { hashPassword, generateSecurePassword } from './lib/password.js'
 
 const db = initFirebase()
 
 async function seed() {
   const now = new Date().toISOString()
-  const { hash, salt } = hashPassword(DEFAULT_PASSWORD)
+  const password = process.env.ADMIN_PASSWORD || generateSecurePassword()
+  const { hash, salt } = hashPassword(password)
+  const orgId = process.env.DEFAULT_ORG_ID
+
+  if (!orgId) {
+    console.error('DEFAULT_ORG_ID environment variable is required')
+    process.exit(1)
+  }
+
+  if (!process.env.ADMIN_PASSWORD) {
+    console.warn(`[SECURITY] ADMIN_PASSWORD not set. Generated random password for seed: ${password}`)
+  }
 
   const collections: Record<string, Record<string, Record<string, unknown>>> = {
     users: {
@@ -14,7 +25,7 @@ async function seed() {
         email: 'admin@acmecorp.com',
         displayName: 'Admin User',
         role: 'org_admin',
-        orgId: 'org_seed_001',
+        orgId,
         passwordHash: hash,
         passwordSalt: salt,
         passwordIterations: 100_000,
@@ -26,7 +37,7 @@ async function seed() {
         name: 'Customer Support Bot',
         model: 'gpt-4o',
         provider: 'openai',
-        orgId: 'org_seed_001',
+        orgId,
         status: 'active',
         passport: {
           passportNumber: 'PP-SEED-TEST',

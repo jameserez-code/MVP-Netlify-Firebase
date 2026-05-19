@@ -142,7 +142,13 @@ async function api(path: string, opts?: any): Promise<any> {
 }
 async function getToken(): Promise<string> {
   if (cachedToken) return cachedToken
-  const r = await api('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@acmecorp.com', password: 'admin' }) })
+  const email = process.env.DEMO_EMAIL || 'admin@acmecorp.com'
+  const password = process.env.DEMO_PASSWORD
+  if (!password) {
+    console.error('DEMO_PASSWORD environment variable is required. Set it to the admin password.')
+    process.exit(1)
+  }
+  const r = await api('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
   if (r?.token) { cachedToken = r.token; return r.token }
   return ''
 }

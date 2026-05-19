@@ -1,8 +1,16 @@
 // Policy-specific integration tests — verify enforcement decisions end-to-end
-// Run: npx tsx tests/integration/policy.test.ts
+// Run: ADMIN_PASSWORD=your-password npx tsx tests/integration/policy.test.ts
 // Requires: demo server running on localhost:3000
 
 const API = 'http://localhost:3000'
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+if (!ADMIN_PASSWORD) {
+  console.error('\n[ERROR] ADMIN_PASSWORD environment variable is required.')
+  console.error('Set it to the admin password configured on the server.')
+  console.error('Example: ADMIN_PASSWORD=your-password npx tsx tests/integration/policy.test.ts\n')
+  process.exit(1)
+}
+
 let token = ''
 let pass = 0, fail = 0
 function p(n: string) { pass++; console.log('  ✓ ' + n) }
@@ -19,7 +27,7 @@ async function api(method: string, path: string, body?: any) {
 async function run() {
   console.log('\nPolicy Enforcement Tests\n')
 
-  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: 'admin' })
+  const login = await api('POST', '/auth/login', { email: 'admin@acmecorp.com', password: ADMIN_PASSWORD })
   if (!login.token) { console.log('  ✗ Cannot login — is server running?'); process.exit(1) }
   token = login.token; p('authenticated')
 
