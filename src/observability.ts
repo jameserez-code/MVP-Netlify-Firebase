@@ -9,7 +9,9 @@ import { withCache } from './lib/cache.js'
 // ---------------------------------------------------------------------------
 export function attachRequestId(app: FastifyInstance) {
   app.addHook('onRequest', async (request) => {
-    (request as any).requestId = generateId('req_', 8)
+    if (!(request as any).requestId) {
+      (request as any).requestId = generateId('req_', 8)
+    }
   })
 }
 

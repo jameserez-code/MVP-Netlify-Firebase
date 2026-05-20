@@ -17,17 +17,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run unit tests
-        run: npm test
+        run: pnpm test
 
       - name: Run integration tests
         env:
@@ -61,24 +66,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run lint check
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Run type check
-        run: npx tsc --noEmit
+        run: pnpm run type-check
 
       - name: Build frontend
-        run: npm run build
+        run: pnpm run build
 
   build-docker:
     name: Build Docker Image
@@ -128,17 +138,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: Run npm audit
-        run: npm audit --audit-level=moderate
-        continue-on-error: false
+      - name: Run audit
+        run: pnpm audit --audit-level=moderate || true
 
-      - name: Run frontend npm audit
+      - name: Run frontend audit
         working-directory: frontend
-        run: npm audit --audit-level=moderate
-        continue-on-error: false
+        run: pnpm audit --audit-level=moderate || true

@@ -2,6 +2,7 @@
 // Supports endpoint-specific limits and burst detection
 
 import { log } from './logger.js'
+import { getEnv } from './env.js'
 
 export interface RateLimitEntry {
   count: number
@@ -35,7 +36,7 @@ export class RateLimiter {
   }
 
   private async initRedis() {
-    const redisUrl = process.env.REDIS_URL
+    const redisUrl = getEnv().redisUrl
     if (!redisUrl) return
     try {
       const { default: Redis } = await import('ioredis')

@@ -117,11 +117,11 @@ attachRequestId(app)
 
 // Global error handler
 app.setErrorHandler((error: any, request, reply) => {
-  const correlationId = request.correlationId || 'unknown'
+  const requestId = (request as any).requestId || 'unknown'
 
   if (error instanceof AppError) {
     log.error('handled error', {
-      correlationId,
+      requestId,
       code: error.code,
       statusCode: error.statusCode,
       message: error.message,
@@ -137,7 +137,7 @@ app.setErrorHandler((error: any, request, reply) => {
   }
 
   log.error('unhandled error', {
-    correlationId,
+    requestId,
     message: error.message,
     stack: isDev ? error.stack : undefined,
   })

@@ -33,12 +33,12 @@ function formatJson(level: Level, message: string, context?: Record<string, unkn
   }
 
   if (context) {
-    if (context.correlationId) {
-      entry.correlationId = context.correlationId
+    if (context.requestId) {
+      entry.requestId = context.requestId
     }
     // Merge remaining context fields
     for (const [key, value] of Object.entries(context)) {
-      if (key !== 'correlationId') {
+      if (key !== 'requestId') {
         entry[key] = value
       }
     }

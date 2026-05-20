@@ -1,4 +1,5 @@
 import { createHmac, pbkdf2Sync, randomBytes, createHash, timingSafeEqual, createCipheriv, createDecipheriv, scryptSync } from 'crypto'
+import { getEnv } from './env.js'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -45,8 +46,7 @@ export function verifyKey(plaintext: string, hash: string, salt: string, iterati
 export function signIntent(intentId: string, agentId: string, tool: string, parameters: Record<string, unknown>): { signature: string; timestamp: string } {
   const timestamp = new Date().toISOString()
   const payload = [intentId, agentId, tool, JSON.stringify(parameters), timestamp].join('|')
-  const secret = process.env.JWT_SECRET
-  if (!secret) throw new Error('JWT_SECRET environment variable is required')
+  const secret = getEnv().jwtSecret
   const hmac = createHmac('sha256', secret)
   return {
     signature: `hmac-sha256:${hmac.update(payload).digest('hex')}`,
@@ -87,13 +87,7 @@ export function verifyPassportJWT(token: string, secret: string): Record<string,
 let ENGINE_SECRET: string | null = null
 
 export function getEngineSecret(): string {
-  if (!ENGINE_SECRET) {
-    ENGINE_SECRET = process.env.ENGINE_SECRET || null
-    if (!ENGINE_SECRET) {
-      throw new Error('ENGINE_SECRET environment variable is required')
-    }
-  }
-  return ENGINE_SECRET
+  return getEnv().engineSecret
 }
 
 export function generateGatewayTicket(intentId: string, agentId: string, tool: string, parameters: Record<string, unknown>): string {
@@ -150,14 +144,19 @@ export const TICKET_TTL_SECONDS = TICKET_TTL
 // ---------------------------------------------------------------------------
 // Webhook secret encryption — AES-256-GCM
 // ---------------------------------------------------------------------------
-const WEBHOOK_KEY = process.env.WEBHOOK_ENCRYPTION_KEY || process.env.JWT_SECRET || ''
-if (!WEBHOOK_KEY) throw new Error('JWT_SECRET or WEBHOOK_ENCRYPTION_KEY environment variable is required')
+let cachedWebhookMasterKey: Buffer | null = null
 
-const WEBHOOK_MASTER_KEY = scryptSync(WEBHOOK_KEY, 'webhook_salt', 32)
+const getWebhookMasterKey = () => {
+  if (!cachedWebhookMasterKey) {
+    const key = getEnv().webhookEncryptionKey || getEnv().jwtSecret
+    cachedWebhookMasterKey = scryptSync(key, 'webhook_salt', 32)
+  }
+  return cachedWebhookMasterKey
+}
 
 export function encryptWebhookSecret(plaintext: string): { ciphertext: string; iv: string; tag: string } {
   const iv = randomBytes(16)
-  const cipher = createCipheriv('aes-256-gcm', WEBHOOK_MASTER_KEY, iv)
+  const cipher = createCipheriv('aes-256-gcm', getWebhookMasterKey(), iv)
   const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
   const tag = cipher.getAuthTag()
   return {
@@ -168,7 +167,7 @@ export function encryptWebhookSecret(plaintext: string): { ciphertext: string; i
 }
 
 export function decryptWebhookSecret(ciphertext: string, iv: string, tag: string): string {
-  const decipher = createDecipheriv('aes-256-gcm', WEBHOOK_MASTER_KEY, Buffer.from(iv, 'base64'))
+  const decipher = createDecipheriv('aes-256-gcm', getWebhookMasterKey(), Buffer.from(iv, 'base64'))
   decipher.setAuthTag(Buffer.from(tag, 'base64'))
   const decrypted = Buffer.concat([decipher.update(Buffer.from(ciphertext, 'base64')), decipher.final()])
   return decrypted.toString('utf8')
