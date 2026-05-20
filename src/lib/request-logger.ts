@@ -8,7 +8,7 @@ import { recordRequest, recordError } from './metrics.js'
 
 declare module 'fastify' {
   interface FastifyRequest {
-    correlationId?: string
+    requestId?: string
     startTime?: number
   }
 }
@@ -22,9 +22,9 @@ function getClientIP(request: any): string {
 export function createRequestLoggerHooks() {
   return {
     onRequest: async (request: any, reply: any) => {
-      const correlationId = randomUUID()
-      request.correlationId = correlationId
-      reply.correlationId = correlationId
+      const requestId = request.requestId || randomUUID()
+      request.requestId = requestId
+      reply.header('X-Request-Id', requestId)
       request.startTime = Date.now()
 
       const method = request.method
@@ -36,7 +36,7 @@ export function createRequestLoggerHooks() {
       const userAgent = (request.headers['user-agent'] as string) || ''
 
       log.info('request start', {
-        correlationId,
+        requestId,
         method,
         path,
         query,
@@ -46,7 +46,7 @@ export function createRequestLoggerHooks() {
     },
 
     onResponse: async (request: any, reply: any) => {
-      const correlationId = request.correlationId || 'unknown'
+      const requestId = request.requestId || 'unknown'
       const statusCode = reply.statusCode
       const startTime = request.startTime || Date.now()
       const elapsed = Date.now() - startTime
@@ -57,7 +57,7 @@ export function createRequestLoggerHooks() {
 
       if (statusCode >= 400) {
         log.error('request error', {
-          correlationId,
+          requestId,
           method: request.method,
           path,
           statusCode,
@@ -68,7 +68,7 @@ export function createRequestLoggerHooks() {
         }
       } else {
         log.info('request complete', {
-          correlationId,
+          requestId,
           method: request.method,
           path,
           statusCode,

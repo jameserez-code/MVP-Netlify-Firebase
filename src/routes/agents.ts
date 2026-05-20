@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from '../lib/logger.js'
+import { getEnv } from '../lib/env.js'
 import { paginate, parsePaginationQuery } from '../lib/pagination.js'
 import {
   generateAgentSecretKey, generatePassportNumber, hashKey, hashSystemPrompt,
@@ -30,11 +31,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       const promptHash = hashSystemPrompt(systemPrompt || '')
       const agentId = generateId('agent_')
 
-      const orgId = process.env.DEFAULT_ORG_ID
-      if (!orgId) {
-        reply.code(500)
-        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
-      }
+      const orgId = getEnv().defaultOrgId
 
       const limitCheck = await checkLimit(db, orgId, 'agents')
       if (!limitCheck.allowed) {
@@ -108,11 +105,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // ---------------------------------------------------------------------------
   app.get('/agents', async (request, reply) => {
     const { status } = (request.query || {}) as { status?: string }
-    const orgId = process.env.DEFAULT_ORG_ID
-    if (!orgId) {
-      reply.code(500)
-      return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
-    }
+    const orgId = getEnv().defaultOrgId
     try {
       let q = db.collection('agents').where('orgId', '==', orgId)
       const snap = await q.get()
@@ -153,7 +146,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
     const claims = (request as any).claims
     const revokedBy = claims?.sub || claims?.orgId || 'system'
     const agentData = snap.data() as any
-    const orgId = agentData?.orgId || process.env.DEFAULT_ORG_ID
+    const orgId = agentData?.orgId || getEnv().defaultOrgId
 
     await db.collection('agents').doc(id).update({
       status: 'revoked',
@@ -162,7 +155,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       revokedBy,
     })
     log.success('agent revoked', { agentId: id, reason, revokedBy })
-    publishEvent(orgId || process.env.DEFAULT_ORG_ID || 'default', 'agents', { type: 'revoked', agentId: id, reason: reason || 'No reason provided', timestamp: new Date().toISOString() })
+    publishEvent(orgId || getEnv().defaultOrgId || 'default', 'agents', { type: 'revoked', agentId: id, reason: reason || 'No reason provided', timestamp: new Date().toISOString() })
     deliverWebhook(db, 'agent.revoked', {
       event: 'agent.revoked',
       timestamp: new Date().toISOString(),

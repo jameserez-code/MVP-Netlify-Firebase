@@ -1,16 +1,13 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
+import { getEnv } from './env.js'
 
-let JWT_SECRET_HEX: string | null = null
 let JWT_SECRET: Buffer | null = null
 const TTL = 3600 // 1 hour
 
 function ensureSecret(): Buffer {
   if (!JWT_SECRET) {
-    JWT_SECRET_HEX = process.env.JWT_SECRET || ''
-    if (!JWT_SECRET_HEX) {
-      throw new Error('JWT_SECRET environment variable is required')
-    }
-    JWT_SECRET = Buffer.from(JWT_SECRET_HEX, 'hex')
+    const secretHex = getEnv().jwtSecret
+    JWT_SECRET = Buffer.from(secretHex, 'hex')
   }
   return JWT_SECRET
 }
@@ -66,6 +63,5 @@ export function verify(token: string): Claims | null {
 }
 
 export function getSecret(): string {
-  ensureSecret()
-  return JWT_SECRET_HEX!
+  return getEnv().jwtSecret
 }

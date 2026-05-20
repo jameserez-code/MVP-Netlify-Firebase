@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { createRequire } from 'module'
 import { log } from '../lib/logger.js'
+import { getEnv } from '../lib/env.js'
 import { generateGatewayTicket, TICKET_TTL_SECONDS } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
 import { publishEvent } from '../lib/events.js'
@@ -33,11 +34,7 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
       }
 
       // Fetch policies
-      const agentOrgId = (agent as any).orgId || process.env.DEFAULT_ORG_ID
-      if (!agentOrgId) {
-        reply.code(500)
-        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
-      }
+      const agentOrgId = (agent as any).orgId || getEnv().defaultOrgId
 
       const limitCheck = await checkLimit(db, agentOrgId, 'enforcements')
       if (!limitCheck.allowed) {

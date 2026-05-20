@@ -12,6 +12,8 @@ export interface EnvConfig {
   firebaseClientEmail?: string
   firebasePrivateKey?: string
   googleApplicationCredentials?: string
+  redisUrl?: string
+  webhookEncryptionKey?: string
   port: number
 }
 
@@ -98,6 +100,8 @@ export function validateEnv(options: ValidateEnvOptions = {}): EnvConfig {
     firebaseClientEmail: firebaseClientEmail || undefined,
     firebasePrivateKey: firebasePrivateKey || undefined,
     googleApplicationCredentials: googleApplicationCredentials || undefined,
+    redisUrl: process.env.REDIS_URL || undefined,
+    webhookEncryptionKey: process.env.WEBHOOK_ENCRYPTION_KEY || undefined,
     port: parseInt(process.env.PORT || '3000', 10),
   }
 

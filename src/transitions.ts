@@ -16,12 +16,13 @@ export async function transitionTask(
   requestId?: string,
 ) {
   const ref = db.collection('tasks').doc(taskId)
+  let current = 'unknown'
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref)
     if (!snap.exists) throw new Error(`TASK_NOT_FOUND: ${taskId}`)
 
-    const current = snap.data()?.status as string
+    current = snap.data()?.status as string
     if (!isValidTransition(current, nextStatus, TASK_TRANSITIONS)) {
       throw new Error(`INVALID_TASK_TRANSITION: ${taskId} ${current} → ${nextStatus}`)
     }
@@ -55,7 +56,7 @@ export async function transitionTask(
     })
   })
 
-  log.info('task transition', { taskId, previousStatus: '?', nextStatus, requestId })
+  log.info('task transition', { taskId, previousStatus: current, nextStatus, requestId })
 }
 
 export async function transitionRun(
@@ -66,12 +67,13 @@ export async function transitionRun(
   requestId?: string,
 ) {
   const ref = db.collection('runs').doc(runId)
+  let current = 'unknown'
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref)
     if (!snap.exists) throw new Error(`RUN_NOT_FOUND: ${runId}`)
 
-    const current = snap.data()?.status as string
+    current = snap.data()?.status as string
     if (!isValidTransition(current, nextStatus, RUN_TRANSITIONS)) {
       throw new Error(`INVALID_RUN_TRANSITION: ${runId} ${current} → ${nextStatus}`)
     }
@@ -112,7 +114,7 @@ export async function transitionRun(
     })
   })
 
-  log.info('run transition', { runId, previousStatus: '?', nextStatus, requestId })
+  log.info('run transition', { runId, previousStatus: current, nextStatus, requestId })
 }
 
 export async function failRunWithError(
