@@ -924,15 +924,29 @@
       chip.textContent = s.label;
       chip.dataset.value = s.value;
       chip.tabIndex = 0;
-      chip.addEventListener("click", () => {
-        if (selectedScopes.has(s.value)) {
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", "false");
+
+      const toggleChip = () => {
+        const isSelected = selectedScopes.has(s.value);
+        if (isSelected) {
           selectedScopes.delete(s.value);
           chip.classList.remove("selected");
+          chip.setAttribute("aria-checked", "false");
         } else {
           selectedScopes.add(s.value);
           chip.classList.add("selected");
+          chip.setAttribute("aria-checked", "true");
         }
         document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      };
+
+      chip.addEventListener("click", toggleChip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleChip();
+        }
       });
       scopeContainer.appendChild(chip);
     });
