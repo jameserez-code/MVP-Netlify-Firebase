@@ -23,6 +23,7 @@ function maskUrl(url: string): string {
 export default async function webhooksRoutes(app: FastifyInstance, db: Firestore) {
   // POST /webhooks — register webhook
   app.post('/webhooks', async (request, reply) => {
+    try {
     const body = (request.body || {}) as any
     const { url, events, secret, name, active = true } = body
 
@@ -92,10 +93,16 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
       secret: plaintextSecret,
       createdAt: doc.createdAt,
     }
+    } catch (e: any) {
+      log.error('webhook registration failed', { error: e.message })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'webhook registration failed' } }
+    }
   })
 
   // GET /webhooks — list webhooks for org
-  app.get('/webhooks', async (_request, _reply) => {
+  app.get('/webhooks', async (_request, reply) => {
+    try {
     const orgId = process.env.DEFAULT_ORG_ID || 'default'
     const snap = await db.collection('webhooks').where('orgId', '==', orgId).get()
     const data = snap.docs.map((d) => {
@@ -112,10 +119,16 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
       }
     })
     return { data }
+    } catch (e: any) {
+      log.error('webhooks list failed', { error: e.message })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'webhook list query failed' } }
+    }
   })
 
   // GET /webhooks/:id — get webhook details + delivery log
   app.get('/webhooks/:id', async (request, reply) => {
+    try {
     const { id } = request.params as { id: string }
     const snap = await db.collection('webhooks').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'webhook not found' } } }
@@ -149,20 +162,32 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
         }
       }),
     }
+    } catch (e: any) {
+      log.error('webhook detail failed', { error: e.message, webhookId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'webhook detail query failed' } }
+    }
   })
 
   // DELETE /webhooks/:id — deactivate webhook
   app.delete('/webhooks/:id', async (request, reply) => {
+    try {
     const { id } = request.params as { id: string }
     const snap = await db.collection('webhooks').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'webhook not found' } } }
     await db.collection('webhooks').doc(id).update({ active: false })
     log.success('webhook deactivated', { webhookId: id })
     return { id, status: 'deactivated' }
+    } catch (e: any) {
+      log.error('webhook deactivation failed', { error: e.message, webhookId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'webhook deactivation failed' } }
+    }
   })
 
   // POST /webhooks/:id/test — send test ping event
   app.post('/webhooks/:id/test', async (request, reply) => {
+    try {
     const { id } = request.params as { id: string }
     const snap = await db.collection('webhooks').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'webhook not found' } } }
@@ -181,10 +206,16 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
       removeOnFail: 50,
     })
     return { success: true, message: 'Test event queued' }
+    } catch (e: any) {
+      log.error('webhook test failed', { error: e.message, webhookId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'test event queue failed' } }
+    }
   })
 
   // POST /webhooks/:id/rotate — rotate secret
   app.post('/webhooks/:id/rotate', async (request, reply) => {
+    try {
     const { id } = request.params as { id: string }
     const snap = await db.collection('webhooks').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'webhook not found' } } }
@@ -199,5 +230,10 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
 
     log.success('webhook secret rotated', { webhookId: id })
     return { id, newSecret }
+    } catch (e: any) {
+      log.error('webhook secret rotation failed', { error: e.message, webhookId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'secret rotation failed' } }
+    }
   })
 }

@@ -46,6 +46,8 @@ import webhooksRoutes from './routes/webhooks.js'
 import notificationsRoutes from './routes/notifications.js'
 import billingRoutes from './routes/billing.js'
 import queueStatusRoutes from './routes/queue-status.js'
+import exportsRoutes from './routes/exports.js'
+import gdprRoutes from './routes/gdpr.js'
 import { initWebSocketServer, closeWebSocketServer } from './lib/websocket.js'
 import { publishEvent } from './lib/events.js'
 import { startThresholdChecker } from './lib/alerts.js'
@@ -689,6 +691,9 @@ app.post('/auth/forgot-password', async (request, reply) => {
 app.post('/auth/reset-password', async (request, reply) => {
   const { token: resetToken, newPassword } = (request.body || {}) as { token?: string; newPassword?: string }
   if (!resetToken || !newPassword) return err(reply, 400, 'validation', 'token and newPassword are required')
+  if (newPassword.length < 8) return err(reply, 400, 'validation', 'password must be at least 8 characters')
+  if (!/\d/.test(newPassword)) return err(reply, 400, 'validation', 'password must contain at least 1 number')
+  if (!/[^a-zA-Z0-9]/.test(newPassword)) return err(reply, 400, 'validation', 'password must contain at least 1 special character')
   try {
     const snap = await db.collection('users').where('passwordResetToken', '==', resetToken).limit(1).get()
     if (snap.empty) return err(reply, 400, 'validation', 'invalid or expired token')
@@ -716,6 +721,9 @@ app.post('/auth/change-password', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
   const { currentPassword, newPassword } = (request.body || {}) as { currentPassword?: string; newPassword?: string }
   if (!currentPassword || !newPassword) return err(reply, 400, 'validation', 'currentPassword and newPassword are required')
+  if (newPassword.length < 8) return err(reply, 400, 'validation', 'password must be at least 8 characters')
+  if (!/\d/.test(newPassword)) return err(reply, 400, 'validation', 'password must contain at least 1 number')
+  if (!/[^a-zA-Z0-9]/.test(newPassword)) return err(reply, 400, 'validation', 'password must contain at least 1 special character')
   try {
     const snap = await db.collection('users').where('email', '==', claims.sub).limit(1).get()
     if (snap.empty) return err(reply, 404, 'not_found', 'user not found')
@@ -777,7 +785,7 @@ app.post('/task', { preHandler: requireRole(['org_member']) }, async (request, r
     broadcastMetrics(orgId)
     cacheDeletePattern('cache:metrics:*').catch(() => {})
     reply.code(201); return { id: docRef.id, payload, status: 'pending', createdAt: now }
-  } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
+  } catch (e: any) { log.error('task creation failed', { error: e.message, stack: isDev ? e.stack : undefined }); return err(reply, 503, 'firestore', 'write failed') }
 })
 
 // GET /task/:id
@@ -819,7 +827,7 @@ app.get('/tasks', { preHandler: requireRole(['readonly']) }, async (request, rep
     const options = parsePaginationQuery(request.query as Record<string, unknown>)
     if (status) options.filters = { ...options.filters, status }
     return paginate(data, options)
-  } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: e.message } } }
+  } catch (e: any) { log.error('tasks list failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'task query failed' } } }
 })
 
 // POST /agent/run
@@ -849,11 +857,12 @@ app.post('/agent/run', { preHandler: requireRole(['org_member']) }, async (reque
     broadcastMetrics(orgId)
     cacheDeletePattern('cache:metrics:*').catch(() => {})
     reply.code(201); return { id: docRef.id, agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now }
-  } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
+  } catch (e: any) { log.error('agent run start failed', { error: e.message }); return err(reply, 503, 'firestore', 'write failed') }
 })
 
-// GET /runs — paginated list
+// GET /runs — paginated list (auth required)
 app.get('/runs', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
   try {
     const { status, limit } = request.query as { status?: string; limit?: string }
     const orgId = getRequestOrgIdSafe(request)
@@ -875,7 +884,7 @@ app.get('/runs', async (request, reply) => {
 
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
     return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
-  } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: e.message } } }
+  } catch (e: any) { log.error('runs list failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'run query failed' } } }
 })
 
 // POST /run/:id/log
@@ -889,15 +898,20 @@ app.post('/run/:id/log', async (request, reply) => {
   if (run.status !== 'running') return err(reply, 409, 'conflict', `run ${id} is ${run.status}`)
   const logRef = db.collection('logs').doc()
   const logDoc = { agentId: run.agentId, runId: id, tool, decision, reason: reason || null, parameters: parameters || {}, timestamp: new Date().toISOString(), requestId: generateId('req_', 8) }
-  await db.runTransaction(async (tx) => {
-    tx.set(logRef, logDoc)
-    tx.update(db.collection('runs').doc(id), { totalActions: run.totalActions + 1, allowedActions: run.allowedActions + (decision === 'allow' ? 1 : 0), deniedActions: run.deniedActions + (decision === 'deny' ? 1 : 0) })
-  })
-  log.success('action logged', { runId: id, tool, decision })
-  broadcastMetrics(getOrgId(claims))
-  cacheDeletePattern('cache:metrics:*').catch(() => {})
-  cacheDeletePattern('cache:audit:*').catch(() => {})
-  reply.code(201); return { id: logRef.id, ...logDoc }
+  try {
+    await db.runTransaction(async (tx) => {
+      tx.set(logRef, logDoc)
+      tx.update(db.collection('runs').doc(id), { totalActions: run.totalActions + 1, allowedActions: run.allowedActions + (decision === 'allow' ? 1 : 0), deniedActions: run.deniedActions + (decision === 'deny' ? 1 : 0) })
+    })
+    log.success('action logged', { runId: id, tool, decision })
+    broadcastMetrics(getOrgId(claims))
+    cacheDeletePattern('cache:metrics:*').catch(() => {})
+    cacheDeletePattern('cache:audit:*').catch(() => {})
+    reply.code(201); return { id: logRef.id, ...logDoc }
+  } catch (e: any) {
+    log.error('log action failed', { error: e.message, runId: id })
+    return err(reply, 503, 'firestore', 'log write failed')
+  }
 })
 
 // PATCH /run/:id/complete
@@ -913,7 +927,11 @@ app.patch('/run/:id/complete', async (request, reply) => {
     broadcastMetrics(getOrgId(claims))
     cacheDeletePattern('cache:metrics:*').catch(() => {})
     return { id, status: 'completed', taskId: run.taskId }
-  } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
+  } catch (e: any) {
+    log.error('run complete failed', { error: e.message, runId: id })
+    const code = e.message?.includes('invalid state') ? 409 : 503
+    return err(reply, code, code === 409 ? 'conflict' : 'firestore', e.message)
+  }
 })
 
 // PATCH /run/:id/fail
@@ -941,7 +959,11 @@ app.patch('/run/:id/fail', async (request, reply) => {
     broadcastMetrics(getOrgId(claims))
     cacheDeletePattern('cache:metrics:*').catch(() => {})
     return { id, status: 'failed' }
-  } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
+  } catch (e: any) {
+    log.error('run fail failed', { error: e.message, runId: id })
+    const code = e.message?.includes('invalid state') ? 409 : 503
+    return err(reply, code, code === 409 ? 'conflict' : 'firestore', e.message)
+  }
 })
 
 // GET /audit — paginated with filtering (cached 10s)
@@ -978,19 +1000,23 @@ app.get('/audit', {
 })
 
 // GET /sessions, GET /sessions/:id
-app.get('/sessions', async (_request, reply) => {
-  try { const snap = await db.collection('sessions').orderBy('startedAt', 'desc').limit(20).get(); return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) } }
-  catch (e: any) { reply.code(503); return { error: { code: 'firestore' } } }
+app.get('/sessions', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  try { const snap = await db.collection('sessions').where('orgId', '==', getOrgId(claims)).orderBy('startedAt', 'desc').limit(20).get(); return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) } }
+  catch (e: any) { log.error('sessions list failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'session query failed' } } }
 })
 
 app.get('/sessions/:id', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
   try {
     const id = (request.params as any).id
-    const ssn = await db.collection('sessions').doc(id).get(); if (!ssn.exists) { reply.code(404); return { error: { code: 'not_found' } } }
+    const ssn = await db.collection('sessions').doc(id).get(); if (!ssn.exists) { reply.code(404); return { error: { code: 'not_found', message: `session ${id} not found` } } }
+    const ssnData = ssn.data() as any
+    if (ssnData?.orgId && ssnData.orgId !== getOrgId(claims)) { reply.code(403); return { error: { code: 'forbidden', message: 'session does not belong to your organization' } } }
     const runs = await db.collection('runs').where('sessionId', '==', id).get()
     const logs = runs.docs.length > 0 ? await db.collection('logs').where('runId', 'in', runs.docs.map(d => d.id)).get() : { docs: [] }
-    return { session: { id, ...ssn.data() }, runs: runs.docs.map(d => ({ id: d.id, ...d.data() })), logs: logs.docs.map(d => ({ id: d.id, ...d.data() })) }
-  } catch (e: any) { reply.code(503); return { error: { code: 'firestore' } } }
+    return { session: { id, ...ssnData }, runs: runs.docs.map(d => ({ id: d.id, ...d.data() })), logs: logs.docs.map(d => ({ id: d.id, ...d.data() })) }
+  } catch (e: any) { log.error('session detail failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'session detail query failed' } } }
 })
 
 // GET /diagnostics — full system health (cached 60s)
@@ -1058,6 +1084,8 @@ app.get('/org/metrics', async (request, reply) => {
   notificationsRoutes(app, db)
   billingRoutes(app, db)
   queueStatusRoutes(app, db)
+  exportsRoutes(app, db)
+  gdprRoutes(app, db)
   hardenAuth(app, db)
   auditTimeline(app, db)
   runTrace(app, db)

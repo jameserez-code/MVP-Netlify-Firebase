@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
-import { getAudit } from '@/lib/api'
+import { getAudit, exportAuditCsv, recordExport } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
 import { NoAudit } from '@/components/empty-states/no-audit'
@@ -60,28 +60,6 @@ function SimpleBarChart({ data }: { data: { label: string; value: number; color:
   )
 }
 
-function exportToCSV(entries: AuditEntry[]) {
-  const headers = ['ID', 'Agent ID', 'Tool', 'Decision', 'Reason', 'Timestamp']
-  const rows = entries.map((e) => [
-    e.id,
-    e.agentId || '',
-    e.tool || '',
-    e.decision || '',
-    e.reason || '',
-    e.timestamp || e.createdAt || '',
-  ])
-  const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 export default function AuditPage() {
   const { addToast } = useToast()
   const [filter, setFilter] = useState('')
@@ -89,6 +67,26 @@ export default function AuditPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(0)
+
+  async function exportToCSV() {
+    try {
+      const blob = await exportAuditCsv({
+        startDate: dateFrom || undefined,
+        endDate: dateTo || undefined,
+        decision: decisionFilter || undefined,
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `audit-export-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      recordExport({ type: 'audit', format: 'csv', status: 'completed' })
+      addToast('Audit log exported successfully', 'success')
+    } catch (err: any) {
+      addToast(err.message || 'Export failed', 'error')
+    }
+  }
 
   const { data, error, isLoading, mutate } = useSWR(
     ['/audit', decisionFilter],
@@ -209,7 +207,7 @@ export default function AuditPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => exportToCSV(filtered)}
+            onClick={() => exportToCSV()}
             className="btn-secondary"
             disabled={filtered.length === 0}
           >

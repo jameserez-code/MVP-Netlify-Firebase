@@ -28,7 +28,7 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
 
       // Verify agent exists + is active
       const agentSnap = await db.collection('agents').doc(intent.agentId).get()
-      if (!agentSnap.exists) { reply.code(401); return { error: { code: 'agent_unknown' } } }
+      if (!agentSnap.exists) { reply.code(404); return { error: { code: 'agent_unknown', message: 'agent not found' } } }
 
       const agent = { id: agentSnap.id, ...agentSnap.data() }
       if ((agent as any).status !== 'active') {

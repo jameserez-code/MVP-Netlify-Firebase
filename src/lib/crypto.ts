@@ -29,14 +29,21 @@ export function generateId(prefix: string, len = 16): string {
 // Key hashing
 // ---------------------------------------------------------------------------
 export function hashKey(plaintext: string): { hash: string; salt: string } {
+  if (!plaintext || plaintext.length === 0) throw new Error('plaintext must not be empty')
   const salt = randomBytes(32).toString('hex')
   const hash = pbkdf2Sync(plaintext, salt, KEY_ITERATIONS, KEY_LENGTH, KEY_DIGEST).toString('hex')
   return { hash, salt }
 }
 
 export function verifyKey(plaintext: string, hash: string, salt: string, iterations = KEY_ITERATIONS): boolean {
-  const computed = pbkdf2Sync(plaintext, salt, iterations, KEY_LENGTH, KEY_DIGEST).toString('hex')
-  return timingSafeEqual(Buffer.from(computed), Buffer.from(hash))
+  if (!plaintext || !hash || !salt) return false
+  try {
+    const computed = pbkdf2Sync(plaintext, salt, iterations, KEY_LENGTH, KEY_DIGEST).toString('hex')
+    if (computed.length !== hash.length) return false
+    return timingSafeEqual(Buffer.from(computed), Buffer.from(hash))
+  } catch {
+    return false
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -136,17 +143,25 @@ function signJWT(header: Record<string, unknown>, payload: Record<string, unknow
 }
 
 function verifyJWT(token: string, secret: string): Record<string, unknown> {
+  if (!token || !secret) throw new Error('token and secret are required')
   const parts = token.split('.')
   if (parts.length !== 3) throw new Error('invalid_token_format')
-  const expectedSig = createHmac('sha256', secret).update(`${parts[0]}.${parts[1]}`).digest('base64url')
-  if (!timingSafeEqual(Buffer.from(expectedSig), Buffer.from(parts[2]))) {
-    throw new Error('invalid_signature')
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      throw new Error('token_expired')
+    }
+    const expectedSig = createHmac('sha256', secret).update(`${parts[0]}.${parts[1]}`).digest('base64url')
+    if (!timingSafeEqual(Buffer.from(expectedSig), Buffer.from(parts[2]))) {
+      throw new Error('invalid_signature')
+    }
+    return payload
+  } catch (e: any) {
+    if (e.message === 'token_expired' || e.message === 'invalid_signature' || e.message === 'invalid_token_format') {
+      throw e
+    }
+    throw new Error('invalid_token_format')
   }
-  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'))
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-    throw new Error('token_expired')
-  }
-  return payload
 }
 
 export const TICKET_TTL_SECONDS = TICKET_TTL

@@ -1,0 +1,359 @@
+{
+  "scenario": "data-analyst",
+  "name": "DataVault Analytics — Secure Data Analysis Pipeline",
+  "description": "A data analysis team with strict data governance: read-only SQL, no PII in results, sandboxed Python execution",
+  "org": {
+    "id": "org_datavault_analytics",
+    "name": "DataVault Analytics",
+    "slug": "datavault-analytics",
+    "plan": "enterprise",
+    "monthlyCredentialLimit": 100000,
+    "credentialsIssuedThisMonth": 8900,
+    "ownerId": "dataeng@datavault.io",
+    "members": [
+      "dataeng@datavault.io",
+      "analyst@datavault.io",
+      "security@datavault.io",
+      "compliance@datavault.io"
+    ]
+  },
+  "agents": [
+    {
+      "id": "agent_sql_analyst_01",
+      "name": "SQL Analyst",
+      "model": "gpt-4-turbo",
+      "provider": "openai",
+      "status": "active",
+      "description": "Generates and executes read-only SQL queries for business intelligence",
+      "capabilities": ["db_query", "explain_query", "schema_lookup"],
+      "registeredAt": "2025-04-01T09:00:00Z",
+      "lastSeenAt": "2025-05-21T16:00:00Z"
+    },
+    {
+      "id": "agent_python_analyst_02",
+      "name": "Python Data Analyst",
+      "model": "claude-3-sonnet-20240229",
+      "provider": "anthropic",
+      "status": "active",
+      "description": "Runs Python analysis in sandboxed environment — no shell, no file writes",
+      "capabilities": ["sandbox_run", "generate_chart", "statistical_test"],
+      "registeredAt": "2025-04-01T09:30:00Z",
+      "lastSeenAt": "2025-05-21T15:45:00Z"
+    },
+    {
+      "id": "agent_report_writer_03",
+      "name": "Report Generator",
+      "model": "gpt-4o",
+      "provider": "openai",
+      "status": "active",
+      "description": "Generates formatted reports from analysis results — no data access",
+      "capabilities": ["generate_report", "format_table", "create_visualization"],
+      "registeredAt": "2025-04-01T10:00:00Z",
+      "lastSeenAt": "2025-05-21T16:10:00Z"
+    }
+  ],
+  "policies": [
+    {
+      "id": "pol_read_only_sql",
+      "name": "Read-Only SQL",
+      "description": "Only SELECT queries allowed — no INSERT, UPDATE, DELETE, DROP, ALTER, or TRUNCATE",
+      "priority": 10,
+      "scope": { "agentId": "agent_sql_analyst_01" },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "db_query",
+            "parameterConstraints": {
+              "sql": {
+                "type": "string",
+                "pattern": "^(SELECT|WITH|EXPLAIN|DESCRIBE|SHOW)\\s",
+                "maxLength": 4000
+              }
+            }
+          },
+          { "toolName": "explain_query", "parameterConstraints": { "sql": { "type": "string" } } },
+          { "toolName": "schema_lookup", "parameterConstraints": { "table": { "type": "string" } } }
+        ],
+        "deniedTools": ["db_write", "db_delete", "db_drop", "db_alter", "db_truncate"],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true,
+          "sqlInjectionPatterns": [
+            "UNION\\s+SELECT",
+            "INTO\\s+OUTFILE",
+            "--\\s*$",
+            "/\\*.*\\*/"
+          ]
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-04-01T10:00:00Z"
+    },
+    {
+      "id": "pol_sandbox_python",
+      "name": "Sandboxed Python",
+      "description": "Allow Python execution in sandbox only — no shell, no file system, no network",
+      "priority": 10,
+      "scope": { "agentId": "agent_python_analyst_02" },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "sandbox_run",
+            "parameterConstraints": {
+              "language": { "type": "string", "enum": ["python"] },
+              "code": { "type": "string", "maxLength": 10000 },
+              "timeout": { "type": "number", "max": 30 }
+            }
+          },
+          {
+            "toolName": "generate_chart",
+            "parameterConstraints": {
+              "type": { "type": "string", "enum": ["bar", "line", "scatter", "pie", "heatmap"] },
+              "data": { "type": "string" }
+            }
+          },
+          { "toolName": "statistical_test", "parameterConstraints": { "test": { "type": "string" }, "data": { "type": "string" } } }
+        ],
+        "deniedTools": ["shell_exec", "file_system_write", "file_system_read", "network_request", "subprocess_run"],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-04-01T10:30:00Z"
+    },
+    {
+      "id": "pol_no_raw_data_export",
+      "name": "No Raw Data Export",
+      "description": "Reports are allowed but raw data exports are blocked to prevent data leaks",
+      "priority": 20,
+      "scope": { "agentId": "*" },
+      "rules": {
+        "allowedTools": ["generate_report", "format_table", "create_visualization"],
+        "deniedTools": ["export_csv", "export_json", "export_excel", "download_dataset", "email_data"],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-04-01T11:00:00Z"
+    },
+    {
+      "id": "pol_cost_control",
+      "name": "Cost Control $200",
+      "description": "Monthly budget cap for data analysis LLM calls",
+      "priority": 30,
+      "scope": { "agentId": "*" },
+      "rules": {
+        "costLimit": {
+          "maxPerRequest": 200,
+          "maxPerDay": 20000,
+          "maxPerMonth": 500000,
+          "currency": "USD",
+          "alertThresholds": [0.5, 0.75, 0.9]
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-04-01T11:30:00Z"
+    }
+  ],
+  "enforcementLogs": [
+    {
+      "id": "log_da_001",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_query",
+      "decision": "allow",
+      "reason": "Within policy — SELECT query on allowed table",
+      "parameters": { "sql": "SELECT user_id, signup_date, last_login FROM users WHERE signup_date > '2025-01-01' LIMIT 1000" },
+      "timestamp": "2025-05-21T14:00:05Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_a1b2",
+      "latencyMs": 45
+    },
+    {
+      "id": "log_da_002",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_write",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — db_write denied by Read-Only SQL policy",
+      "parameters": { "sql": "INSERT INTO audit_log (action, timestamp) VALUES ('adhoc', NOW())" },
+      "timestamp": "2025-05-21T14:02:00Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_c3d4",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_da_003",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_query",
+      "decision": "deny",
+      "reason": "sql_injection_detected — UNION SELECT pattern found",
+      "parameters": { "sql": "SELECT name FROM products WHERE id = 1 UNION SELECT password FROM users" },
+      "timestamp": "2025-05-21T14:05:30Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_e5f6",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_da_004",
+      "agentId": "agent_python_analyst_02",
+      "tool": "sandbox_run",
+      "decision": "allow",
+      "reason": "Within policy — Python execution with valid constraints",
+      "parameters": { "language": "python", "code": "import numpy as np\nprint(np.mean([1,2,3,4,5]))", "timeout": 10 },
+      "timestamp": "2025-05-21T14:10:00Z",
+      "policyMatch": "pol_sandbox_python",
+      "requestId": "req_da_g7h8",
+      "latencyMs": 18
+    },
+    {
+      "id": "log_da_005",
+      "agentId": "agent_python_analyst_02",
+      "tool": "shell_exec",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — shell_exec explicitly denied",
+      "parameters": { "cmd": "pip install requests && python -c 'import os; os.system(\"cat /etc/passwd\")'" },
+      "timestamp": "2025-05-21T14:11:00Z",
+      "policyMatch": "pol_sandbox_python",
+      "requestId": "req_da_i9j0",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_da_006",
+      "agentId": "agent_report_writer_03",
+      "tool": "generate_report",
+      "decision": "allow",
+      "reason": "Within policy — report generation is allowed",
+      "parameters": { "title": "Monthly User Growth Report", "format": "markdown", "data": "{...}" },
+      "timestamp": "2025-05-21T14:15:00Z",
+      "policyMatch": "pol_no_raw_data_export",
+      "requestId": "req_da_k1l2",
+      "latencyMs": 35
+    },
+    {
+      "id": "log_da_007",
+      "agentId": "agent_report_writer_03",
+      "tool": "export_csv",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — CSV export denied by No Raw Data Export policy",
+      "parameters": { "query": "SELECT * FROM users", "filename": "user_dump.csv" },
+      "timestamp": "2025-05-21T14:16:00Z",
+      "policyMatch": "pol_no_raw_data_export",
+      "requestId": "req_da_m3n4",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_da_008",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_query",
+      "decision": "allow",
+      "reason": "Within policy — EXPLAIN query for performance tuning",
+      "parameters": { "sql": "EXPLAIN ANALYZE SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '30 days'" },
+      "timestamp": "2025-05-21T14:20:00Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_o5p6",
+      "latencyMs": 120
+    },
+    {
+      "id": "log_da_009",
+      "agentId": "agent_python_analyst_02",
+      "tool": "sandbox_run",
+      "decision": "deny",
+      "reason": "timeout_exceeded — requested timeout 60s exceeds max 30s",
+      "parameters": { "language": "python", "code": "while True: pass", "timeout": 60 },
+      "timestamp": "2025-05-21T14:25:00Z",
+      "policyMatch": "pol_sandbox_python",
+      "requestId": "req_da_q7r8",
+      "latencyMs": 1
+    },
+    {
+      "id": "log_da_010",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_query",
+      "decision": "deny",
+      "reason": "pii_detected — query targets SSN column with wildcard select",
+      "parameters": { "sql": "SELECT ssn, credit_score FROM customers WHERE risk_level = 'high'" },
+      "timestamp": "2025-05-21T14:30:00Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_s9t0",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_da_011",
+      "agentId": "agent_python_analyst_02",
+      "tool": "generate_chart",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "type": "heatmap", "data": "correlation_matrix_2025Q1", "title": "Feature Correlations Q1 2025" },
+      "timestamp": "2025-05-21T14:35:00Z",
+      "policyMatch": "pol_sandbox_python",
+      "requestId": "req_da_u1v2",
+      "latencyMs": 55
+    },
+    {
+      "id": "log_da_012",
+      "agentId": "agent_report_writer_03",
+      "tool": "email_data",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — emailing data denied by No Raw Data Export",
+      "parameters": { "to": "external@partner.com", "attachment": "report.csv", "body": "Here's the raw data you requested" },
+      "timestamp": "2025-05-21T14:40:00Z",
+      "policyMatch": "pol_no_raw_data_export",
+      "requestId": "req_da_w3x4",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_da_013",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_query",
+      "decision": "allow",
+      "reason": "Within policy — WITH clause (CTE) is allowed for read-only",
+      "parameters": { "sql": "WITH monthly AS (SELECT DATE_TRUNC('month', created_at) as m, COUNT(*) as c FROM orders GROUP BY m) SELECT * FROM monthly" },
+      "timestamp": "2025-05-21T14:45:00Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_y5z6",
+      "latencyMs": 67
+    },
+    {
+      "id": "log_da_014",
+      "agentId": "agent_python_analyst_02",
+      "tool": "network_request",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — network access denied by Sandboxed Python policy",
+      "parameters": { "url": "https://api.external-service.com/data", "method": "GET" },
+      "timestamp": "2025-05-21T14:50:00Z",
+      "policyMatch": "pol_sandbox_python",
+      "requestId": "req_da_a7b8",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_da_015",
+      "agentId": "agent_sql_analyst_01",
+      "tool": "db_drop",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — DROP operations denied",
+      "parameters": { "sql": "DROP TABLE IF EXISTS temp_analysis_20250521" },
+      "timestamp": "2025-05-21T14:55:00Z",
+      "policyMatch": "pol_read_only_sql",
+      "requestId": "req_da_c9d0",
+      "latencyMs": 1
+    }
+  ],
+  "stats": {
+    "totalLogs": 15,
+    "allowed": 6,
+    "denied": 9,
+    "denialReasons": {
+      "tool_explicitly_blocked": 5,
+      "sql_injection_detected": 1,
+      "pii_detected": 1,
+      "timeout_exceeded": 1,
+      "invalid_tool_parameter": 1
+    },
+    "mostActiveAgent": "agent_sql_analyst_01 (7 requests)",
+    "mostTriggeredPolicy": "pol_read_only_sql (7 matches)",
+    "averageLatencyMs": 23.87
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://passport-agent.dev/schemas/config-v1.json",
+  "agent": {
+    "name": "My Passport Agent",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "systemPrompt": "You are a helpful AI assistant operating under strict policy controls.",
+    "capabilities": [
+      "web_search",
+      "database_query",
+      "sandbox_execute"
+    ]
+  },
+  "passport": {
+    "issuer": "passport-agent.dev",
+    "version": "2.1.0"
+  },
+  "policies": [
+    {
+      "name": "Safe Web Search",
+      "description": "Web searches restricted to trusted domains only",
+      "priority": 10,
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "web_search",
+            "parameterConstraints": {
+              "query": { "type": "string", "maxLength": 200 }
+            }
+          }
+        ],
+        "allowedDomains": [
+          { "pattern": "*.wikipedia.org", "methods": ["GET"] },
+          { "pattern": "*.github.com", "methods": ["GET"] }
+        ],
+        "deniedDomains": [
+          "169.254.169.254",
+          "*.darkweb.*"
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      }
+    },
+    {
+      "name": "Read-Only Database",
+      "description": "Database access restricted to SELECT queries only",
+      "priority": 20,
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "database_query",
+            "parameterConstraints": {
+              "sql": { "type": "string", "pattern": "^SELECT|^WITH|^EXPLAIN" }
+            }
+          }
+        ],
+        "deniedTools": [
+          "db_write",
+          "db_delete",
+          "db_drop",
+          "db_alter"
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true
+        }
+      }
+    },
+    {
+      "name": "Cost Control",
+      "description": "Budget limits for LLM API calls",
+      "priority": 50,
+      "rules": {
+        "costLimit": {
+          "maxPerRequest": 50,
+          "maxPerDay": 500,
+          "currency": "USD"
+        }
+      }
+    }
+  ],
+  "integrations": {
+    "openai": {
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "model": "gpt-4o"
+    },
+    "anthropic": {
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "model": "claude-3-sonnet-20240229"
+    },
+    "langchain": {
+      "enabled": false,
+      "verbose": false
+    }
+  },
+  "audit": {
+    "logLevel": "info",
+    "retentionDays": 90,
+    "includeParameters": true,
+    "redactPii": true
+  },
+  "monitoring": {
+    "healthCheckEndpoint": "/health",
+    "metricsEndpoint": "/metrics",
+    "webhooks": []
+  },
+  "environment": {
+    "PASSPORT_API_URL": "http://localhost:3000",
+    "PASSPORT_API_KEY": "",
+    "LOG_LEVEL": "info"
+  }
+}

@@ -1,0 +1,86 @@
+# Docker Compose — Passport Agent Quickstart
+# =============================================
+# Minimal setup for local testing and development.
+# Starts the API server and a Redis instance for caching/rate-limiting.
+#
+# Usage:
+#   1. Copy env.quickstart to .env and fill in required values
+#   2. docker compose -f docker-compose.quickstart.yml up
+#   3. Open http://localhost:3000/health to verify
+#   4. npm run demo:seed  to populate demo data (from host)
+#
+# Requirements:
+#   - Docker 24+
+#   - docker compose v2
+
+version: '3.8'
+
+services:
+  passport-api:
+    image: passport-agent:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: passport-api
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - ENGINE_SECRET=${ENGINE_SECRET}
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - passport-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: passport-redis
+    ports:
+      - '6379:6379'
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - passport-net
+
+  # Uncomment to enable the Firebase emulator for local testing
+  # firebase:
+  #   image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+  #   container_name: passport-firebase
+  #   ports:
+  #     - '4000:4000'   # UI
+  #     - '8080:8080'   # Firestore
+  #   command: >
+  #     gcloud beta emulators firestore start
+  #     --host-port=0.0.0.0:8080
+  #     --project=passport-agent-dev
+  #   networks:
+  #     - passport-net
+
+volumes:
+  redis-data:
+
+networks:
+  passport-net:
+    driver: bridge

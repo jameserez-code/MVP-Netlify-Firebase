@@ -1,0 +1,464 @@
+{
+  "scenario": "ecommerce",
+  "name": "ShopSphere — E-Commerce AI Operations",
+  "description": "Multi-agent e-commerce system with inventory, recommendations, order processing, and strict financial controls",
+  "org": {
+    "id": "org_shopsphere",
+    "name": "ShopSphere Inc.",
+    "slug": "shopsphere",
+    "plan": "enterprise",
+    "monthlyCredentialLimit": 200000,
+    "credentialsIssuedThisMonth": 45600,
+    "ownerId": "cto@shopsphere.com",
+    "members": [
+      "cto@shopsphere.com",
+      "eng@shopsphere.com",
+      "security@shopsphere.com",
+      "product@shopsphere.com",
+      "marketing@shopsphere.com"
+    ]
+  },
+  "agents": [
+    {
+      "id": "agent_recommendation_01",
+      "name": "Product Recommender",
+      "model": "gpt-4o",
+      "provider": "openai",
+      "status": "active",
+      "description": "Generates personalized product recommendations from catalog data",
+      "capabilities": ["query_catalog", "generate_recommendations", "lookup_product", "analyze_browsing_history"],
+      "registeredAt": "2025-02-15T08:00:00Z",
+      "lastSeenAt": "2025-05-21T17:30:00Z"
+    },
+    {
+      "id": "agent_inventory_02",
+      "name": "Inventory Manager",
+      "model": "claude-3-opus-20240229",
+      "provider": "anthropic",
+      "status": "active",
+      "description": "Monitors stock levels, predicts reorder points, generates purchase orders (draft only)",
+      "capabilities": ["check_stock", "forecast_demand", "draft_purchase_order", "flag_low_stock"],
+      "registeredAt": "2025-02-15T08:30:00Z",
+      "lastSeenAt": "2025-05-21T17:25:00Z"
+    },
+    {
+      "id": "agent_order_processor_03",
+      "name": "Order Processor",
+      "model": "gpt-4-turbo",
+      "provider": "openai",
+      "status": "active",
+      "description": "Processes orders, validates payment, updates fulfillment status — read-only on financials",
+      "capabilities": ["process_order", "validate_payment", "update_fulfillment", "generate_invoice"],
+      "registeredAt": "2025-02-15T09:00:00Z",
+      "lastSeenAt": "2025-05-21T17:20:00Z"
+    },
+    {
+      "id": "agent_fraud_detector_04",
+      "name": "Fraud Detector",
+      "model": "claude-3-sonnet-20240229",
+      "provider": "anthropic",
+      "status": "active",
+      "description": "Scans orders for fraud patterns, flags suspicious transactions",
+      "capabilities": ["scan_transaction", "flag_suspicious", "lookup_ip_geolocation", "analyze_order_pattern"],
+      "registeredAt": "2025-02-15T09:30:00Z",
+      "lastSeenAt": "2025-05-21T17:15:00Z"
+    }
+  ],
+  "policies": [
+    {
+      "id": "pol_catalog_read_only",
+      "name": "Catalog Read-Only",
+      "description": "Only read catalog data — no price changes, no product modifications",
+      "priority": 10,
+      "scope": { "agentId": "agent_recommendation_01" },
+      "rules": {
+        "allowedTools": [
+          { "toolName": "query_catalog", "parameterConstraints": { "query": { "type": "string", "maxLength": 300 } } },
+          { "toolName": "lookup_product", "parameterConstraints": { "sku": { "type": "string" } } },
+          {
+            "toolName": "generate_recommendations",
+            "parameterConstraints": {
+              "userId": { "type": "string" },
+              "limit": { "type": "number", "max": 20 }
+            }
+          },
+          { "toolName": "analyze_browsing_history", "parameterConstraints": { "userId": { "type": "string" }, "days": { "type": "number", "max": 90 } } }
+        ],
+        "deniedTools": ["update_price", "modify_product", "delete_product", "create_product", "bulk_update_catalog"],
+        "dataRestrictions": {
+          "denyPiiInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-02-15T10:00:00Z"
+    },
+    {
+      "id": "pol_inventory_draft_only",
+      "name": "Inventory Draft-Only",
+      "description": "Inventory analysis and forecasting allowed, but purchase orders are drafts requiring human approval",
+      "priority": 10,
+      "scope": { "agentId": "agent_inventory_02" },
+      "rules": {
+        "allowedTools": [
+          { "toolName": "check_stock", "parameterConstraints": { "sku": { "type": "string" } } },
+          { "toolName": "forecast_demand", "parameterConstraints": { "sku": { "type": "string" }, "horizon": { "type": "number", "max": 90 } } },
+          {
+            "toolName": "draft_purchase_order",
+            "parameterConstraints": {
+              "supplier": { "type": "string" },
+              "items": { "type": "string" },
+              "status": { "type": "string", "enum": ["draft"] }
+            }
+          },
+          { "toolName": "flag_low_stock", "parameterConstraints": { "threshold": { "type": "number" } } }
+        ],
+        "deniedTools": ["submit_purchase_order", "approve_purchase_order", "adjust_stock_level", "write_off_inventory"],
+        "dataRestrictions": {
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-02-15T10:30:00Z"
+    },
+    {
+      "id": "pol_financial_read_only",
+      "name": "Financial Read-Only",
+      "description": "No agent can modify financial data — view invoices, payments, and refunds only",
+      "priority": 20,
+      "scope": { "agentId": "*" },
+      "rules": {
+        "allowedTools": [
+          { "toolName": "validate_payment", "parameterConstraints": { "transactionId": { "type": "string" } } },
+          {
+            "toolName": "generate_invoice",
+            "parameterConstraints": {
+              "orderId": { "type": "string", "pattern": "^ORD-[0-9]{6,}$" }
+            }
+          }
+        ],
+        "deniedTools": [
+          "process_refund",
+          "void_payment",
+          "adjust_pricing",
+          "apply_discount",
+          "issue_credit",
+          "modify_invoice"
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-02-15T11:00:00Z"
+    },
+    {
+      "id": "pol_fraud_safe_external",
+      "name": "Fraud Detection — Safe External Calls",
+      "description": "Allow fraud detection lookups to trusted services only",
+      "priority": 10,
+      "scope": { "agentId": "agent_fraud_detector_04" },
+      "rules": {
+        "allowedTools": [
+          { "toolName": "scan_transaction", "parameterConstraints": { "transactionId": { "type": "string" } } },
+          { "toolName": "flag_suspicious", "parameterConstraints": { "transactionId": { "type": "string" }, "reason": { "type": "string" } } },
+          { "toolName": "analyze_order_pattern", "parameterConstraints": { "userId": { "type": "string" }, "window": { "type": "number", "max": 168 } } },
+          {
+            "toolName": "lookup_ip_geolocation",
+            "parameterConstraints": {
+              "ip": { "type": "string" }
+            }
+          }
+        ],
+        "deniedTools": ["block_account", "cancel_order", "contact_bank", "report_to_authorities"],
+        "allowedDomains": [
+          { "pattern": "api.maxmind.com", "methods": ["GET"] },
+          { "pattern": "*.fraud-detection.internal", "methods": ["GET", "POST"] }
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-02-15T11:30:00Z"
+    },
+    {
+      "id": "pol_rate_limit_api",
+      "name": "API Rate Limiting",
+      "description": "Enforce global rate limits to prevent abuse and cost overruns",
+      "priority": 50,
+      "scope": { "agentId": "*", "environment": ["production"] },
+      "rules": {
+        "allowedTools": [{ "toolName": "*" }],
+        "rateLimit": {
+          "maxRequestsPerMinute": 100,
+          "maxRequestsPerHour": 5000,
+          "burstSize": 20
+        },
+        "costLimit": {
+          "maxPerRequest": 100,
+          "maxPerDay": 10000,
+          "currency": "USD"
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-02-15T12:00:00Z"
+    }
+  ],
+  "enforcementLogs": [
+    {
+      "id": "log_ec_001",
+      "agentId": "agent_recommendation_01",
+      "tool": "query_catalog",
+      "decision": "allow",
+      "reason": "Within policy — read-only catalog query",
+      "parameters": { "query": "wireless headphones noise cancelling under $100" },
+      "timestamp": "2025-05-21T16:00:00Z",
+      "policyMatch": "pol_catalog_read_only",
+      "requestId": "req_ec_aa01",
+      "latencyMs": 25
+    },
+    {
+      "id": "log_ec_002",
+      "agentId": "agent_recommendation_01",
+      "tool": "update_price",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — price changes denied by Catalog Read-Only",
+      "parameters": { "sku": "WH-2000X", "newPrice": 79.99, "reason": "competitor price match" },
+      "timestamp": "2025-05-21T16:01:00Z",
+      "policyMatch": "pol_catalog_read_only",
+      "requestId": "req_ec_bb02",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_ec_003",
+      "agentId": "agent_recommendation_01",
+      "tool": "generate_recommendations",
+      "decision": "allow",
+      "reason": "Within policy — valid user ID, limit within bounds",
+      "parameters": { "userId": "USER-88921", "limit": 10, "category": "electronics" },
+      "timestamp": "2025-05-21T16:02:30Z",
+      "policyMatch": "pol_catalog_read_only",
+      "requestId": "req_ec_cc03",
+      "latencyMs": 45
+    },
+    {
+      "id": "log_ec_004",
+      "agentId": "agent_inventory_02",
+      "tool": "check_stock",
+      "decision": "allow",
+      "reason": "Within policy — stock check is read-only",
+      "parameters": { "sku": "WH-2000X" },
+      "timestamp": "2025-05-21T16:05:00Z",
+      "policyMatch": "pol_inventory_draft_only",
+      "requestId": "req_ec_dd04",
+      "latencyMs": 8
+    },
+    {
+      "id": "log_ec_005",
+      "agentId": "agent_inventory_02",
+      "tool": "submit_purchase_order",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — purchase order submission requires human approval",
+      "parameters": { "poId": "PO-55210", "supplier": "SoundTech Ltd", "total": 15000 },
+      "timestamp": "2025-05-21T16:06:00Z",
+      "policyMatch": "pol_inventory_draft_only",
+      "requestId": "req_ec_ee05",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_ec_006",
+      "agentId": "agent_inventory_02",
+      "tool": "draft_purchase_order",
+      "decision": "allow",
+      "reason": "Within policy — draft only, status is 'draft'",
+      "parameters": { "supplier": "SoundTech Ltd", "items": "[{\"sku\":\"WH-2000X\",\"qty\":500}]", "status": "draft" },
+      "timestamp": "2025-05-21T16:07:00Z",
+      "policyMatch": "pol_inventory_draft_only",
+      "requestId": "req_ec_ff06",
+      "latencyMs": 12
+    },
+    {
+      "id": "log_ec_007",
+      "agentId": "agent_fraud_detector_04",
+      "tool": "scan_transaction",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "transactionId": "TXN-99887766" },
+      "timestamp": "2025-05-21T16:10:00Z",
+      "policyMatch": "pol_fraud_safe_external",
+      "requestId": "req_ec_gg07",
+      "latencyMs": 30
+    },
+    {
+      "id": "log_ec_008",
+      "agentId": "agent_fraud_detector_04",
+      "tool": "block_account",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — account blocking requires human review",
+      "parameters": { "userId": "USER-12345", "reason": "5 chargebacks in 24 hours" },
+      "timestamp": "2025-05-21T16:11:00Z",
+      "policyMatch": "pol_fraud_safe_external",
+      "requestId": "req_ec_hh08",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_ec_009",
+      "agentId": "agent_fraud_detector_04",
+      "tool": "flag_suspicious",
+      "decision": "allow",
+      "reason": "Within policy — flagging is allowed, action blocked",
+      "parameters": { "transactionId": "TXN-99887766", "reason": "IP geolocation mismatch with billing address" },
+      "timestamp": "2025-05-21T16:12:00Z",
+      "policyMatch": "pol_fraud_safe_external",
+      "requestId": "req_ec_ii09",
+      "latencyMs": 10
+    },
+    {
+      "id": "log_ec_010",
+      "agentId": "agent_order_processor_03",
+      "tool": "process_order",
+      "decision": "allow",
+      "reason": "Within policy — order processing is allowed",
+      "parameters": { "orderId": "ORD-998877", "action": "fulfill", "warehouseId": "WH-EAST-1" },
+      "timestamp": "2025-05-21T16:15:00Z",
+      "policyMatch": null,
+      "requestId": "req_ec_jj10",
+      "latencyMs": 18
+    },
+    {
+      "id": "log_ec_011",
+      "agentId": "agent_order_processor_03",
+      "tool": "process_refund",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — refunds blocked by Financial Read-Only policy",
+      "parameters": { "orderId": "ORD-776655", "amount": 49.99, "reason": "customer dissatisfied" },
+      "timestamp": "2025-05-21T16:16:00Z",
+      "policyMatch": "pol_financial_read_only",
+      "requestId": "req_ec_kk11",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_ec_012",
+      "agentId": "agent_order_processor_03",
+      "tool": "generate_invoice",
+      "decision": "allow",
+      "reason": "Within policy — valid order ID pattern",
+      "parameters": { "orderId": "ORD-998877", "includeTax": true, "format": "pdf" },
+      "timestamp": "2025-05-21T16:17:00Z",
+      "policyMatch": "pol_financial_read_only",
+      "requestId": "req_ec_ll12",
+      "latencyMs": 55
+    },
+    {
+      "id": "log_ec_013",
+      "agentId": "agent_order_processor_03",
+      "tool": "apply_discount",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — discount application blocked by Financial Read-Only",
+      "parameters": { "orderId": "ORD-998877", "discountCode": "FRIENDS50", "percentage": 50 },
+      "timestamp": "2025-05-21T16:18:00Z",
+      "policyMatch": "pol_financial_read_only",
+      "requestId": "req_ec_mm13",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_ec_014",
+      "agentId": "agent_fraud_detector_04",
+      "tool": "lookup_ip_geolocation",
+      "decision": "allow",
+      "reason": "Within policy — IP lookup to trusted MaxMind API",
+      "parameters": { "ip": "203.0.113.42" },
+      "timestamp": "2025-05-21T16:20:00Z",
+      "policyMatch": "pol_fraud_safe_external",
+      "requestId": "req_ec_nn14",
+      "latencyMs": 88
+    },
+    {
+      "id": "log_ec_015",
+      "agentId": "agent_recommendation_01",
+      "tool": "analyze_browsing_history",
+      "decision": "deny",
+      "reason": "pii_detected — SSN pattern in user data query parameters",
+      "parameters": { "userId": "USER-88921", "days": 90, "includeSensitive": true, "ssnFilter": "123-45-6789" },
+      "timestamp": "2025-05-21T16:25:00Z",
+      "policyMatch": "pol_catalog_read_only",
+      "requestId": "req_ec_oo15",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_ec_016",
+      "agentId": "agent_inventory_02",
+      "tool": "forecast_demand",
+      "decision": "allow",
+      "reason": "Within policy — horizon within 90-day limit",
+      "parameters": { "sku": "WH-2000X", "horizon": 30, "method": "holt-winters" },
+      "timestamp": "2025-05-21T16:30:00Z",
+      "policyMatch": "pol_inventory_draft_only",
+      "requestId": "req_ec_pp16",
+      "latencyMs": 95
+    },
+    {
+      "id": "log_ec_017",
+      "agentId": "agent_recommendation_01",
+      "tool": "generate_recommendations",
+      "decision": "deny",
+      "reason": "rate_limit_exceeded — max 100 requests/minute reached",
+      "parameters": { "userId": "USER-88921", "limit": 5 },
+      "timestamp": "2025-05-21T16:31:00Z",
+      "policyMatch": "pol_rate_limit_api",
+      "requestId": "req_ec_qq17",
+      "latencyMs": 1
+    },
+    {
+      "id": "log_ec_018",
+      "agentId": "agent_fraud_detector_04",
+      "tool": "scan_transaction",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "transactionId": "TXN-11223344" },
+      "timestamp": "2025-05-21T16:35:00Z",
+      "policyMatch": "pol_fraud_safe_external",
+      "requestId": "req_ec_rr18",
+      "latencyMs": 22
+    },
+    {
+      "id": "log_ec_019",
+      "agentId": "agent_order_processor_03",
+      "tool": "validate_payment",
+      "decision": "allow",
+      "reason": "Within policy — payment validation is read-only",
+      "parameters": { "transactionId": "TXN-99887766" },
+      "timestamp": "2025-05-21T16:40:00Z",
+      "policyMatch": "pol_financial_read_only",
+      "requestId": "req_ec_ss19",
+      "latencyMs": 42
+    },
+    {
+      "id": "log_ec_020",
+      "agentId": "agent_inventory_02",
+      "tool": "flag_low_stock",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "threshold": 50, "sku": "WH-2000X" },
+      "timestamp": "2025-05-21T16:45:00Z",
+      "policyMatch": "pol_inventory_draft_only",
+      "requestId": "req_ec_tt20",
+      "latencyMs": 6
+    }
+  ],
+  "stats": {
+    "totalLogs": 20,
+    "allowed": 12,
+    "denied": 8,
+    "denialReasons": {
+      "tool_explicitly_blocked": 5,
+      "pii_detected": 1,
+      "rate_limit_exceeded": 1,
+      "invalid_parameter": 1
+    },
+    "mostActiveAgent": "agent_fraud_detector_04 (6 requests)",
+    "mostTriggeredPolicy": "pol_fraud_safe_external + pol_inventory_draft_only (tied at 5)",
+    "averageLatencyMs": 23.5
+  }
+}

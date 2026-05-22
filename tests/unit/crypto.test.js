@@ -117,3 +117,72 @@ test('generateIntentId produces unique IDs', () => {
   for (let i = 0; i < 100; i++) ids.add(cp.generateIntentId());
   assert.equal(ids.size, 100);
 });
+
+// Edge case tests
+test('hashKey rejects empty string', () => {
+  assert.throws(() => cp.hashKey(''), { message: 'plaintext must not be empty' });
+});
+
+test('verifyKey handles empty strings safely', () => {
+  const { hash, salt } = cp.hashKey('valid_key');
+  assert.ok(!cp.verifyKey('', hash, salt));
+  assert.ok(!cp.verifyKey('valid', '', salt));
+  assert.ok(!cp.verifyKey('valid', hash, ''));
+  assert.ok(!cp.verifyKey('', '', ''));
+});
+
+test('verifyKey with very long key (1000+ chars)', () => {
+  const longKey = 'x'.repeat(2000);
+  const { hash, salt } = cp.hashKey(longKey);
+  assert.ok(cp.verifyKey(longKey, hash, salt));
+  assert.ok(!cp.verifyKey(longKey + '!', hash, salt));
+});
+
+test('hashKey with non-ASCII characters', () => {
+  const key = 'café_naïve_🔥_密钥';
+  const { hash, salt } = cp.hashKey(key);
+  assert.ok(hash.length > 60);
+  assert.ok(cp.verifyKey(key, hash, salt));
+  assert.ok(!cp.verifyKey('cafe_naive', hash, salt));
+});
+
+test('hashSystemPrompt with empty string', () => {
+  const h = cp.hashSystemPrompt('');
+  assert.ok(h.startsWith('sha256:'));
+});
+
+test('hashSystemPrompt with very long prompt', () => {
+  const longPrompt = 'You are a helpful assistant. '.repeat(1000);
+  const h = cp.hashSystemPrompt(longPrompt);
+  assert.ok(h.startsWith('sha256:'));
+});
+
+test('generateGatewayTicket with empty parameters', () => {
+  process.env.ENGINE_SECRET = 'test_secret';
+  const ticket = cp.generateGatewayTicket('int_001', 'agent_01', 'http_request', {});
+  const payload = cp.verifyGatewayTicket(ticket);
+  assert.deepEqual(payload.params, {});
+});
+
+test('generateGatewayTicket with deeply nested parameters', () => {
+  process.env.ENGINE_SECRET = 'test_secret';
+  const nested = { a: { b: { c: { d: { e: 'deep' } } } } };
+  const ticket = cp.generateGatewayTicket('int_001', 'agent_01', 'tool', nested);
+  const payload = cp.verifyGatewayTicket(ticket);
+  assert.deepEqual(payload.params, nested);
+});
+
+test('concurrent generateId produces unique IDs', () => {
+  const ids = new Set();
+  const batch = [];
+  for (let i = 0; i < 1000; i++) batch.push(cp.generateId('id_'));
+  batch.forEach(id => ids.add(id));
+  assert.equal(ids.size, 1000);
+});
+
+test('concurrent verifyKey operations', () => {
+  const { hash, salt } = cp.hashKey('concurrent_test');
+  const results = [];
+  for (let i = 0; i < 100; i++) results.push(cp.verifyKey('concurrent_test', hash, salt));
+  assert.ok(results.every(r => r === true));
+});

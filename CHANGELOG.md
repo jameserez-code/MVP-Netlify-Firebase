@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2024-05-21
+
+### Added
+- **Demo Scenarios**: Pre-built realistic demo data for Customer Support, Data Analyst, and E-commerce use cases (`demo/scenarios/`)
+- **Example Integrations**: Runnable example scripts for OpenAI, Anthropic, LangChain, and custom Node.js agents (`examples/`)
+- **Quickstart Templates**: `.passport-agent.json` config template, `docker-compose.quickstart.yml`, and `env.quickstart` for instant local setup (`templates/`)
+- **Seed Script Enhancements** (`scripts/seed-demo.ts`):
+  - `--scenario=customer-support|data-analyst|ecommerce` for pre-built scenarios
+  - `--days=30` for generating backdated audit data
+  - `--orgs=5` for multi-organization seeding
+  - `--volume=high` for generating 10K+ enforcement logs (load testing)
+  - `--output=file.json` for exporting generated data
+  - Colorized progress bar for long-running seeds
+- **API Playground** (`frontend/app/playground/page.tsx`): In-dashboard API testing console with method dropdown, URL input, headers editor, JSON body editor with syntax validation, response viewer with syntax highlighting, request history (last 10), and save-as-snippet functionality
+- **Integration Guides** (`content/docs/integrations/`):
+  - `openai.md` — Step-by-step OpenAI integration with function calling
+  - `anthropic.md` — Claude tool-use integration
+  - `langchain.md` — LangChain agent wrapping
+  - `crewai.md` — Multi-agent crew enforcement
+  - `custom.md` — Generic REST API integration for any language (Node, Python, Go, Rust examples)
+
+### Changed
+- Improved CONTRIBUTING.md with architecture overview, local dev setup, testing guide, PR guidelines, and code style guide
+- Upgraded seed script to support multi-org, multi-day, and high-volume scenarios
+
 ## [2.1.0] - 2024-05-19
 
 ### Added

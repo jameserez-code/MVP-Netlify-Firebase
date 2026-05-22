@@ -18,6 +18,7 @@ import {
   Building2,
   Settings,
   CreditCard,
+  Download,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { isLoggedIn, clearToken } from '@/lib/api'
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/dashboard/audit', label: 'Audit', icon: ClipboardList },
   { href: '/dashboard/api-keys', label: 'API Keys', icon: KeyRound },
   { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
+  { href: '/dashboard/exports', label: 'Exports', icon: Download },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 

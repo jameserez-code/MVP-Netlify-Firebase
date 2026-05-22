@@ -161,3 +161,85 @@ test('17. blocked tools are global — deny trumps allow across all policies', (
   });
   assert.equal(result.decision, 'deny', 'Denied because restrictPolicy (any policy) blocks lookup_order');
 });
+
+test('18. batch evaluation — 100 policies', () => {
+  const policies = [];
+  for (let i = 0; i < 100; i++) {
+    policies.push({
+      name: `Policy ${i}`,
+      priority: i,
+      rules: {
+        allowedTools: [{ toolName: 'read_file', parameterConstraints: {} }],
+        deniedTools: i === 99 ? ['read_file'] : [],
+        allowedDomains: [],
+        deniedDomains: [],
+      },
+    });
+  }
+  const result = evaluateIntent({
+    intent: { tool: 'read_file', parameters: { path: 'test.txt' } },
+    agentStatus: 'active',
+    policies,
+  });
+  assert.equal(result.decision, 'deny');
+  assert.equal(result.reason, 'tool_explicitly_blocked');
+});
+
+test('19. deeply nested parameters — JSON depth 10', () => {
+  const nestedParams = {};
+  let current = nestedParams;
+  for (let i = 0; i < 10; i++) {
+    current.child = {};
+    current = current.child;
+  }
+  current.value = 'deep';
+
+  const result = evaluateIntent({
+    intent: { tool: 'lookup_order', parameters: { orderId: '1', nested: nestedParams } },
+    agentStatus: 'active',
+    policies: [PRODUCTION_POLICY],
+  });
+  assert.equal(result.decision, 'allow');
+});
+
+test('20. very large parameters (> 10KB)', () => {
+  const largeValue = 'x'.repeat(15000);
+  const result = evaluateIntent({
+    intent: { tool: 'lookup_order', parameters: { orderId: '1', data: largeValue } },
+    agentStatus: 'active',
+    policies: [PRODUCTION_POLICY],
+  });
+  assert.equal(result.decision, 'allow');
+});
+
+test('21. empty parameters', () => {
+  const result = evaluateIntent({
+    intent: { tool: 'lookup_order', parameters: {} },
+    agentStatus: 'active',
+    policies: [PRODUCTION_POLICY],
+  });
+  assert.equal(result.decision, 'deny');
+  assert.equal(result.reason, 'parameter_constraint_violation');
+});
+
+test('22. multiple concurrent enforcements', () => {
+  const results = [];
+  for (let i = 0; i < 50; i++) {
+    results.push(evaluateIntent({
+      intent: { tool: 'lookup_order', parameters: { orderId: String(i) } },
+      agentStatus: 'active',
+      policies: [PRODUCTION_POLICY],
+    }));
+  }
+  assert.equal(results.length, 50);
+  assert.ok(results.every(r => r.decision === 'allow'));
+});
+
+test('23. unicode/emoji in tool parameters', () => {
+  const result = evaluateIntent({
+    intent: { tool: 'lookup_order', parameters: { orderId: '🔥-order-こんにちは' } },
+    agentStatus: 'active',
+    policies: [PRODUCTION_POLICY],
+  });
+  assert.equal(result.decision, 'allow');
+});

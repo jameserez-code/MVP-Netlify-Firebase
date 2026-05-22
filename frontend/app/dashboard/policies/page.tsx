@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
-import { listPolicies, createPolicy, deletePolicy } from '@/lib/api'
+import { listPolicies, createPolicy, deletePolicy, exportPoliciesJson, recordExport } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
 import { NoPolicies } from '@/components/empty-states/no-policies'
@@ -27,6 +27,7 @@ import {
   Eye,
   ShieldCheck,
   LayoutGrid,
+  Download,
 } from 'lucide-react'
 
 interface Policy {
@@ -112,6 +113,22 @@ export default function PoliciesPage() {
 
   function loadPolicies() {
     mutate()
+  }
+
+  async function handleExportJson() {
+    try {
+      const blob = await exportPoliciesJson()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `policies-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      recordExport({ type: 'policies', format: 'json', status: 'completed' })
+      addToast('Policies exported successfully', 'success')
+    } catch (err: any) {
+      addToast(err.message || 'Export failed', 'error')
+    }
   }
 
   function validate(): boolean {
@@ -204,6 +221,10 @@ export default function PoliciesPage() {
             <LayoutGrid size={14} />
             Browse Templates
           </Link>
+          <button onClick={handleExportJson} className="btn-secondary">
+            <Download size={14} />
+            Export JSON
+          </button>
           <button onClick={loadPolicies} className="btn-secondary" disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Refresh

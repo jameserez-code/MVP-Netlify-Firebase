@@ -15,6 +15,10 @@ import {
   getSessions,
   revokeSession,
   clearToken,
+  exportMyData,
+  deleteMyAccount,
+  exportReportHtml,
+  recordExport,
 } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
@@ -26,6 +30,7 @@ import {
   Bell,
   CheckCircle,
   Copy,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
@@ -43,6 +48,8 @@ import {
   AlertOctagon,
   Clock,
   BarChart3,
+  Save,
+  Database,
 } from 'lucide-react'
 
 interface NotificationSettings {
@@ -173,7 +180,96 @@ export default function SettingsPage() {
   const [showSecret, setShowSecret] = useState(false)
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
 
-  // Change password
+  const [exportingData, setExportingData] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [downloadingReport, setDownloadingReport] = useState(false)
+
+  const [auditRetention, setAuditRetention] = useState('90')
+  const [demoRetention, setDemoRetention] = useState('24')
+  const [savingRetention, setSavingRetention] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ar = localStorage.getItem('passport_audit_retention')
+      const dr = localStorage.getItem('passport_demo_retention')
+      if (ar) setAuditRetention(ar)
+      if (dr) setDemoRetention(dr)
+    }
+  }, [])
+
+  async function handleExportMyData() {
+    setExportingData(true)
+    try {
+      const data = await exportMyData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `gdpr-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      recordExport({ type: 'gdpr', format: 'json', status: 'completed' })
+      addToast('Your data has been exported successfully', 'success')
+    } catch (err: any) {
+      addToast(err.message || 'Export failed', 'error')
+    } finally {
+      setExportingData(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'DELETE') {
+      addToast('Type DELETE to confirm', 'warning')
+      return
+    }
+    setDeleting(true)
+    try {
+      const result = await deleteMyAccount('DELETE')
+      setShowDeleteConfirm(false)
+      setDeleteConfirmText('')
+      addToast(result.message || 'Account marked for deletion', 'success')
+      clearToken()
+      setTimeout(() => { window.location.href = '/login' }, 3000)
+    } catch (err: any) {
+      addToast(err.message || 'Failed to delete account', 'error')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function handleDownloadReport() {
+    setDownloadingReport(true)
+    try {
+      const blob = await exportReportHtml({ period: '7d' })
+      const url = URL.createObjectURL(blob)
+      const w = window.open(url, '_blank')
+      if (w) w.focus()
+      URL.revokeObjectURL(url)
+      recordExport({ type: 'report', format: 'html', status: 'completed' })
+      addToast('Report generated successfully', 'success')
+    } catch (err: any) {
+      addToast(err.message || 'Report generation failed', 'error')
+    } finally {
+      setDownloadingReport(false)
+    }
+  }
+
+  async function handleSaveRetention() {
+    setSavingRetention(true)
+    try {
+      localStorage.setItem('passport_audit_retention', auditRetention)
+      localStorage.setItem('passport_demo_retention', demoRetention)
+      addToast('Retention settings saved', 'success')
+    } catch {
+      addToast('Failed to save retention settings', 'error')
+    } finally {
+      setSavingRetention(false)
+    }
+  }
+
+  // Notification settings
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' })
   const [passwordSubmitting, setPasswordSubmitting] = useState(false)
@@ -809,6 +905,131 @@ export default function SettingsPage() {
         </div>
       </GlassCard>
 
+      {/* Data Export */}
+      <GlassCard hover={false}>
+        <div className="flex items-center gap-2 mb-4">
+          <Database size={18} className="text-passport-green" />
+          <h2 className="text-lg font-semibold text-passport-text">Data Export & GDPR</h2>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-border bg-passport-surface/50">
+            <div>
+              <div className="text-sm font-medium text-passport-text">Export My Data</div>
+              <div className="text-xs text-passport-muted">Download all your data in compliance with GDPR data portability (Article 20).</div>
+            </div>
+            <button
+              onClick={handleExportMyData}
+              disabled={exportingData}
+              className="btn-secondary disabled:opacity-50 shrink-0"
+            >
+              {exportingData ? (
+                <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+              Export My Data
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-border bg-passport-surface/50">
+            <div>
+              <div className="text-sm font-medium text-passport-text">Download Security Report</div>
+              <div className="text-xs text-passport-muted">Generate a printable security report for the last 7 days.</div>
+            </div>
+            <button
+              onClick={handleDownloadReport}
+              disabled={downloadingReport}
+              className="btn-secondary disabled:opacity-50 shrink-0"
+            >
+              {downloadingReport ? (
+                <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+              ) : (
+                <Download size={14} />
+              )}
+              Download Report
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-red/30 bg-passport-red/5">
+            <div>
+              <div className="text-sm font-medium text-passport-text">Delete My Account</div>
+              <div className="text-xs text-passport-muted">Right to erasure (GDPR Article 17). Soft delete first, permanent after 30 days.</div>
+            </div>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="btn-primary bg-passport-red hover:bg-passport-red/80 border-passport-red shrink-0"
+            >
+              <Trash2 size={14} />
+              Delete My Account
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* Data Retention */}
+      <GlassCard hover={false}>
+        <div className="flex items-center gap-2 mb-4">
+          <Clock size={18} className="text-passport-amber" />
+          <h2 className="text-lg font-semibold text-passport-text">Data Retention</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-border bg-passport-surface/50">
+            <div>
+              <div className="text-sm font-medium text-passport-text">Audit Log Retention</div>
+              <div className="text-xs text-passport-muted">Automatically delete audit logs older than this period.</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={auditRetention}
+                onChange={(e) => setAuditRetention(e.target.value)}
+                className="input-field w-28 font-mono text-xs"
+              >
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+                <option value="365">365 days</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-border bg-passport-surface/50">
+            <div>
+              <div className="text-sm font-medium text-passport-text">Demo Data Retention</div>
+              <div className="text-xs text-passport-muted">Demo environment data is automatically cleaned up after this period.</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={demoRetention}
+                onChange={(e) => setDemoRetention(e.target.value)}
+                className="input-field w-28 font-mono text-xs"
+              >
+                <option value="6">6 hours</option>
+                <option value="12">12 hours</option>
+                <option value="24">24 hours</option>
+                <option value="48">48 hours</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveRetention}
+              disabled={savingRetention}
+              className="btn-primary disabled:opacity-50"
+            >
+              {savingRetention ? (
+                <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+              ) : (
+                <Save size={14} />
+              )}
+              Save Retention Settings
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+
       {/* Danger Zone */}
       <GlassCard hover={false} className="border-passport-red/20">
         <div className="flex items-center gap-2 mb-4">
@@ -875,6 +1096,54 @@ export default function SettingsPage() {
                 <Trash2 size={14} />
                 Revoke
               </button>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* Delete account confirmation dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <GlassCard className="max-w-md w-full" hover={false}>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle size={18} className="text-passport-red" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-passport-text">Delete Account</h3>
+            </div>
+            <p className="text-sm text-passport-muted mb-2">
+              This will mark all your organization data for deletion. Data will be permanently removed after 30 days.
+            </p>
+            <p className="text-xs text-passport-red mb-4 font-medium">
+              This action cannot be undone. Type DELETE to confirm.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="input-field font-mono text-sm"
+                placeholder="Type DELETE to confirm"
+                autoComplete="off"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deleting || deleteConfirmText !== 'DELETE'}
+                  className="btn-primary bg-passport-red hover:bg-passport-red/80 border-passport-red disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <span className="w-4 h-4 border-2 border-passport-red/30 border-t-passport-red rounded-full animate-spin" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                  Permanently Delete
+                </button>
+              </div>
             </div>
           </GlassCard>
         </div>

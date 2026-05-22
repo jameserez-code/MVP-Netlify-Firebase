@@ -14,6 +14,11 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
   // POST /policies
   // ---------------------------------------------------------------------------
   app.post('/policies', async (request, reply) => {
+    const claims = (request as any).claims
+    if (!claims) {
+      reply.code(401)
+      return { error: { code: 'unauthorized', message: 'Authentication required' } }
+    }
     const { name, description, scope, priority, rules } = (request.body || {}) as any
 
     if (!name || !rules?.allowedTools) {
@@ -51,11 +56,17 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
       updatedAt: new Date().toISOString(),
     }
 
+    try {
     await db.collection('policies').doc(policyId).set(doc)
     log.success('policy created', { policyId, name })
     await cacheDeletePattern('cache:policies:*')
     reply.code(201)
     return doc
+    } catch (e: any) {
+      log.error('policy creation failed', { error: e.message })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'write failed' } }
+    }
   })
 
   // ---------------------------------------------------------------------------
@@ -109,6 +120,7 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
   // PATCH /policies/:id
   // ---------------------------------------------------------------------------
   app.patch('/policies/:id', async (request, reply) => {
+    try {
     const id = (request.params as any).id
     const snap = await db.collection('policies').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found' } } }
@@ -125,6 +137,11 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
     log.success('policy updated', { policyId: id })
     await cacheDeletePattern('cache:policies:*')
     return { id, ...updates }
+    } catch (e: any) {
+      log.error('policy update failed', { error: e.message, policyId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'update failed' } }
+    }
   })
 
   // ---------------------------------------------------------------------------
@@ -151,6 +168,7 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
   // POST /policies/from-template — create policies from a template
   // ---------------------------------------------------------------------------
   app.post('/policies/from-template', async (request, reply) => {
+    try {
     const { templateId, name, overrides } = (request.body || {}) as any
     if (!templateId) {
       reply.code(400)
@@ -203,12 +221,18 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
     await cacheDeletePattern('cache:policies:*')
     reply.code(201)
     return { data: createdPolicies }
+    } catch (e: any) {
+      log.error('template policy creation failed', { error: e.message })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'template policy creation failed' } }
+    }
   })
 
   // ---------------------------------------------------------------------------
   // POST /policies/templates — save current policy as reusable template
   // ---------------------------------------------------------------------------
   app.post('/policies/templates', async (request, reply) => {
+    try {
     const claims = (request as any).claims
     const orgId = claims?.orgId || process.env.DEFAULT_ORG_ID || 'default'
 
@@ -252,5 +276,10 @@ export default async function policiesRoutes(app: FastifyInstance, db: Firestore
     await cacheDeletePattern('cache:policies:*')
     reply.code(201)
     return doc
+    } catch (e: any) {
+      log.error('custom template save failed', { error: e.message })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'template save failed' } }
+    }
   })
 }

@@ -115,6 +115,7 @@ export default async function notificationsRoutes(app: FastifyInstance, db: Fire
       return { error: { code: 'validation', message: 'User email not available in token' } }
     }
 
+    try {
     const { sendEmail } = await import('../lib/email.js')
     const { systemAlertTemplate } = await import('../lib/email-templates.js')
     const { html, text } = systemAlertTemplate({
@@ -136,6 +137,11 @@ export default async function notificationsRoutes(app: FastifyInstance, db: Fire
     }
 
     return { success: true, message: 'Test email sent' }
+    } catch (e: any) {
+      log.error('test email failed', { error: e.message, email: userEmail })
+      reply.code(502)
+      return { error: { code: 'email_failed', message: e.message || 'Failed to send test email' } }
+    }
   })
 
   // ---------------------------------------------------------------------------

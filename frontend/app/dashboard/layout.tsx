@@ -18,6 +18,7 @@ function Breadcrumbs() {
     audit: 'Audit',
     'api-keys': 'API Keys',
     billing: 'Billing',
+    exports: 'Exports',
     settings: 'Settings',
   }
 

@@ -3,6 +3,14 @@ import { log } from './logger.js'
 
 export type CircuitState = 'closed' | 'open' | 'half-open'
 
+export class CircuitBreakerError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'CircuitBreakerError'
+    Object.setPrototypeOf(this, CircuitBreakerError.prototype)
+  }
+}
+
 export interface CircuitBreakerOptions {
   failureThreshold?: number
   resetTimeoutMs?: number
@@ -43,12 +51,12 @@ export class CircuitBreaker {
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     const state = this.getState()
     if (state === 'open') {
-      throw new Error(`Circuit breaker '${this.name}' is open`)
+      throw new CircuitBreakerError(`Circuit breaker '${this.name}' is open`)
     }
 
     if (state === 'half-open') {
       if (this.halfOpenCalls >= this.halfOpenMaxCalls) {
-        throw new Error(`Circuit breaker '${this.name}' is half-open and max calls reached`)
+        throw new CircuitBreakerError(`Circuit breaker '${this.name}' is half-open and max calls reached`)
       }
       this.halfOpenCalls++
     }

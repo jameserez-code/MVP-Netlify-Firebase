@@ -1,0 +1,496 @@
+{
+  "scenario": "customer-support",
+  "name": "HelpDesk AI Solutions — Multi-Agent Customer Support",
+  "description": "Full customer support pipeline with tiered agents, knowledge base, and strict data handling policies",
+  "org": {
+    "id": "org_helpdesk_ai",
+    "name": "HelpDesk AI Solutions",
+    "slug": "helpdesk-ai",
+    "plan": "pro",
+    "monthlyCredentialLimit": 50000,
+    "credentialsIssuedThisMonth": 12340,
+    "ownerId": "ops@helpdesk-ai.com",
+    "members": [
+      "ops@helpdesk-ai.com",
+      "security@helpdesk-ai.com",
+      "devops@helpdesk-ai.com",
+      "compliance@helpdesk-ai.com"
+    ]
+  },
+  "agents": [
+    {
+      "id": "agent_tier1_bot_01",
+      "name": "Tier1 Bot",
+      "model": "gpt-4o",
+      "provider": "openai",
+      "status": "active",
+      "description": "First-line support — answers FAQs, routes tickets, performs safe web searches",
+      "capabilities": ["web_search", "lookup_kb", "classify_ticket", "route_ticket"],
+      "systemPrompt": "You are a Tier 1 support agent. Answer common questions using the knowledge base. Classify and route complex issues. Never access PII or send emails.",
+      "registeredAt": "2025-03-01T08:00:00Z",
+      "lastSeenAt": "2025-05-21T14:30:00Z"
+    },
+    {
+      "id": "agent_tier2_specialist_02",
+      "name": "Tier2 Specialist",
+      "model": "claude-3-opus-20240229",
+      "provider": "anthropic",
+      "status": "active",
+      "description": "Escalated support — handles complex cases, accesses CRM read-only, drafts email responses",
+      "capabilities": ["lookup_customer", "lookup_order", "draft_email", "analyze_ticket_history"],
+      "systemPrompt": "You are a Tier 2 support specialist. Access customer CRM data read-only. Draft email responses for human approval. Never delete data or access billing.",
+      "registeredAt": "2025-03-01T08:30:00Z",
+      "lastSeenAt": "2025-05-21T14:25:00Z"
+    },
+    {
+      "id": "agent_knowledge_base_03",
+      "name": "Knowledge Base AI",
+      "model": "gpt-4-turbo",
+      "provider": "openai",
+      "status": "active",
+      "description": "Knowledge management — indexes articles, generates summaries, detects outdated content",
+      "capabilities": ["search_kb", "index_article", "summarize_article", "flag_outdated"],
+      "systemPrompt": "You manage the internal knowledge base. Search, index, and summarize articles. Flag outdated content for review. Never modify live articles directly.",
+      "registeredAt": "2025-03-01T09:00:00Z",
+      "lastSeenAt": "2025-05-21T13:50:00Z"
+    }
+  ],
+  "policies": [
+    {
+      "id": "pol_safe_web_search",
+      "name": "Safe Web Search",
+      "description": "Allow web searches but restrict to safe domains and deny PII in queries",
+      "priority": 10,
+      "scope": { "agentId": "agent_tier1_bot_01" },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "web_search",
+            "parameterConstraints": {
+              "query": { "type": "string", "maxLength": 200 }
+            }
+          }
+        ],
+        "deniedTools": ["execute_code", "send_email", "download_file"],
+        "allowedDomains": [
+          { "pattern": "*.wikipedia.org", "methods": ["GET"] },
+          { "pattern": "*.stackoverflow.com", "methods": ["GET"] },
+          { "pattern": "docs.helpdesk-ai.com", "methods": ["GET"] },
+          { "pattern": "*.github.com", "methods": ["GET"] }
+        ],
+        "deniedDomains": ["*.darkweb.*", "localhost", "169.254.169.254", "*.onion"],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-03-01T10:00:00Z"
+    },
+    {
+      "id": "pol_read_only_crm",
+      "name": "Read-Only CRM",
+      "description": "Allow CRM lookups but block all mutations — no writes, deletes, or schema changes",
+      "priority": 20,
+      "scope": { "agentId": "agent_tier2_specialist_02" },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "lookup_customer",
+            "parameterConstraints": {
+              "customerId": { "type": "string", "pattern": "^CUST-[0-9]+$" }
+            }
+          },
+          {
+            "toolName": "lookup_order",
+            "parameterConstraints": {
+              "orderId": { "type": "string", "pattern": "^ORD-[0-9]+$" }
+            }
+          },
+          {
+            "toolName": "draft_email",
+            "parameterConstraints": {
+              "to": { "type": "string", "pattern": "^[^@]+@helpdesk-ai\\.com$" },
+              "subject": { "type": "string", "maxLength": 200 }
+            }
+          }
+        ],
+        "deniedTools": [
+          "db_write",
+          "db_delete",
+          "db_drop",
+          "modify_customer",
+          "cancel_order",
+          "send_email",
+          "bulk_email",
+          "export_customer_data"
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-03-01T10:15:00Z"
+    },
+    {
+      "id": "pol_no_pii",
+      "name": "No PII Access",
+      "description": "Strictly deny any access to personally identifiable information across all agents",
+      "priority": 30,
+      "scope": { "agentId": "*" },
+      "rules": {
+        "allowedTools": [],
+        "deniedTools": [
+          "access_customer_profile",
+          "export_user_data",
+          "lookup_ssn",
+          "lookup_credit_card",
+          "download_user_docs"
+        ],
+        "dataRestrictions": {
+          "denyPiiInParameters": true,
+          "piiPatterns": [
+            "\\d{3}-\\d{2}-\\d{4}",
+            "\\d{4}-\\d{4}-\\d{4}-\\d{4}",
+            "[A-Z]{2}\\d{6,}"
+          ],
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-03-01T10:00:00Z"
+    },
+    {
+      "id": "pol_email_templates_only",
+      "name": "Email Templates Only",
+      "description": "Allow drafting emails using approved templates; block outbound sending",
+      "priority": 40,
+      "scope": { "agentId": "agent_tier2_specialist_02" },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "draft_email",
+            "parameterConstraints": {
+              "templateId": {
+                "type": "string",
+                "enum": [
+                  "tmpl_order_update",
+                  "tmpl_shipping_delay",
+                  "tmpl_refund_processed",
+                  "tmpl_account_verification",
+                  "tmpl_general_followup"
+                ]
+              },
+              "to": { "type": "string", "pattern": "^[^@]+@helpdesk-ai\\.com$" }
+            }
+          }
+        ],
+        "deniedTools": ["send_email", "bulk_email", "schedule_email", "email_campaign"],
+        "dataRestrictions": {
+          "denyPiiInParameters": false,
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-03-01T10:30:00Z"
+    },
+    {
+      "id": "pol_cost_cap",
+      "name": "Cost Cap $50",
+      "description": "Enforce a $50 daily budget cap across all LLM calls for the organization",
+      "priority": 50,
+      "scope": { "agentId": "*", "environment": ["production"] },
+      "rules": {
+        "allowedTools": [
+          {
+            "toolName": "llm_generate",
+            "parameterConstraints": {
+              "model": { "type": "string" },
+              "maxTokens": { "type": "number", "max": 1000 }
+            }
+          }
+        ],
+        "costLimit": {
+          "maxPerRequest": 50,
+          "maxPerDay": 5000,
+          "currency": "USD"
+        },
+        "dataRestrictions": {
+          "denySecretsInParameters": true
+        }
+      },
+      "status": "active",
+      "createdAt": "2025-03-01T11:00:00Z"
+    }
+  ],
+  "enforcementLogs": [
+    {
+      "id": "log_20250521_001",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "web_search",
+      "decision": "allow",
+      "reason": "Within policy — query on docs.helpdesk-ai.com",
+      "parameters": { "query": "How to reset user password in HelpDesk portal" },
+      "timestamp": "2025-05-21T08:00:05Z",
+      "policyMatch": "pol_safe_web_search",
+      "requestId": "req_a1b2c3d4",
+      "latencyMs": 12
+    },
+    {
+      "id": "log_20250521_002",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "lookup_customer",
+      "decision": "allow",
+      "reason": "Within policy — valid CUST- prefix pattern",
+      "parameters": { "customerId": "CUST-45219" },
+      "timestamp": "2025-05-21T08:05:22Z",
+      "policyMatch": "pol_read_only_crm",
+      "requestId": "req_e5f6g7h8",
+      "latencyMs": 8
+    },
+    {
+      "id": "log_20250521_003",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "lookup_order",
+      "decision": "allow",
+      "reason": "Within policy — valid ORD- prefix pattern",
+      "parameters": { "orderId": "ORD-88291" },
+      "timestamp": "2025-05-21T08:05:45Z",
+      "policyMatch": "pol_read_only_crm",
+      "requestId": "req_i9j0k1l2",
+      "latencyMs": 7
+    },
+    {
+      "id": "log_20250521_004",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "send_email",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — send_email denied by Email Templates Only policy",
+      "parameters": { "to": "customer@external.com", "subject": "Your refund status", "body": "Dear customer..." },
+      "timestamp": "2025-05-21T08:06:12Z",
+      "policyMatch": "pol_email_templates_only",
+      "requestId": "req_m3n4o5p6",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_20250521_005",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "web_search",
+      "decision": "deny",
+      "reason": "domain_blocked — 169.254.169.254 is on the deny list",
+      "parameters": { "query": "", "url": "http://169.254.169.254/latest/meta-data" },
+      "timestamp": "2025-05-21T08:15:33Z",
+      "policyMatch": "pol_safe_web_search",
+      "requestId": "req_q7r8s9t0",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_20250521_006",
+      "agentId": "agent_knowledge_base_03",
+      "tool": "search_kb",
+      "decision": "allow",
+      "reason": "Within policy — no restrictions on knowledge base search",
+      "parameters": { "query": "refund process flow", "category": "billing" },
+      "timestamp": "2025-05-21T08:20:01Z",
+      "policyMatch": null,
+      "requestId": "req_u1v2w3x4",
+      "latencyMs": 15
+    },
+    {
+      "id": "log_20250521_007",
+      "agentId": "agent_knowledge_base_03",
+      "tool": "index_article",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "title": "Q2 Refund Policy Update", "content": "...", "tags": ["refund", "policy"] },
+      "timestamp": "2025-05-21T08:22:30Z",
+      "policyMatch": null,
+      "requestId": "req_y5z6a7b8",
+      "latencyMs": 22
+    },
+    {
+      "id": "log_20250521_008",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "web_search",
+      "decision": "deny",
+      "reason": "pii_detected — SSN pattern found in query parameters",
+      "parameters": { "query": "Customer Bob Smith SSN 123-45-6789 support ticket" },
+      "timestamp": "2025-05-21T08:30:45Z",
+      "policyMatch": "pol_no_pii",
+      "requestId": "req_c9d0e1f2",
+      "latencyMs": 4
+    },
+    {
+      "id": "log_20250521_009",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "draft_email",
+      "decision": "allow",
+      "reason": "Within policy — using approved template tmpl_refund_processed",
+      "parameters": {
+        "templateId": "tmpl_refund_processed",
+        "to": "notifications@helpdesk-ai.com",
+        "variables": { "amount": "$49.99", "orderId": "ORD-88291" }
+      },
+      "timestamp": "2025-05-21T08:35:00Z",
+      "policyMatch": "pol_email_templates_only",
+      "requestId": "req_g3h4i5j6",
+      "latencyMs": 11
+    },
+    {
+      "id": "log_20250521_010",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "classify_ticket",
+      "decision": "allow",
+      "reason": "Within policy — classification is always allowed",
+      "parameters": { "ticketContent": "I can't log into my account for 3 days", "category": "access" },
+      "timestamp": "2025-05-21T08:40:00Z",
+      "policyMatch": null,
+      "requestId": "req_k7l8m9n0",
+      "latencyMs": 5
+    },
+    {
+      "id": "log_20250521_011",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "route_ticket",
+      "decision": "allow",
+      "reason": "Within policy — routing does not access sensitive data",
+      "parameters": { "ticketId": "TKT-33442", "targetQueue": "tier2-access-issues" },
+      "timestamp": "2025-05-21T08:40:15Z",
+      "policyMatch": null,
+      "requestId": "req_o1p2q3r4",
+      "latencyMs": 6
+    },
+    {
+      "id": "log_20250521_012",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "db_write",
+      "decision": "deny",
+      "reason": "tool_explicitly_blocked — all write operations denied by Read-Only CRM",
+      "parameters": { "table": "customers", "operation": "UPDATE", "field": "email", "value": "new@test.com" },
+      "timestamp": "2025-05-21T09:00:22Z",
+      "policyMatch": "pol_read_only_crm",
+      "requestId": "req_s5t6u7v8",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_20250521_013",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "lookup_customer",
+      "decision": "deny",
+      "reason": "pii_detected — credit card number pattern in parameters",
+      "parameters": { "customerId": "4111-1111-1111-1111", "field": "payment_method" },
+      "timestamp": "2025-05-21T09:15:10Z",
+      "policyMatch": "pol_no_pii",
+      "requestId": "req_w9x0y1z2",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_20250521_014",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "web_search",
+      "decision": "allow",
+      "reason": "Within policy — query on stackoverflow.com",
+      "parameters": { "query": "OAuth2 refresh token best practices 2025" },
+      "timestamp": "2025-05-21T09:30:00Z",
+      "policyMatch": "pol_safe_web_search",
+      "requestId": "req_a3b4c5d6",
+      "latencyMs": 45
+    },
+    {
+      "id": "log_20250521_015",
+      "agentId": "agent_knowledge_base_03",
+      "tool": "flag_outdated",
+      "decision": "allow",
+      "reason": "Within policy",
+      "parameters": { "articleId": "KB-2023-019", "reason": "References deprecated API v1 endpoint" },
+      "timestamp": "2025-05-21T09:45:00Z",
+      "policyMatch": null,
+      "requestId": "req_e7f8g9h0",
+      "latencyMs": 8
+    },
+    {
+      "id": "log_20250521_016",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "lookup_kb",
+      "decision": "deny",
+      "reason": "cost_limit_exceeded — daily budget of $50.00 reached",
+      "parameters": { "query": "enterprise SSO setup guide" },
+      "timestamp": "2025-05-21T10:00:00Z",
+      "policyMatch": "pol_cost_cap",
+      "requestId": "req_i1j2k3l4",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_20250521_017",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "draft_email",
+      "decision": "deny",
+      "reason": "template_not_approved — 'tmpl_angry_customer' is not in allowed enum",
+      "parameters": {
+        "templateId": "tmpl_angry_customer",
+        "to": "escalations@helpdesk-ai.com",
+        "variables": { "customerName": "Jane Doe" }
+      },
+      "timestamp": "2025-05-21T10:15:00Z",
+      "policyMatch": "pol_email_templates_only",
+      "requestId": "req_m5n6o7p8",
+      "latencyMs": 3
+    },
+    {
+      "id": "log_20250521_018",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "lookup_customer",
+      "decision": "allow",
+      "reason": "Within policy — valid customer ID format",
+      "parameters": { "customerId": "CUST-78123" },
+      "timestamp": "2025-05-21T10:30:00Z",
+      "policyMatch": "pol_read_only_crm",
+      "requestId": "req_q9r0s1t2",
+      "latencyMs": 9
+    },
+    {
+      "id": "log_20250521_019",
+      "agentId": "agent_tier1_bot_01",
+      "tool": "web_search",
+      "decision": "deny",
+      "reason": "domain_blocked — *.onion TLD is explicitly denied",
+      "parameters": { "query": "dark web marketplace", "url": "http://marketplace.onion" },
+      "timestamp": "2025-05-21T10:45:30Z",
+      "policyMatch": "pol_safe_web_search",
+      "requestId": "req_u3v4w5x6",
+      "latencyMs": 2
+    },
+    {
+      "id": "log_20250521_020",
+      "agentId": "agent_tier2_specialist_02",
+      "tool": "draft_email",
+      "decision": "allow",
+      "reason": "Within policy — approved template for order updates",
+      "parameters": {
+        "templateId": "tmpl_order_update",
+        "to": "support@helpdesk-ai.com",
+        "variables": { "status": "shipped", "trackingNumber": "1Z999AA10123456784" }
+      },
+      "timestamp": "2025-05-21T11:00:00Z",
+      "policyMatch": "pol_email_templates_only",
+      "requestId": "req_y7z8a9b0",
+      "latencyMs": 10
+    }
+  ],
+  "stats": {
+    "totalLogs": 20,
+    "allowed": 11,
+    "denied": 9,
+    "denialReasons": {
+      "tool_explicitly_blocked": 3,
+      "domain_blocked": 2,
+      "pii_detected": 2,
+      "cost_limit_exceeded": 1,
+      "template_not_approved": 1
+    },
+    "mostActiveAgent": "agent_tier1_bot_01 (7 requests)",
+    "mostTriggeredPolicy": "pol_safe_web_search (6 matches)",
+    "averageLatencyMs": 8.75
+  }
+}

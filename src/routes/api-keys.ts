@@ -138,6 +138,7 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
       return { error: { code: 'unauthorized', message: 'Authentication required' } }
     }
 
+    try {
     const id = (request.params as any).id
     const snap = await db.collection('apiKeys').doc(id).get()
     if (!snap.exists) {
@@ -153,6 +154,11 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
     log.success('api key revoked', { keyId: id })
     await cacheDeletePattern('api_key:*')
     return { id, status: 'revoked' }
+    } catch (e: any) {
+      log.error('api key revoke failed', { error: e.message, keyId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'revoke failed' } }
+    }
   })
 
   // ---------------------------------------------------------------------------

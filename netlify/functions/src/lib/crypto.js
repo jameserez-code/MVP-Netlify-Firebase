@@ -28,15 +28,22 @@ const KEY_DIGEST = 'sha512';
 const KEY_LENGTH = 64;
 
 function hashKey(plaintext) {
+  if (!plaintext || plaintext.length === 0) throw new Error('plaintext must not be empty');
   const salt = crypto.randomBytes(32).toString('hex');
   const hash = crypto.pbkdf2Sync(plaintext, salt, KEY_ITERATIONS, KEY_LENGTH, KEY_DIGEST).toString('hex');
   return { hash, salt, iterations: KEY_ITERATIONS, digest: KEY_DIGEST };
 }
 
 function verifyKey(plaintext, hash, salt, iterations) {
-  const iter = iterations || KEY_ITERATIONS;
-  const computed = crypto.pbkdf2Sync(plaintext, salt, iter, KEY_LENGTH, KEY_DIGEST).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(hash));
+  if (!plaintext || !hash || !salt) return false;
+  try {
+    const iter = iterations || KEY_ITERATIONS;
+    const computed = crypto.pbkdf2Sync(plaintext, salt, iter, KEY_LENGTH, KEY_DIGEST).toString('hex');
+    if (computed.length !== hash.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(hash));
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------

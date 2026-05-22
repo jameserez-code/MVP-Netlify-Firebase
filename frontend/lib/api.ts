@@ -534,6 +534,96 @@ export async function cancelSubscription() {
   })
 }
 
+// Exports
+export async function exportAuditCsv(params?: { startDate?: string; endDate?: string; decision?: string }): Promise<Blob> {
+  const search = new URLSearchParams()
+  if (params?.startDate) search.set('startDate', params.startDate)
+  if (params?.endDate) search.set('endDate', params.endDate)
+  if (params?.decision) search.set('decision', params.decision)
+  const query = search.toString()
+  const url = `${API_BASE}/exports/audit/csv${query ? '?' + query : ''}`
+  const headers = getHeaders()
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Export failed')
+  }
+  return res.blob()
+}
+
+export async function exportPoliciesJson(): Promise<Blob> {
+  const url = `${API_BASE}/exports/policies/json`
+  const headers = getHeaders()
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Export failed')
+  }
+  return res.blob()
+}
+
+export async function exportAgentsJson(): Promise<Blob> {
+  const url = `${API_BASE}/exports/agents/json`
+  const headers = getHeaders()
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Export failed')
+  }
+  return res.blob()
+}
+
+export async function exportMyData() {
+  return fetchJson('/gdpr/export', { method: 'POST' })
+}
+
+export async function deleteMyAccount(confirm: string) {
+  return fetchJson('/gdpr/delete', {
+    method: 'POST',
+    body: JSON.stringify({ confirm }),
+  })
+}
+
+export async function exportReportHtml(params?: { period?: string }): Promise<Blob> {
+  const search = new URLSearchParams()
+  if (params?.period) search.set('period', params.period)
+  const query = search.toString()
+  const url = `${API_BASE}/exports/report/pdf${query ? '?' + query : ''}`
+  const headers = getHeaders()
+  const res = await fetch(url, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.error?.message || 'Report generation failed')
+  }
+  return res.blob()
+}
+
+export async function getExportHistory(): Promise<any[]> {
+  const STORAGE_KEY = 'passport_export_history'
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+export async function recordExport(entry: { type: string; format: string; status: string; url?: string }) {
+  const STORAGE_KEY = 'passport_export_history'
+  if (typeof window === 'undefined') return
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    const history = raw ? JSON.parse(raw) : []
+    history.unshift({
+      ...entry,
+      date: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 10)))
+  } catch {}
+}
+
 // Health check helper
 export async function checkHealth(): Promise<{ ok: boolean; data?: any }> {
   try {

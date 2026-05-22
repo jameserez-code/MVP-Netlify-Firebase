@@ -93,6 +93,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     const { planId, successUrl, cancelUrl } = (request.body || {}) as any
     if (planId !== 'pro') return err(reply, 400, 'validation', 'Invalid planId')
 
+    try {
     const orgRef = db.collection('organizations').doc(claims.orgId)
     const orgSnap = await orgRef.get()
     const org = orgSnap.exists ? (orgSnap.data() as any) : null
@@ -122,6 +123,13 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     })
 
     return { sessionId: session.id, url: session.url }
+    } catch (e: any) {
+      log.error('billing checkout failed', { error: e.message, orgId: claims.orgId })
+      if (e.type?.startsWith('Stripe')) {
+        return err(reply, 502, 'stripe_error', e.message)
+      }
+      return err(reply, 503, 'firestore', 'checkout failed')
+    }
   })
 
   // ---------------------------------------------------------------------------
@@ -131,6 +139,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
+    try {
     const orgSnap = await db.collection('organizations').doc(claims.orgId).get()
     const org = orgSnap.exists ? (orgSnap.data() as any) : null
     if (!org?.stripeCustomerId)
@@ -143,6 +152,13 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     })
 
     return { url: session.url }
+    } catch (e: any) {
+      log.error('billing portal failed', { error: e.message, orgId: claims.orgId })
+      if (e.type?.startsWith('Stripe')) {
+        return err(reply, 502, 'stripe_error', e.message)
+      }
+      return err(reply, 503, 'firestore', 'portal failed')
+    }
   })
 
   // ---------------------------------------------------------------------------
@@ -231,13 +247,20 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   app.post('/billing/webhook', async (request, reply) => {
     const payload = (request as any).rawBody || JSON.stringify(request.body)
     const sig = (request.headers['stripe-signature'] as string) || ''
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
     let event: Stripe.Event
+
+    if (!webhookSecret) {
+      log.error('STRIPE_WEBHOOK_SECRET not configured')
+      reply.code(500)
+      return { error: { code: 'config_error', message: 'Stripe webhook secret not configured' } }
+    }
 
     try {
       event = stripe.webhooks.constructEvent(
         payload,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET!
+        webhookSecret
       )
     } catch (err: any) {
       log.error('stripe webhook error', { message: err.message })

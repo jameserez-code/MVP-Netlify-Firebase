@@ -19,6 +19,11 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // POST /agents/register
   // ---------------------------------------------------------------------------
   app.post('/agents/register', async (request, reply) => {
+    const claims = (request as any).claims
+    if (!claims) {
+      reply.code(401)
+      return { error: { code: 'unauthorized', message: 'Authentication required' } }
+    }
     const { name, model, provider, systemPrompt, environment, metadata } = (request.body || {}) as any
 
     if (!name || !model || !provider) {
@@ -154,46 +159,10 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   })
 
   // ---------------------------------------------------------------------------
-  // GET /agents
-  // ---------------------------------------------------------------------------
-  app.get('/agents', {
-    handler: withCache(async (request, reply) => {
-      const { status, limit } = (request.query || {}) as { status?: string; limit?: string }
-      const orgId = process.env.DEFAULT_ORG_ID
-      if (!orgId) {
-        reply.code(500)
-        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
-      }
-      try {
-        let q = db.collection('agents').where('orgId', '==', orgId)
-        // Composite index hint: agents — orgId Ascending, createdAt Descending
-        // Composite index hint: agents — orgId Ascending, status Ascending, createdAt Descending
-        q = optimizeQuery(q, {
-          limit: parseInt(limit || '50', 10),
-          orderBy: { field: 'createdAt', direction: 'desc' },
-        })
-        const snap = await q.get()
-        let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-        if (status) data = data.filter((a: any) => a.status === status)
-
-        const options = parsePaginationQuery(request.query as Record<string, unknown>)
-        if (status) options.filters = { ...options.filters, status }
-        const result = paginate(data, options)
-
-        log.info('agents list', { count: result.data.length, total: result.pagination.total })
-        return result
-      } catch (e: any) {
-        log.error('agents list failed', { error: e.message })
-        reply.code(503)
-        return { error: { code: 'firestore', message: e.message } }
-      }
-    }, 30, (req) => `agents:list:${JSON.stringify(req.query)}`),
-  })
-
-  // ---------------------------------------------------------------------------
   // PATCH /agents/:id/revoke
   // ---------------------------------------------------------------------------
   app.patch('/agents/:id/revoke', async (request, reply) => {
+    try {
     const id = (request.params as any).id
     const { reason } = (request.body || {}) as { reason?: string }
     const snap = await db.collection('agents').doc(id).get()
@@ -245,12 +214,18 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
     })()
 
     return { id, status: 'revoked' }
+    } catch (e: any) {
+      log.error('agent revoke failed', { error: e.message, agentId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'revoke failed' } }
+    }
   })
 
   // ---------------------------------------------------------------------------
   // POST /agents/:id/rotate-key
   // ---------------------------------------------------------------------------
   app.post('/agents/:id/rotate-key', async (request, reply) => {
+    try {
     const id = (request.params as any).id
     const snap = await db.collection('agents').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'agent not found' } } }
@@ -268,5 +243,10 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
     log.success('agent key rotated', { agentId: id })
     await cacheDeletePattern('cache:agents:*')
     return { agentId: id, newSecretKey: newKey, newSecretKeyPrefix: newKey.substring(0, 14) }
+    } catch (e: any) {
+      log.error('agent key rotate failed', { error: e.message, agentId: (request.params as any)?.id })
+      reply.code(503)
+      return { error: { code: 'firestore', message: 'key rotation failed' } }
+    }
   })
 }
