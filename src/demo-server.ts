@@ -1,4 +1,5 @@
 // Demo server — runs without Firebase using local JSON store
+import 'dotenv/config'
 import Fastify from 'fastify'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'

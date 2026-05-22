@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import Fastify from 'fastify'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
