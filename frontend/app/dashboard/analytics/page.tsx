@@ -14,13 +14,11 @@ import {
   getAnalyticsPolicies,
 } from '@/lib/api'
 import {
-  Activity,
   AlertTriangle,
   BarChart3,
   Bot,
   CheckCircle,
   Clock,
-  FileText,
   RefreshCw,
   Shield,
   TrendingDown,
@@ -95,6 +93,8 @@ function TabButton({
   return (
     <button
       onClick={onClick}
+      role="tab"
+      aria-selected={active}
       className={`px-4 py-2 text-sm font-medium rounded-passport transition-all duration-150 ${
         active
           ? 'bg-passport-green/10 text-passport-green border border-passport-green/20'
@@ -230,6 +230,7 @@ export default function AnalyticsPage() {
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
+                aria-pressed={period === p}
                 className={`px-3 py-1.5 text-xs font-mono font-medium transition-all ${
                   period === p
                     ? 'bg-passport-green/10 text-passport-green'

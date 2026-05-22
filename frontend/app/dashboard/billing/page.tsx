@@ -24,13 +24,13 @@ import {
 
 export default function BillingPage() {
   const { addToast } = useToast()
-  const { data: sub, mutate: mutateSub } = useSWR(
+  const { data: sub, error: subError, isLoading: subLoading, mutate: mutateSub } = useSWR(
     '/billing/subscription',
     getSubscription,
     swrDashboardConfig
   )
-  const { data: usage } = useSWR('/billing/usage', getUsage, swrDashboardConfig)
-  const { data: invoices } = useSWR('/billing/invoices', getInvoices, swrDashboardConfig)
+  const { data: usage, error: usageError } = useSWR('/billing/usage', getUsage, swrDashboardConfig)
+  const { data: invoices, error: invoicesError } = useSWR('/billing/invoices', getInvoices, swrDashboardConfig)
 
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [loadingPortal, setLoadingPortal] = useState(false)
@@ -38,6 +38,8 @@ export default function BillingPage() {
 
   const plan = (sub?.plan as string) || 'free'
   const percent = usage ? Math.min(100, Math.round((usage.count / usage.limit) * 100)) : 0
+
+  const billingError = subError?.message || usageError?.message || invoicesError?.message || ''
 
   async function handleUpgrade() {
     setLoadingCheckout(true)
@@ -85,6 +87,16 @@ export default function BillingPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-passport-text">Billing</h1>
+
+      {billingError && (
+        <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-passport-red" />
+          <span className="text-sm text-passport-red flex-1">{billingError}</span>
+          <button onClick={() => mutateSub()} className="text-xs text-passport-red underline hover:no-underline">
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Current Plan */}
       <GlassCard>

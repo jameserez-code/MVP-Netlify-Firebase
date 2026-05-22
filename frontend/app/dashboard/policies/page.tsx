@@ -255,7 +255,7 @@ export default function PoliciesPage() {
             Define permission scopes and enforcement rules
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/dashboard/policies/templates" className="btn-secondary">
             <LayoutGrid size={14} />
             Browse Templates
@@ -360,6 +360,7 @@ export default function PoliciesPage() {
                         key={tool}
                         type="button"
                         onClick={() => toggleTool('allowedTools', tool)}
+                        aria-pressed={active}
                         className={`px-2.5 py-1 rounded-passport text-xs font-mono transition-all border ${
                           active
                             ? 'bg-passport-green/10 text-passport-green border-passport-green/30'
@@ -391,6 +392,7 @@ export default function PoliciesPage() {
                         key={tool}
                         type="button"
                         onClick={() => toggleTool('deniedTools', tool)}
+                        aria-pressed={active}
                         className={`px-2.5 py-1 rounded-passport text-xs font-mono transition-all border ${
                           active
                             ? 'bg-passport-red/10 text-passport-red border-passport-red/30'

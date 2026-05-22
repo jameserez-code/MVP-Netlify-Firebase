@@ -98,6 +98,10 @@ async function fetchJson(path: string, options?: RequestInit) {
       throw error
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('passport-network-success'))
+    }
+
     return res.json()
   } catch (error: any) {
     clearTimeout(timeoutId)
@@ -105,7 +109,6 @@ async function fetchJson(path: string, options?: RequestInit) {
     if (error.name === 'AbortError') {
       const toastMessage = 'Request timed out. Please try again.'
       if (typeof window !== 'undefined') {
-        // We can't use hooks here, so dispatch a custom event for the toast
         window.dispatchEvent(
           new CustomEvent('passport-toast', {
             detail: { message: toastMessage, type: 'error' },
@@ -113,6 +116,13 @@ async function fetchJson(path: string, options?: RequestInit) {
         )
       }
       throw new Error(toastMessage)
+    }
+
+    if (error instanceof TypeError || error.message === 'Failed to fetch') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('passport-network-error'))
+      }
+      throw new Error('Network error. Please check your connection.')
     }
 
     throw error

@@ -1167,6 +1167,7 @@ export default function DocsPage() {
             <div className="flex flex-wrap gap-2 mb-8">
               <button
                 onClick={() => setActiveCategory(null)}
+                aria-pressed={activeCategory === null}
                 className={`px-3 py-1.5 rounded text-xs font-mono font-semibold transition-colors border ${
                   activeCategory === null
                     ? 'bg-passport-green/10 text-passport-green border-passport-green/30'
@@ -1179,6 +1180,7 @@ export default function DocsPage() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
+                  aria-pressed={activeCategory === cat.id}
                   className={`px-3 py-1.5 rounded text-xs font-mono font-semibold transition-colors border flex items-center gap-1.5 ${
                     activeCategory === cat.id
                       ? 'bg-passport-green/10 text-passport-green border-passport-green/30'

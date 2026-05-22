@@ -368,6 +368,20 @@
     box-shadow: 0 0 20px rgba(46, 160, 67, 0.25), 0 0 40px rgba(46, 160, 67, 0.08);
   }
 
+  @keyframes btnGlowPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(46, 160, 67, 0.08); }
+    50% { box-shadow: 0 0 20px rgba(46, 160, 67, 0.2); }
+  }
+
+  .btn-glow-pulse {
+    animation: btnGlowPulse 5s ease-in-out infinite;
+  }
+
+  .btn-glow-pulse:hover {
+    animation: none;
+    box-shadow: 0 0 24px rgba(46, 160, 67, 0.3), 0 0 48px rgba(46, 160, 67, 0.1);
+  }
+
   /* Password strength bar colors */
   .strength-weak { background-color: #f85149; }
   .strength-fair { background-color: #d2991d; }
@@ -610,4 +624,52 @@
   .json-boolean { color: #d2991d; }
   .json-null { color: #8b949e; }
   .json-brace { color: #c9d1d9; }
+
+  /* ─── Onboarding step slide animations ─── */
+  @keyframes onboardSlideInLeft {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes onboardSlideInRight {
+    from { opacity: 0; transform: translateX(-40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes onboardFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-onboard-slide-in-left {
+    animation: onboardSlideInLeft 0.35s ease both;
+  }
+
+  .animate-onboard-slide-in-right {
+    animation: onboardSlideInRight 0.35s ease both;
+  }
+
+  .animate-onboard-fade-in {
+    animation: onboardFadeIn 0.2s ease both;
+  }
+
+  /* ─── Confetti ─── */
+  @keyframes confettiFall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  .animate-confetti-fall {
+    animation: confettiFall 3s ease-in forwards;
+  }
+
+  /* ─── Cursor blink for terminal ─── */
+  @keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .animate-cursor-blink {
+    animation: cursorBlink 1s step-end infinite;
+  }
 }

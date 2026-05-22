@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Shield,
   ChevronRight,
+  ChevronLeft,
   Check,
   Copy,
   CheckCircle2,
@@ -17,6 +18,8 @@ import {
   ArrowRight,
   BookOpen,
   Loader2,
+  Twitter,
+  RefreshCw,
 } from 'lucide-react'
 import { createPolicy, registerAgent, completeOnboarding } from '@/lib/api'
 
@@ -53,7 +56,12 @@ function loadState(): OnboardingState {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
     try {
-      return JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      // Skip logic: if policy already created, resume at step 3
+      if (parsed.policyCreated && !parsed.agentCreated && parsed.step < 3) {
+        parsed.step = 3
+      }
+      return parsed
     } catch {}
   }
   return {
@@ -104,7 +112,6 @@ function ProgressBar({ current }: { current: Step }) {
           )
         })}
       </div>
-      {/* Progress line */}
       <div className="relative h-0.5 bg-passport-border mt-[-34px] mx-4 -z-10">
         <div
           className="absolute inset-y-0 left-0 bg-passport-green transition-all duration-500"
@@ -115,11 +122,38 @@ function ProgressBar({ current }: { current: Step }) {
   )
 }
 
+/* ─── Slide animation wrapper ─── */
+
+function StepWrapper({
+  children,
+  direction,
+  stepKey,
+}: {
+  children: React.ReactNode
+  direction: 'forward' | 'back' | 'none'
+  stepKey: number
+}) {
+  return (
+    <div
+      key={stepKey}
+      className={
+        direction === 'forward'
+          ? 'animate-onboard-slide-in-left'
+          : direction === 'back'
+          ? 'animate-onboard-slide-in-right'
+          : 'animate-onboard-fade-in'
+      }
+    >
+      {children}
+    </div>
+  )
+}
+
 /* ─── Step 1: Welcome ─── */
 
 function StepWelcome({ onNext }: { onNext: () => void }) {
   return (
-    <div className="text-center max-w-lg mx-auto animate-slide-up">
+    <div className="text-center max-w-lg mx-auto">
       <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-passport-green/10 border border-passport-green/20 mb-6">
         <Shield size={32} className="text-passport-green" />
       </div>
@@ -129,7 +163,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
       <div className="flex items-center justify-center gap-2 text-passport-muted mb-8">
         <Terminal size={16} className="text-passport-green" />
         <span className="font-mono text-sm">
-          In the next 2 minutes, you'll create your first policy, register an agent, and see enforcement in action.
+          In the next 2 minutes, you&apos;ll create your first policy, register an agent, and see enforcement in action.
         </span>
         <span className="inline-block w-2 h-4 bg-passport-green animate-cursor-blink align-middle" />
       </div>
@@ -153,6 +187,7 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
   const [maxCost, setMaxCost] = useState(10)
   const [pii, setPii] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const toggleTool = (tool: string, list: string[], setList: (v: string[]) => void) => {
     if (list.includes(tool)) setList(list.filter((t) => t !== tool))
@@ -161,6 +196,7 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
 
   const handleCreate = async () => {
     setLoading(true)
+    setError('')
     try {
       await createPolicy({
         name,
@@ -173,19 +209,29 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
         },
       })
       onNext()
-    } catch {
-      // Silent fail — demo flow should continue
-      onNext()
+    } catch (err: any) {
+      setError(err.message || 'Failed to create policy')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto animate-slide-up">
+    <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl sm:text-3xl font-bold text-passport-text mb-8 text-center">
         Create Your First Policy
       </h2>
+
+      {error && (
+        <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2 mb-4">
+          <AlertTriangle size={16} className="text-passport-red shrink-0" />
+          <span className="text-sm text-passport-red flex-1">{error}</span>
+          <button onClick={handleCreate} className="text-xs text-passport-red underline hover:no-underline flex items-center gap-1">
+            <RefreshCw size={12} />
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="space-y-5">
         <div>
@@ -263,16 +309,13 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
               className={`relative w-11 h-6 rounded-full transition-colors ${pii ? 'bg-passport-green' : 'bg-passport-border'}`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                  pii ? 'translate-x-5' : ''
-                }`}
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${pii ? 'translate-x-5' : ''}`}
               />
             </button>
             <span className="text-sm text-passport-muted">PII Detection {pii ? 'ON' : 'OFF'}</span>
           </div>
         </div>
 
-        {/* Live Preview */}
         <div className="glass-panel p-4 border-passport-border/60">
           <div className="label-text mb-3">Policy Preview</div>
           <div className="space-y-2 text-xs font-mono">
@@ -313,15 +356,17 @@ function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: Onboa
   const [provider, setProvider] = useState('OpenAI')
   const [systemPrompt, setSystemPrompt] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [result, setResult] = useState<{ id: string; secret: string } | null>(null)
 
   const handleRegister = async () => {
     setLoading(true)
+    setError('')
     try {
       const res = await registerAgent({ name, model, provider, systemPrompt })
-      setResult({ id: res.id || 'agent_demo_123', secret: res.secret || 'passport_secret_' + Math.random().toString(36).slice(2) })
-    } catch {
-      setResult({ id: 'agent_demo_123', secret: 'passport_secret_' + Math.random().toString(36).slice(2) })
+      setResult({ id: res.id || `agent_${Date.now().toString(36)}`, secret: res.secret || 'passport_secret_' + Math.random().toString(36).slice(2) })
+    } catch (err: any) {
+      setError(err.message || 'Failed to register agent')
     } finally {
       setLoading(false)
     }
@@ -343,7 +388,7 @@ function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: Onboa
 
   if (result) {
     return (
-      <div className="max-w-xl mx-auto animate-slide-up">
+      <div className="max-w-xl mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-passport-green/10 border border-passport-green/20 mb-4">
             <Check size={24} className="text-passport-green" />
@@ -385,10 +430,21 @@ function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: Onboa
   }
 
   return (
-    <div className="max-w-xl mx-auto animate-slide-up">
+    <div className="max-w-xl mx-auto">
       <h2 className="text-2xl sm:text-3xl font-bold text-passport-text mb-8 text-center">
         Register Your First Agent
       </h2>
+
+      {error && (
+        <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2 mb-4">
+          <AlertTriangle size={16} className="text-passport-red shrink-0" />
+          <span className="text-sm text-passport-red flex-1">{error}</span>
+          <button onClick={handleRegister} className="text-xs text-passport-red underline hover:no-underline flex items-center gap-1">
+            <RefreshCw size={12} />
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="space-y-5">
         <div>
@@ -463,56 +519,81 @@ interface DemoAction {
   decision: 'allow' | 'deny' | 'modify'
   reason: string
   line: string
+  policyName?: string
 }
 
 const DEMO_ACTIONS: DemoAction[] = [
-  { tool: 'web_search', decision: 'allow', reason: 'Tool permitted by policy', line: 'web_search({ query: "latest news" })' },
-  { tool: 'read_database', decision: 'allow', reason: 'Read access granted', line: 'read_database({ table: "users", limit: 10 })' },
-  { tool: 'write_database', decision: 'deny', reason: 'Write operations blocked by policy', line: 'write_database({ table: "users", data: {...} })' },
+  { tool: 'web_search', decision: 'allow', reason: 'Tool permitted by policy Safe Web Search', line: 'web_search({ query: "latest news" })', policyName: 'Safe Web Search' },
+  { tool: 'read_database', decision: 'allow', reason: 'Read access granted by Safe Web Search', line: 'read_database({ table: "users", limit: 10 })', policyName: 'Safe Web Search' },
+  { tool: 'write_database', decision: 'deny', reason: 'Write operations blocked by policy Safe Web Search', line: 'write_database({ table: "users", data: {...} })', policyName: 'Safe Web Search' },
   { tool: 'send_email', decision: 'allow', reason: 'Email within allowed scope', line: 'send_email({ to: "support@example.com" })' },
-  { tool: 'delete_database', decision: 'deny', reason: 'Destructive action denied', line: 'delete_database({ table: "orders" })' },
+  { tool: 'delete_database', decision: 'deny', reason: 'Destructive action denied by No Destructive Actions', line: 'delete_database({ table: "orders" })', policyName: 'No Destructive Actions' },
+  { tool: 'api_call', decision: 'modify', reason: 'PII detected in parameters — data redacted', line: 'api_call({ url: "api.example.com/users", payload: { ssn: "■■■" } })', policyName: 'No PII Access' },
 ]
 
 function StepRunDemo({ onNext }: { onNext: () => void }) {
   const [lines, setLines] = useState<{ text: string; color: string }[]>([])
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
+  const [currentActionIdx, setCurrentActionIdx] = useState(-1)
+  const actionRef = useRef<number>(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const runDemo = () => {
+  const runDemo = useCallback(() => {
     if (running) return
     setRunning(true)
     setLines([])
     setDone(false)
+    setCurrentActionIdx(-1)
+    actionRef.current = 0
 
-    let i = 0
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
+      const i = actionRef.current
       if (i >= DEMO_ACTIONS.length) {
-        clearInterval(interval)
+        if (intervalRef.current) clearInterval(intervalRef.current)
         setRunning(false)
         setDone(true)
         return
       }
       const action = DEMO_ACTIONS[i]
-      const color = action.decision === 'allow' ? 'text-passport-green' : action.decision === 'deny' ? 'text-passport-coral' : 'text-passport-azure'
+      const color = action.decision === 'allow' ? 'text-passport-green' : action.decision === 'deny' ? 'text-passport-red' : 'text-passport-azure'
+      setCurrentActionIdx(i)
+
       setLines((prev) => [
         ...prev,
         { text: `> ${action.line}`, color: 'text-passport-dim' },
-        { text: `  → ${action.decision.toUpperCase()} — ${action.reason}`, color },
+        { text: `  ─ Evaluating against active policies...`, color: 'text-passport-muted' },
+        { text: `  ${action.decision === 'allow' ? '✓' : action.decision === 'deny' ? '✗' : '⚠'} ${action.decision.toUpperCase()} — ${action.reason}`, color },
+        ...(action.policyName ? [{ text: `  ─ Matched policy: ${action.policyName}`, color: 'text-passport-muted' }] : []),
       ])
-      i++
-    }, 900)
-  }
+      actionRef.current++
+    }, 1200)
+  }, [running])
 
   useEffect(() => {
-    // Auto-run on mount
     const t = setTimeout(runDemo, 500)
-    return () => clearTimeout(t)
-  }, [])
+    return () => {
+      clearTimeout(t)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [runDemo])
+
+  const rerunDemo = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    setRunning(false)
+    setDone(false)
+    setLines([])
+    setCurrentActionIdx(-1)
+    actionRef.current = 0
+    setTimeout(runDemo, 300)
+  }
 
   const deniedCount = DEMO_ACTIONS.filter((a) => a.decision === 'deny').length
+  const modifiedCount = DEMO_ACTIONS.filter((a) => a.decision === 'modify').length
+  const allowedCount = DEMO_ACTIONS.filter((a) => a.decision === 'allow').length
 
   return (
-    <div className="max-w-2xl mx-auto animate-slide-up">
+    <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl sm:text-3xl font-bold text-passport-text mb-8 text-center">
         See Enforcement in Action
       </h2>
@@ -521,13 +602,19 @@ function StepRunDemo({ onNext }: { onNext: () => void }) {
         <div className="flex items-center gap-2 px-4 py-2 border-b border-passport-border bg-passport-surface">
           <Terminal size={14} className="text-passport-muted" />
           <span className="text-[10px] font-mono text-passport-dim uppercase tracking-wider">Enforcement Log</span>
+          <span className="ml-auto text-[10px] font-mono text-passport-dim">
+            {currentActionIdx + 1}/{DEMO_ACTIONS.length}
+          </span>
+          <button onClick={rerunDemo} className="text-passport-dim hover:text-passport-text transition-colors p-0.5" title="Re-run">
+            <RefreshCw size={12} className={running ? 'animate-spin' : ''} />
+          </button>
         </div>
-        <div className="p-4 font-mono text-sm min-h-[240px] space-y-1">
+        <div className="p-4 font-mono text-sm min-h-[320px] space-y-1">
           {lines.length === 0 && (
             <div className="text-passport-dim text-xs">Initializing demo environment...</div>
           )}
           {lines.map((line, idx) => (
-            <div key={idx} className={line.color}>
+            <div key={idx} className={`${line.color} animate-fade-in`}>
               {line.text}
             </div>
           ))}
@@ -542,9 +629,15 @@ function StepRunDemo({ onNext }: { onNext: () => void }) {
 
       {done && (
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-passport-green/10 border border-passport-green/20 text-passport-green text-sm font-medium">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-passport-green/10 border border-passport-green/20 text-passport-green text-sm font-medium mb-4">
             <ShieldCheck size={16} />
-            Your policies just prevented {deniedCount} unauthorized actions!
+            Demo complete — {allowedCount} allowed, {deniedCount} denied, {modifiedCount} modified
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <button onClick={rerunDemo} className="text-xs text-passport-muted hover:text-passport-text transition-colors flex items-center gap-1">
+              <RefreshCw size={12} />
+              Re-run demo
+            </button>
           </div>
         </div>
       )}
@@ -559,12 +652,51 @@ function StepRunDemo({ onNext }: { onNext: () => void }) {
   )
 }
 
-/* ─── Step 5: You're Ready ─── */
+/* ─── Step 5: Completion ─── */
+
+function Confetti() {
+  const pieces = useRef<{ id: number; x: number; color: string; delay: number; size: number }[]>([])
+
+  if (pieces.current.length === 0) {
+    const colors = ['#2ea043', '#58a6ff', '#f78166', '#d2991d', '#f85149', '#c9d1d9']
+    for (let i = 0; i < 50; i++) {
+      pieces.current.push({
+        id: i,
+        x: Math.random() * 100,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: Math.random() * 2,
+        size: 4 + Math.random() * 8,
+      })
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {pieces.current.map((p) => (
+        <div
+          key={p.id}
+          className="absolute top-0 animate-confetti-fall"
+          style={{
+            left: `${p.x}%`,
+            background: p.color,
+            width: `${p.size}px`,
+            height: `${p.size * 0.6}px`,
+            borderRadius: '2px',
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${2.5 + Math.random() * 3}s`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
 
 function StepReady({ state }: { state: OnboardingState }) {
   const router = useRouter()
+  const [finishing, setFinishing] = useState(false)
 
   const finish = async () => {
+    setFinishing(true)
     try {
       await completeOnboarding()
     } catch {}
@@ -572,19 +704,23 @@ function StepReady({ state }: { state: OnboardingState }) {
     router.push('/dashboard')
   }
 
+  const shareUrl = 'https://passport-agent-demo.netlify.app'
+  const shareText = encodeURIComponent("I just set up my AI Agent Passport! Policies, agents, and enforcement in under 2 minutes. \n\nControl what your AI agents can do with pre-execution policy enforcement.")
+
   return (
-    <div className="text-center max-w-lg mx-auto animate-slide-up">
+    <div className="text-center max-w-lg mx-auto">
+      <Confetti />
       <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-passport-green/10 border-2 border-passport-green mb-6 animate-pulse-soft">
         <Check size={40} className="text-passport-green" />
       </div>
-      <h1 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">You're All Set!</h1>
+      <h1 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">You&apos;re All Set!</h1>
       <p className="text-passport-muted mb-10">Your AI Agent Passport is ready to enforce policies and protect your systems.</p>
 
-      <div className="grid grid-cols-3 gap-3 mb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
         {[
           { label: 'Policies', value: '1', icon: <ShieldCheck size={16} /> },
           { label: 'Agents', value: '1', icon: <UserPlusIcon size={16} /> },
-          { label: 'Enforcements', value: '5', icon: <Zap size={16} /> },
+          { label: 'Enforcements', value: '7', icon: <Zap size={16} /> },
         ].map((s) => (
           <div key={s.label} className="glass-panel p-4 text-center">
             <div className="flex items-center justify-center gap-1.5 text-passport-green mb-1">
@@ -596,16 +732,26 @@ function StepReady({ state }: { state: OnboardingState }) {
         ))}
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-        <button onClick={finish} className="btn-primary text-base px-6 py-3">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+        <button onClick={finish} disabled={finishing} className="btn-primary text-base px-6 py-3">
+          {finishing ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
           Go to Dashboard
-          <ArrowRight size={16} />
         </button>
         <Link href="/docs" className="btn-secondary text-base px-6 py-3">
           <BookOpen size={16} />
           View Documentation
         </Link>
       </div>
+
+      <a
+        href={`https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(shareUrl)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-secondary text-sm px-4 py-2"
+      >
+        <Twitter size={16} />
+        Share on Twitter
+      </a>
     </div>
   )
 }
@@ -625,6 +771,7 @@ function UserPlusIcon({ size }: { size: number }) {
 
 export default function OnboardingPage() {
   const [state, setState] = useState<OnboardingState>(loadState())
+  const [direction, setDirection] = useState<'forward' | 'back' | 'none'>('none')
   const router = useRouter()
 
   useEffect(() => {
@@ -634,6 +781,8 @@ export default function OnboardingPage() {
   }, [state.onboardingCompleted, router])
 
   const goTo = (step: Step) => {
+    const prevStep = state.step
+    setDirection(step > prevStep ? 'forward' : 'back')
     const next = { ...state, step }
     setState(next)
     saveState(next)
@@ -641,10 +790,20 @@ export default function OnboardingPage() {
 
   const nextStep = () => {
     if (state.step < 5) {
+      setDirection('forward')
       const next: OnboardingState = { ...state, step: (state.step + 1) as Step }
       if (state.step === 2) next.policyCreated = true
       if (state.step === 3) next.agentCreated = true
       if (state.step === 4) next.demoCompleted = true
+      setState(next)
+      saveState(next)
+    }
+  }
+
+  const prevStep = () => {
+    if (state.step > 1) {
+      setDirection('back')
+      const next = { ...state, step: (state.step - 1) as Step }
       setState(next)
       saveState(next)
     }
@@ -678,11 +837,53 @@ export default function OnboardingPage() {
       <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-12">
         <ProgressBar current={state.step} />
 
-        {state.step === 1 && <StepWelcome onNext={nextStep} />}
-        {state.step === 2 && <StepCreatePolicy onNext={nextStep} />}
-        {state.step === 3 && <StepRegisterAgent onNext={nextStep} state={state} />}
-        {state.step === 4 && <StepRunDemo onNext={nextStep} />}
-        {state.step === 5 && <StepReady state={state} />}
+        <div className="w-full flex items-start justify-center">
+          {state.step > 1 && (
+            <button
+              onClick={prevStep}
+              className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full border border-passport-border text-passport-dim hover:text-passport-text hover:border-passport-border-2 transition-all mr-2 mt-32 shrink-0"
+              aria-label="Previous step"
+            >
+              <ChevronLeft size={18} />
+            </button>
+          )}
+
+          <div className="min-h-[400px] flex items-center justify-center w-full max-w-3xl">
+            <StepWrapper direction={direction} stepKey={state.step}>
+              {state.step === 1 && <StepWelcome onNext={nextStep} />}
+              {state.step === 2 && <StepCreatePolicy onNext={nextStep} />}
+              {state.step === 3 && <StepRegisterAgent onNext={nextStep} state={state} />}
+              {state.step === 4 && <StepRunDemo onNext={nextStep} />}
+              {state.step === 5 && <StepReady state={state} />}
+            </StepWrapper>
+          </div>
+
+          {state.step < 5 && (
+            <button
+              onClick={nextStep}
+              className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full border border-passport-green/30 text-passport-green hover:bg-passport-green/10 transition-all ml-2 mt-32 shrink-0"
+              aria-label="Next step"
+            >
+              <ChevronRight size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile nav */}
+        <div className="sm:hidden flex items-center gap-4 mt-6">
+          {state.step > 1 && (
+            <button onClick={prevStep} className="btn-secondary">
+              <ChevronLeft size={14} />
+              Back
+            </button>
+          )}
+          {state.step < 5 && (
+            <button onClick={nextStep} className="btn-primary ml-auto">
+              Next
+              <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
       </main>
 
       {/* Footer */}
