@@ -49,6 +49,13 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' *.vercel-scripts.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' *.passport-agent-demo.netlify.app localhost:*; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preload" href="/manifest.json" as="fetch" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.variable} ${jetbrains.variable} antialiased`}>
         <SentryInit />

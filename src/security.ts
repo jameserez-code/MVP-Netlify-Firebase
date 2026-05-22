@@ -19,7 +19,7 @@ export function hardenAuth(server: FastifyInstance, db: Firestore) {
 
     if (!token) { reply.code(401); return { error: { code: 'unauthorized' } } }
 
-    const claims = verify(token)
+    const claims = await verify(token)
     if (!claims) { reply.code(401); return { error: { code: 'invalid_token' } } }
 
     // Verify org still exists

@@ -2,7 +2,8 @@ import { WebSocketServer, WebSocket } from 'ws'
 import type { Server } from 'http'
 import { verify } from './jwt.js'
 import { log } from './logger.js'
-import { subscribeClient, unsubscribeClient, removeClient } from './events.js'
+import { subscribeClient, unsubscribeClient, removeClient, broadcastToOrgClients } from './events.js'
+import { redis } from './redis.js'
 
 interface WsClient extends WebSocket {
   isAlive?: boolean
@@ -15,12 +16,33 @@ const HEARTBEAT_INTERVAL = 30000
 const HEARTBEAT_TIMEOUT = 10000
 
 let _wss: WebSocketServer | null = null
+let _subscriber: ReturnType<typeof redis.duplicate> | null = null
 
 export function initWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ server })
   _wss = wss
 
-  wss.on('connection', (ws: WsClient, req) => {
+  // Set up Redis Pub/Sub for cross-instance broadcast
+  const subscriber = redis.duplicate()
+  _subscriber = subscriber
+
+  subscriber.on('error', (err) => log.error('Redis subscriber error', { error: err.message }))
+
+  subscriber.psubscribe('org:*:events').catch((err) => {
+    log.error('Redis psubscribe failed', { error: err.message })
+  })
+
+  subscriber.on('pmessage', (_pattern, channel, message) => {
+    try {
+      const orgId = channel.split(':')[1]
+      const { channel: msgChannel, data } = JSON.parse(message)
+      broadcastToOrgClients(orgId, msgChannel, data)
+    } catch {
+      // ignore malformed messages
+    }
+  })
+
+  wss.on('connection', async (ws: WsClient, req) => {
     // Auth via query param ?token=... or Authorization header
     let token: string | null = null
     try {
@@ -35,9 +57,7 @@ export function initWebSocketServer(server: Server) {
       if (auth.startsWith('Bearer ')) token = auth.substring(7)
     }
 
-    const claims = verify(token || '') as
-      | { sub: string; role: string; orgId?: string; scopes?: string[]; iat: number; exp: number; jti: string }
-      | null
+    const claims = await verify(token || '')
     if (!claims) {
       ws.close(4001, 'Unauthorized')
       return
@@ -124,6 +144,11 @@ export function initWebSocketServer(server: Server) {
 }
 
 export function closeWebSocketServer() {
+  if (_subscriber) {
+    _subscriber.punsubscribe('org:*:events').catch(() => {})
+    _subscriber.disconnect()
+    _subscriber = null
+  }
   if (_wss) {
     log.info('closing websocket server')
     for (const client of _wss.clients) {

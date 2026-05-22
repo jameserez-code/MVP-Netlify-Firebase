@@ -1,6 +1,7 @@
 // Rate limiting with Redis fallback to in-memory
 // Supports endpoint-specific limits and burst detection
 
+import { redis } from './redis.js'
 import { log } from './logger.js'
 
 export interface RateLimitEntry {
@@ -20,8 +21,8 @@ export interface RateLimiterOptions {
 export class RateLimiter {
   private memoryMap = new Map<string, RateLimitEntry>()
   private burstMap = new Map<string, number>()
-  private redis: any = null
   private options: Required<RateLimiterOptions>
+  private redisAvailable = true
 
   constructor(options: RateLimiterOptions = {}) {
     this.options = {
@@ -30,20 +31,6 @@ export class RateLimiter {
       windowMs: options.windowMs || 60_000,
       burstThreshold: options.burstThreshold || 50,
       burstWindowMs: options.burstWindowMs || 10_000,
-    }
-    this.initRedis()
-  }
-
-  private async initRedis() {
-    const redisUrl = process.env.REDIS_URL
-    if (!redisUrl) return
-    try {
-      const { default: Redis } = await import('ioredis')
-      this.redis = new Redis(redisUrl)
-      log.success('redis rate limiter connected')
-    } catch {
-      log.warn('redis not available, falling back to in-memory rate limiting')
-      this.redis = null
     }
   }
 
@@ -83,27 +70,31 @@ export class RateLimiter {
     const limit = this.getLimit(path)
     const windowMs = this.getWindowMs(path)
     const now = Date.now()
-    const key = `rl:${ip}:${path}`
+    const key = `rate_limit:${ip}:${path}`
 
-    if (this.redis) {
+    if (this.redisAvailable) {
       try {
-        const pipeline = this.redis.pipeline()
-        pipeline.get(key)
-        pipeline.pttl(key)
-        const [[, countStr], [, ttl]] = await pipeline.exec()
-        const count = countStr ? parseInt(countStr, 10) : 0
+        const lua = `
+          local current = redis.call('incr', KEYS[1])
+          if current == 1 then
+            redis.call('pexpire', KEYS[1], ARGV[1])
+          end
+          return {current, redis.call('pttl', KEYS[1])}
+        `
+        const result = await redis.eval(lua, 1, key, windowMs) as [number, number]
+        const count = result[0]
+        const ttl = result[1]
         const resetAt = ttl > 0 ? now + ttl : now + windowMs
-        if (count >= limit) {
+
+        if (count > limit) {
           const retryAfter = Math.ceil((resetAt - now) / 1000)
           return { allowed: false, remaining: 0, resetAt, retryAfter }
         }
-        const multi = this.redis.multi()
-        multi.incr(key)
-        if (count === 0) multi.pexpire(key, windowMs)
-        await multi.exec()
-        return { allowed: true, remaining: limit - count - 1, resetAt }
-      } catch {
-        // Fall through to memory on Redis error
+        return { allowed: true, remaining: limit - count, resetAt }
+      } catch (err) {
+        log.warn('Redis rate limit error, falling back to memory', { error: (err as Error).message })
+        this.redisAvailable = false
+        setTimeout(() => { this.redisAvailable = true }, 5000)
       }
     }
 

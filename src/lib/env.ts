@@ -12,6 +12,7 @@ export interface EnvConfig {
   firebaseClientEmail?: string
   firebasePrivateKey?: string
   googleApplicationCredentials?: string
+  redisUrl?: string
   port: number
 }
 
@@ -72,6 +73,12 @@ export function validateEnv(options: ValidateEnvOptions = {}): EnvConfig {
     }
   }
 
+  // Redis — optional but recommended for production
+  const redisUrl = process.env.REDIS_URL
+  if (!redisUrl && process.env.NODE_ENV === 'production') {
+    console.warn('[SCALING] REDIS_URL not set. In-memory caching, rate limiting, and sessions will not survive restarts or scale horizontally.')
+  }
+
   // Admin password — required or auto-generated
   let adminPassword = process.env.ADMIN_PASSWORD
   if (!adminPassword) {
@@ -98,6 +105,7 @@ export function validateEnv(options: ValidateEnvOptions = {}): EnvConfig {
     firebaseClientEmail: firebaseClientEmail || undefined,
     firebasePrivateKey: firebasePrivateKey || undefined,
     googleApplicationCredentials: googleApplicationCredentials || undefined,
+    redisUrl: redisUrl || undefined,
     port: parseInt(process.env.PORT || '3000', 10),
   }
 

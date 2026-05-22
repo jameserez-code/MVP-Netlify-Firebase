@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { withCache } from '../lib/cache.js'
+import { optimizeQuery } from '../lib/query-optimizer.js'
 
 export default async function analyticsRoutes(app: FastifyInstance, db: Firestore) {
 
@@ -14,9 +15,10 @@ export default async function analyticsRoutes(app: FastifyInstance, db: Firestor
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 
       try {
-        const snap = await db.collection('logs')
-          .where('timestamp', '>=', startDate.toISOString())
-          .get()
+        const snap = await optimizeQuery(
+          db.collection('logs').where('timestamp', '>=', startDate.toISOString()),
+          { limit: 1000, orderBy: { field: 'timestamp', direction: 'desc' } },
+        ).get()
 
         const logs = snap.docs.map(d => d.data())
         const totalEnforcements = logs.length
@@ -117,7 +119,11 @@ export default async function analyticsRoutes(app: FastifyInstance, db: Firestor
       const { period = '7d' } = request.query as { period?: string }
 
       try {
-        const agentsSnap = await db.collection('agents').get()
+        // Composite index hint: agents — orgId Ascending, createdAt Descending
+        const agentsSnap = await optimizeQuery(
+          db.collection('agents'),
+          { limit: 200, orderBy: { field: 'createdAt', direction: 'desc' } },
+        ).get()
         const agents = agentsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
 
         const result = agents.map((agent: any) => {
@@ -149,7 +155,11 @@ export default async function analyticsRoutes(app: FastifyInstance, db: Firestor
       const { period = '7d' } = request.query as { period?: string }
 
       try {
-        const policiesSnap = await db.collection('policies').get()
+        // Composite index hint: policies — orgId Ascending, createdAt Descending
+        const policiesSnap = await optimizeQuery(
+          db.collection('policies'),
+          { limit: 200, orderBy: { field: 'createdAt', direction: 'desc' } },
+        ).get()
         const policies = policiesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
 
         const result = policies.map((policy: any) => {

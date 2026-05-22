@@ -4,6 +4,8 @@ import { log } from '../lib/logger.js'
 import { paginate, parsePaginationQuery } from '../lib/pagination.js'
 import { hashKey, verifyKey, generateId } from '../lib/crypto.js'
 import { randomUUID } from 'crypto'
+import { optimizeQuery } from '../lib/query-optimizer.js'
+import { cacheDeletePattern } from '../lib/cache.js'
 
 interface ApiKeyDoc {
   id: string
@@ -149,6 +151,7 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
     })
 
     log.success('api key revoked', { keyId: id })
+    await cacheDeletePattern('api_key:*')
     return { id, status: 'revoked' }
   })
 
@@ -201,6 +204,7 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
       await db.collection('apiKeys').doc(newKeyId).set(newDoc)
 
       log.success('api key rotated', { oldKeyId: id, newKeyId })
+      await cacheDeletePattern('api_key:*')
       reply.code(201)
       return {
         id: newKeyId,

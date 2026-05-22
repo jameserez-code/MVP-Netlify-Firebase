@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from '../lib/logger.js'
 import { generateId, encryptWebhookSecret } from '../lib/crypto.js'
-import { deliverWebhook } from '../lib/webhook-deliverer.js'
+import { webhookQueue } from '../lib/queue.js'
 
 const ALLOWED_EVENTS = ['policy.violation', 'agent.revoked', 'run.failed', 'system.alert', 'agent.registered']
 
@@ -174,8 +174,13 @@ export default async function webhooksRoutes(app: FastifyInstance, db: Firestore
       timestamp: new Date().toISOString(),
       data: { message: 'Test webhook' },
     }
-    await deliverWebhook(db, 'webhook.test', payload, w.orgId, w.id)
-    return { success: true, message: 'Test event dispatched' }
+    await webhookQueue.add('deliver', { webhook: w, event: 'webhook.test', payload }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 60000 },
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    })
+    return { success: true, message: 'Test event queued' }
   })
 
   // POST /webhooks/:id/rotate — rotate secret

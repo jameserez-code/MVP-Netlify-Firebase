@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { generateId } from './lib/crypto.js'
 import { log } from './lib/logger.js'
-import { withCache } from './lib/cache.js'
 
 // ---------------------------------------------------------------------------
 // Request ID middleware — every API call gets a unique ID propagated to logs
@@ -108,18 +107,4 @@ export async function getMetricsData(db: Firestore) {
   }
 }
 
-// ---------------------------------------------------------------------------
-// GET /metrics — lightweight operational metrics (cached 30s)
-// ---------------------------------------------------------------------------
-export async function metrics(app: FastifyInstance, db: Firestore) {
-  app.get('/metrics', {
-    handler: withCache(async (_request, reply) => {
-      try {
-        return await getMetricsData(db)
-      } catch (e: any) {
-        reply.code(503)
-        return { error: { code: 'firestore', message: e.message } }
-      }
-    }, 30),
-  })
-}
+

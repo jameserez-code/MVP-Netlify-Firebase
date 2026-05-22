@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from '../lib/logger.js'
-import { getMetrics } from '../lib/metrics.js'
+import { getMetricsData } from '../observability.js'
+import { getMetrics, register } from '../lib/metrics.js'
+import { memoryCache } from '../lib/cache.js'
 
 let lastHealthStatus = 'ok'
 
@@ -103,6 +105,37 @@ export default async function healthRoutes(app: FastifyInstance, db: Firestore) 
         avgResponseTime: metrics.avgResponseTime,
         errorRate: metrics.errorRate,
       },
+    }
+  })
+
+  // GET /metrics — content negotiation: Prometheus text or JSON operational metrics
+  app.get('/metrics', async (request, reply) => {
+    const accept = (request.headers.accept as string) || '*/*'
+    const wantsPrometheus = accept.includes('text/plain') || accept.includes('openmetrics')
+    const wantsJson = accept.includes('application/json') || accept === '*/*'
+
+    if (wantsPrometheus && !wantsJson) {
+      reply.header('Content-Type', register.contentType)
+      reply.send(await register.metrics())
+      return
+    }
+
+    // Default to JSON for browsers and existing clients (backward compatible)
+    const cacheKey = `metrics:json:${request.url}`
+    const cached = memoryCache.get<unknown>(cacheKey)
+    if (cached !== undefined) {
+      reply.header('X-Cache', 'HIT')
+      return cached
+    }
+
+    try {
+      const data = await getMetricsData(db)
+      memoryCache.set(cacheKey, data, 5)
+      reply.header('X-Cache', 'MISS')
+      return data
+    } catch (e: any) {
+      reply.code(503)
+      return { error: { code: 'firestore', message: e.message } }
     }
   })
 }

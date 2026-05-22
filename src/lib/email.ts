@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { log } from './logger.js'
+import { CircuitBreaker } from './circuit-breaker.js'
 
 let resendInstance: Resend | null = null
 
@@ -58,6 +59,13 @@ export interface SendEmailOptions {
   orgId?: string
 }
 
+const emailCircuitBreaker = new CircuitBreaker({
+  name: 'email-service',
+  failureThreshold: 5,
+  resetTimeoutMs: 30_000,
+  halfOpenMaxCalls: 3,
+})
+
 export async function sendEmail(options: SendEmailOptions): Promise<{ success: boolean; error?: string }> {
   const { to, subject, html, text, orgId } = options
 
@@ -81,36 +89,38 @@ export async function sendEmail(options: SendEmailOptions): Promise<{ success: b
     return { success: false, error: 'missing_api_key' }
   }
 
-  let lastError: string | undefined
+  return emailCircuitBreaker.execute(async () => {
+    let lastError: string | undefined
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const result = await resend.emails.send({
-        from: FROM_EMAIL,
-        to,
-        subject,
-        html,
-        text,
-      })
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const result = await resend.emails.send({
+          from: FROM_EMAIL,
+          to,
+          subject,
+          html,
+          text,
+        })
 
-      if (result.error) {
-        lastError = result.error.message
-        log.error('resend error', { attempt, error: result.error.message })
-      } else {
-        log.success('email sent', { to: Array.isArray(to) ? to.join(', ') : to, subject, attempt })
-        return { success: true }
+        if (result.error) {
+          lastError = result.error.message
+          log.error('resend error', { attempt, error: result.error.message })
+        } else {
+          log.success('email sent', { to: Array.isArray(to) ? to.join(', ') : to, subject, attempt })
+          return { success: true }
+        }
+      } catch (e: any) {
+        lastError = e.message
+        log.error('email send failed', { attempt, error: e.message })
       }
-    } catch (e: any) {
-      lastError = e.message
-      log.error('email send failed', { attempt, error: e.message })
+
+      if (attempt < 3) {
+        await sleep(1000 * Math.pow(2, attempt - 1))
+      }
     }
 
-    if (attempt < 3) {
-      await sleep(1000 * Math.pow(2, attempt - 1))
-    }
-  }
-
-  return { success: false, error: lastError || 'send_failed' }
+    return { success: false, error: lastError || 'send_failed' }
+  })
 }
 
 // Helpers to resolve org admin emails

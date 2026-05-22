@@ -10,6 +10,7 @@ import { NoPolicies } from '@/components/empty-states/no-policies'
 import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
+import Link from 'next/link'
 import {
   AlertTriangle,
   CheckCircle,
@@ -25,6 +26,7 @@ import {
   Unlock,
   Eye,
   ShieldCheck,
+  LayoutGrid,
 } from 'lucide-react'
 
 interface Policy {
@@ -198,6 +200,10 @@ export default function PoliciesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/dashboard/policies/templates" className="btn-secondary">
+            <LayoutGrid size={14} />
+            Browse Templates
+          </Link>
           <button onClick={loadPolicies} className="btn-secondary" disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             Refresh

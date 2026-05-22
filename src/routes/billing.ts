@@ -5,18 +5,18 @@ import type Stripe from 'stripe'
 import { verify } from '../lib/jwt.js'
 import { log } from '../lib/logger.js'
 
-function getAuthClaims(
+async function getAuthClaims(
   request: any
-): { orgId: string; sub: string; role: string } | null {
+): Promise<{ orgId: string; sub: string; role: string } | null> {
   const header = ((request.headers.authorization || '') as string).trim()
   const token = header.startsWith('Bearer ') ? header.substring(7) : null
   if (token) {
-    const claims = verify(token)
+    const claims = await verify(token)
     if (claims) {
       return {
-        orgId: (claims as any).orgId || process.env.DEFAULT_ORG_ID || 'default',
+        orgId: claims.orgId || process.env.DEFAULT_ORG_ID || 'default',
         sub: claims.sub,
-        role: (claims as any).role || 'org_admin',
+        role: claims.role || 'org_admin',
       }
     }
   }
@@ -69,7 +69,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // GET /billing/usage
   // ---------------------------------------------------------------------------
   app.get('/billing/usage', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const today = new Date().toISOString().split('T')[0]
@@ -87,7 +87,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // POST /billing/checkout
   // ---------------------------------------------------------------------------
   app.post('/billing/checkout', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const { planId, successUrl, cancelUrl } = (request.body || {}) as any
@@ -128,7 +128,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // POST /billing/portal
   // ---------------------------------------------------------------------------
   app.post('/billing/portal', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const orgSnap = await db.collection('organizations').doc(claims.orgId).get()
@@ -149,7 +149,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // GET /billing/subscription
   // ---------------------------------------------------------------------------
   app.get('/billing/subscription', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const orgSnap = await db.collection('organizations').doc(claims.orgId).get()
@@ -181,7 +181,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // GET /billing/invoices
   // ---------------------------------------------------------------------------
   app.get('/billing/invoices', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const orgSnap = await db.collection('organizations').doc(claims.orgId).get()
@@ -209,7 +209,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
   // POST /billing/cancel
   // ---------------------------------------------------------------------------
   app.post('/billing/cancel', async (request, reply) => {
-    const claims = getAuthClaims(request)
+    const claims = await getAuthClaims(request)
     if (!claims) return err(reply, 401, 'unauthorized', 'Authentication required')
 
     const orgSnap = await db.collection('organizations').doc(claims.orgId).get()

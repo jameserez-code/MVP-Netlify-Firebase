@@ -1,13 +1,17 @@
 import Fastify from 'fastify'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
+import multipart from '@fastify/multipart'
+import compress from '@fastify/compress'
 import { initFirebase } from './lib/firebase.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
+import { storeBlacklist } from './lib/session-store.js'
+import { cacheGet, cacheSet, cacheDeletePattern } from './lib/redis-cache.js'
 import { transitionTask, transitionRun, failRunWithError } from './transitions.js'
 import { generateId } from './lib/crypto.js'
-import { attachRequestId, auditTimeline, runTrace, metrics, getMetricsData } from './observability.js'
+import { attachRequestId, auditTimeline, runTrace, getMetricsData } from './observability.js'
 import { hardenAuth } from './security.js'
 import { systemDiagnostics, checkConsistency, repairOrphanedRuns, repairStuckTasks, generateReport } from './diagnostics.js'
 import { checkCapability, seedOrg, getOrgMetrics } from './capabilities.js'
@@ -22,6 +26,15 @@ import { withCache } from './lib/cache.js'
 import { paginate, parsePaginationQuery } from './lib/pagination.js'
 import { sendEmail } from './lib/email.js'
 import { verificationTemplate, passwordResetTemplate, accountLockedTemplate } from './lib/email-templates.js'
+import { buildListQuery } from './lib/query-builder.js'
+import { attachQueryMetrics } from './lib/query-optimizer.js'
+import { registerOrgIsolation, getRequestOrgId } from './lib/org-isolation.js'
+import { requireRole } from './lib/rbac.js'
+import { DdosProtection } from './lib/ddos-protection.js'
+import { checkWaf } from './lib/waf.js'
+import { AbuseDetection } from './lib/abuse-detection.js'
+import { scheduleRotation } from './lib/secrets.js'
+import { webhookQueue, emailQueue } from './lib/queue.js'
 
 import agentsRoutes from './routes/agents.js'
 import policiesRoutes from './routes/policies.js'
@@ -32,17 +45,59 @@ import analyticsRoutes from './routes/analytics.js'
 import webhooksRoutes from './routes/webhooks.js'
 import notificationsRoutes from './routes/notifications.js'
 import billingRoutes from './routes/billing.js'
-import { deliverWebhook } from './lib/webhook-deliverer.js'
+import queueStatusRoutes from './routes/queue-status.js'
 import { initWebSocketServer, closeWebSocketServer } from './lib/websocket.js'
 import { publishEvent } from './lib/events.js'
 import { startThresholdChecker } from './lib/alerts.js'
 import { resetMetrics } from './lib/metrics.js'
+import { startSystemMetrics } from './lib/system-metrics.js'
+
+// ---------------------------------------------------------------------------
+// APM initialization — must happen early, wrapped so missing packages don't crash boot
+// ---------------------------------------------------------------------------
+if (process.env.NEW_RELIC_LICENSE_KEY) {
+  try {
+    const { createRequire } = await import('module')
+    const require = createRequire(import.meta.url)
+    require('newrelic')
+  } catch {
+    // New Relic not installed or misconfigured — continue without APM
+  }
+}
+if (process.env.DATADOG_API_KEY) {
+  try {
+    // @ts-ignore
+    const ddTrace = await import('dd-trace')
+    const tracer = (ddTrace as any).default || ddTrace
+    if (typeof tracer.init === 'function') tracer.init()
+  } catch {
+    // Datadog tracer not installed — continue without APM
+  }
+}
 
 // Validate environment before starting
 validateEnv()
 
 const db = initFirebase()
-const app = Fastify({ logger: false })
+const app = Fastify({
+  logger: false,
+  bodyLimit: 1024 * 1024, // 1MB max body size
+})
+
+// Multipart limits — no file uploads allowed
+app.register(multipart, {
+  limits: {
+    fieldNameSize: 100,
+    fieldSize: 100,
+    fields: 10,
+    fileSize: 0, // No file uploads
+    files: 0,
+    headerPairs: 2000,
+  },
+})
+
+// Compression (not global — only when explicitly requested)
+app.register(compress, { global: false })
 
 // Capture raw body for Stripe webhook signature verification
 app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
@@ -77,6 +132,41 @@ const rateLimiter = new RateLimiter({
   },
   defaultLimit: 200,
   windowMs: 60_000,
+})
+
+// DDoS + WAF + Abuse Detection
+const ddosProtection = new DdosProtection()
+const abuseDetection = new AbuseDetection()
+
+app.addHook('onRequest', async (request, reply) => {
+  const ip = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
+
+  // DDoS check
+  const ddosResult = await ddosProtection.check(ip)
+  if (!ddosResult.allowed) {
+    reply.code(429).send({ error: { code: 'ddos_protection', message: ddosResult.reason } })
+    return
+  }
+
+  // WAF check
+  const wafResult = checkWaf(request)
+  if (!wafResult.allowed) {
+    reply.code(wafResult.statusCode).send({ error: { code: 'waf_blocked', message: wafResult.reason } })
+    return
+  }
+
+  // Abuse detection
+  const abuseResult = await abuseDetection.check(ip, request)
+  if (!abuseResult.allowed) {
+    reply.code(403).send({ error: { code: 'abuse_detected', message: abuseResult.reason } })
+    return
+  }
+})
+
+// Release concurrent connection count after request completes
+app.addHook('onResponse', async (request) => {
+  const ip = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
+  await ddosProtection.release(ip)
 })
 
 // CORS + rate limiting hook
@@ -115,6 +205,9 @@ app.addHook('onRequest', async (request, reply) => {
 // Request ID middleware (kept for backward compat)
 attachRequestId(app)
 
+// Org isolation — every authenticated request gets request.orgId from JWT
+registerOrgIsolation(app)
+
 // Global error handler
 app.setErrorHandler((error: any, request, reply) => {
   const correlationId = request.correlationId || 'unknown'
@@ -142,6 +235,12 @@ app.setErrorHandler((error: any, request, reply) => {
     stack: isDev ? error.stack : undefined,
   })
 
+  // Record server errors for DDoS protection (error-based blocking)
+  const errIp = ((request.headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1').split(',')[0].trim()
+  if (error.statusCode && error.statusCode >= 500) {
+    ddosProtection.recordError(errIp).catch(() => {})
+  }
+
   const sanitized = sanitizeErrorForProduction(error)
   reply.code(500).send({
     error: {
@@ -152,6 +251,15 @@ app.setErrorHandler((error: any, request, reply) => {
   })
 })
 
+// Additional security headers
+app.addHook('onSend', async (_request, reply, payload) => {
+  reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (!isDev) {
+    reply.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  }
+  return payload
+})
+
 // Auth middleware
 interface Claims { sub: string; role: string; orgId?: string; scopes?: string[]; iat: number; exp: number; jti: string }
 async function requireAuth(request: any, reply: any): Promise<Claims | null> {
@@ -159,24 +267,43 @@ async function requireAuth(request: any, reply: any): Promise<Claims | null> {
   const header = (request.headers.authorization || '') as string
   const token = header.startsWith('Bearer ') ? header.substring(7) : null
   if (token) {
-    const claims = verify(token)
+    const claims = await verify(token)
     if (!claims) { reply.code(401).send({ error: { code: 'unauthorized', message: 'invalid or expired token' } }); return null }
     request.claims = claims as Claims
+    if (claims.orgId) {
+      request.orgId = claims.orgId
+    }
     return claims as Claims
   }
 
   // Fall back to API key
   const apiKey = (request.headers['x-api-key'] || '') as string
   if (apiKey) {
-    const keySnap = await db.collection('apiKeys').get()
+    const keyHash = hashApiKey(apiKey)
+    const cacheKey = `api_key:${keyHash}`
     let matchedDoc: any = null
-    for (const doc of keySnap.docs) {
-      const data = doc.data() as any
-      if (data.status !== 'active') continue
-      const { verifyKey } = await import('./lib/crypto.js')
-      if (verifyKey(apiKey, data.keyHash, data.keySalt, data.iterations || 50000)) {
-        matchedDoc = { id: doc.id, ...data }
-        break
+
+    // Check Redis cache first
+    try {
+      const cached = await cacheGet<{ id: string; orgId: string; scopes: string[] }>(cacheKey)
+      if (cached) {
+        matchedDoc = cached
+      }
+    } catch {
+      // cache miss or error, continue to DB
+    }
+
+    if (!matchedDoc) {
+      const keySnap = await db.collection('apiKeys').where('status', '==', 'active').get()
+      for (const doc of keySnap.docs) {
+        const data = doc.data() as any
+        const { verifyKey } = await import('./lib/crypto.js')
+        if (verifyKey(apiKey, data.keyHash, data.keySalt, data.iterations || 50000)) {
+          matchedDoc = { id: doc.id, orgId: data.orgId, scopes: data.scopes || ['read'] }
+          // Cache validated key (5 min TTL)
+          await cacheSet(cacheKey, matchedDoc, 300)
+          break
+        }
       }
     }
 
@@ -201,6 +328,9 @@ async function requireAuth(request: any, reply: any): Promise<Claims | null> {
       jti: matchedDoc.id,
     }
     request.claims = claims
+    if (claims.orgId) {
+      request.orgId = claims.orgId
+    }
     return claims
   }
 
@@ -244,14 +374,32 @@ async function fetchDoc(collection: string, id: string) {
   return snap.exists ? { id, ...snap.data() } : null
 }
 
-function getOrgId(claims: Claims | null): string {
+function getRequestOrgIdSafe(request: any): string {
+  return request.orgId || process.env.DEFAULT_ORG_ID || 'default'
+}
+
+function hashApiKey(key: string): string {
+  return createHash('sha256').update(key).digest('hex')
+}
+
+function getOrgId(claims: any): string {
   return claims?.orgId || process.env.DEFAULT_ORG_ID || 'default'
+}
+
+async function fetchDocAndVerifyOrg(collection: string, id: string, orgId: string) {
+  const snap = await db.collection(collection).doc(id).get()
+  if (!snap.exists) return null
+  const data = snap.data() as any
+  if (data?.orgId && data.orgId !== orgId) {
+    return { exists: true, orgMismatch: true }
+  }
+  return { id, ...data, exists: true, orgMismatch: false }
 }
 
 async function broadcastMetrics(orgId: string) {
   try {
     const data = await getMetricsData(db)
-    publishEvent(orgId, 'metrics', data)
+    await publishEvent(orgId, 'metrics', data)
   } catch {
     // silent fail
   }
@@ -350,7 +498,7 @@ footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;fon
 <footer>Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
 <script>
 function countUp(el,target){if(!el)return;var cur=parseInt(el.textContent)||0;if(cur===target)return;var step=Math.ceil(Math.abs(target-cur)/20);if(step<1)step=1;var go=function(){cur+=step;if((step>0&&cur>=target)||(step<0&&cur<=target)){el.textContent=target;return}el.textContent=cur;requestAnimationFrame(go)};go()}
-async function refresh(){try{var r=await fetch("/metrics"),d=await r.json();if(!d.error){var t=d.tasks||{},ra=d.runs||{},ag=d.agents||{};
+async function refresh(){try{var r=await fetch("/metrics",{headers:{Accept:"application/json"}}),d=await r.json();if(!d.error){var t=d.tasks||{},ra=d.runs||{},ag=d.agents||{};
 document.getElementById("stats").innerHTML=
 '<div class=card><div class=card-label>Total Tasks</div><div class="card-value val-green" id=tTotal>0</div></div>'+
 '<div class=card><div class=card-label>Pending</div><div class="card-value val-amber" id=tPending>0</div></div>'+
@@ -406,12 +554,7 @@ app.post('/auth/login', async (request, reply) => {
           update.lockedUntil = lockedUntil
           update.failedLoginAttempts = 0
           // Send lockout email (best-effort)
-          ;(async () => {
-            try {
-              const { html, text } = accountLockedTemplate({ email, lockoutMinutes: 30 })
-              await sendEmail({ to: email, subject: 'Account Temporarily Locked', html, text, orgId: userData.orgId })
-            } catch {}
-          })()
+          emailQueue.add('send', { template: 'accountLocked', to: email, data: { email, lockoutMinutes: 30 }, orgId: userData.orgId }).catch(() => {})
         }
         db.collection('users').doc(userDocId).update(update).catch(() => {})
       }
@@ -424,9 +567,9 @@ app.post('/auth/login', async (request, reply) => {
     }
 
     const user = { id: userDocId, ...userData }
-    const token = sign({ sub: email, role: userData.role || 'org_admin' })
-    log.success('login', { user: email })
-    return { token, user: { email, role: userData.role, verified: userData.verified ?? true } }
+    const token = sign({ sub: email, role: userData.role || 'org_admin', orgId: userData.orgId || process.env.DEFAULT_ORG_ID || 'default' })
+    log.success('login', { user: email, orgId: userData.orgId })
+    return { token, user: { email, role: userData.role, verified: userData.verified ?? true, orgId: userData.orgId } }
   } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
 })
 
@@ -457,12 +600,7 @@ app.post('/auth/register', async (request, reply) => {
     // Send verification email (best-effort)
     const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
     const verificationUrl = `${frontendUrl}/verify?token=${verificationToken}`
-    ;(async () => {
-      try {
-        const { html, text } = verificationTemplate({ email, verificationUrl })
-        await sendEmail({ to: email, subject: 'Verify Your Email — Passport Agent', html, text })
-      } catch {}
-    })()
+    emailQueue.add('send', { template: 'verification', to: email, data: { email, verificationUrl } }).catch(() => {})
 
     reply.code(201)
     return { message: 'Account created. Please check your email for verification link.', email }
@@ -517,12 +655,7 @@ app.post('/auth/resend-verification', async (request, reply) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
     const verificationUrl = `${frontendUrl}/verify?token=${newToken}`
-    ;(async () => {
-      try {
-        const { html, text } = verificationTemplate({ email, verificationUrl })
-        await sendEmail({ to: email, subject: 'Verify Your Email — Passport Agent', html, text })
-      } catch {}
-    })()
+    emailQueue.add('send', { template: 'verification', to: email, data: { email, verificationUrl } }).catch(() => {})
 
     return { message: 'If an account exists, a verification email has been sent.' }
   } catch (e: any) { return err(reply, 503, 'firestore', 'auth service unavailable') }
@@ -545,12 +678,7 @@ app.post('/auth/forgot-password', async (request, reply) => {
 
       const frontendUrl = process.env.FRONTEND_URL || 'https://passport-agent.netlify.app'
       const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`
-      ;(async () => {
-        try {
-          const { html, text } = passwordResetTemplate({ email, resetUrl })
-          await sendEmail({ to: email, subject: 'Reset Your Password — Passport Agent', html, text })
-        } catch {}
-      })()
+      emailQueue.add('send', { template: 'passwordReset', to: email, data: { email, resetUrl } }).catch(() => {})
     }
     // Security through obscurity: always return 200
     return { message: 'If an account exists, a reset email has been sent.' }
@@ -625,41 +753,68 @@ app.get('/auth/sessions', async (request, reply) => {
 app.delete('/auth/sessions/:id', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
   const { id } = request.params as { id: string }
-  // Stub: in a full implementation, add session token to blocklist
+  // Add JWT to Redis blacklist with TTL = token expiry
+  const header = (request.headers.authorization || '') as string
+  const token = header.startsWith('Bearer ') ? header.substring(7) : null
+  if (token && claims.jti && claims.exp) {
+    await storeBlacklist(claims.jti, claims.exp)
+  }
   return { revoked: true, sessionId: id }
 })
 
 // POST /task
-app.post('/task', async (request, reply) => {
+app.post('/task', { preHandler: requireRole(['org_member']) }, async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
   const verified = await requireVerified(request, reply); if (!verified) return
   const { payload } = (request.body || {}) as { payload?: Record<string, unknown> }
   if (!payload) return err(reply, 400, 'validation', 'payload is required')
+  const orgId = getRequestOrgIdSafe(request)
   try {
     const docRef = db.collection('tasks').doc()
     const now = new Date().toISOString()
-    await docRef.set({ payload, status: 'pending', createdAt: now, updatedAt: now, queuedAt: null, startedAt: null, completedAt: null, failedAt: null, cancelledAt: null, error: null, runCount: 0 })
-    log.success('task created', { taskId: docRef.id })
-    broadcastMetrics(getOrgId(claims))
+    await docRef.set({ payload, status: 'pending', createdAt: now, updatedAt: now, queuedAt: null, startedAt: null, completedAt: null, failedAt: null, cancelledAt: null, error: null, runCount: 0, orgId })
+    log.success('task created', { taskId: docRef.id, orgId })
+    broadcastMetrics(orgId)
+    cacheDeletePattern('cache:metrics:*').catch(() => {})
     reply.code(201); return { id: docRef.id, payload, status: 'pending', createdAt: now }
   } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
 })
 
 // GET /task/:id
-app.get('/task/:id', async (request, reply) => {
+app.get('/task/:id', { preHandler: requireRole(['readonly']) }, async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
   const { id } = request.params as { id: string }
+  const orgId = getRequestOrgIdSafe(request)
   try {
-    const doc = await fetchDoc('tasks', id)
+    const doc = await fetchDocAndVerifyOrg('tasks', id, orgId)
     if (!doc) return err(reply, 404, 'not_found', `task ${id} not found`)
+    if ((doc as any).orgMismatch) return err(reply, 403, 'forbidden', 'task does not belong to your organization')
     return doc
   } catch (e: any) { return err(reply, 503, 'firestore', 'read failed') }
 })
 
 // GET /tasks — paginated list
-app.get('/tasks', async (request, reply) => {
+app.get('/tasks', { preHandler: requireRole(['readonly']) }, async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
   try {
-    const { status } = request.query as { status?: string }
-    const snap = await db.collection('tasks').orderBy('createdAt', 'desc').get()
+    const { status, limit } = request.query as { status?: string; limit?: string }
+    const orgId = getRequestOrgIdSafe(request)
+    const q = buildListQuery(db, 'tasks', orgId, { status, limit: limit || '50' })
+    const start = Date.now()
+    const snap = await q.get()
+    const durationMs = Date.now() - start
+
+    attachQueryMetrics(request, {
+      collection: 'tasks',
+      durationMs,
+      docsReturned: snap.size,
+      docsScanned: snap.size,
+      limit: parseInt(limit || '50', 10),
+      orderBy: 'createdAt',
+      direction: 'desc',
+      filters: status ? [`status=${status}`] : undefined,
+    })
+
     let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
     const options = parsePaginationQuery(request.query as Record<string, unknown>)
     if (status) options.filters = { ...options.filters, status }
@@ -668,25 +823,31 @@ app.get('/tasks', async (request, reply) => {
 })
 
 // POST /agent/run
-app.post('/agent/run', async (request, reply) => {
+app.post('/agent/run', { preHandler: requireRole(['org_member']) }, async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
   const verified = await requireVerified(request, reply); if (!verified) return
   const { agentId, taskId } = (request.body || {}) as { agentId?: string; taskId?: string }
   if (!agentId || !taskId) return err(reply, 400, 'validation', 'agentId and taskId are required')
+  const orgId = getRequestOrgIdSafe(request)
   try {
-    const agent = await fetchDoc('agents', agentId); if (!agent) return err(reply, 400, 'agent_not_found', `agent ${agentId} not found`)
-    const task = await fetchDoc('tasks', taskId) as any; if (!task) return err(reply, 400, 'task_not_found', `task ${taskId} not found`)
+    const agent = await fetchDocAndVerifyOrg('agents', agentId, orgId)
+    if (!agent) return err(reply, 400, 'agent_not_found', `agent ${agentId} not found`)
+    if ((agent as any).orgMismatch) return err(reply, 403, 'forbidden', 'agent does not belong to your organization')
+    const task = await fetchDocAndVerifyOrg('tasks', taskId, orgId) as any
+    if (!task) return err(reply, 400, 'task_not_found', `task ${taskId} not found`)
+    if ((task as any).orgMismatch) return err(reply, 403, 'forbidden', 'task does not belong to your organization')
     if (task.status !== 'pending') return err(reply, 409, 'conflict', `task ${taskId} is ${task.status}`, { currentStatus: task.status })
     const requestId = generateId('req_', 8)
     await transitionTask(db, taskId, 'queued', {}, requestId)
     const docRef = db.collection('runs').doc(); const now = new Date().toISOString()
     await db.runTransaction(async (tx) => {
       tx.update(db.collection('tasks').doc(taskId), { status: 'running', startedAt: now, updatedAt: now })
-      tx.set(docRef, { agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now, endedAt: null, error: null, updatedAt: now, createdAt: now, totalActions: 0, allowedActions: 0, deniedActions: 0 })
+      tx.set(docRef, { agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now, endedAt: null, error: null, updatedAt: now, createdAt: now, totalActions: 0, allowedActions: 0, deniedActions: 0, orgId })
     })
     await db.collection('tasks').doc(taskId).update({ runCount: (task.runCount || 0) + 1 })
-    log.success('run started', { runId: docRef.id, agentId, taskId, requestId })
-    broadcastMetrics(getOrgId(claims))
+    log.success('run started', { runId: docRef.id, agentId, taskId, requestId, orgId })
+    broadcastMetrics(orgId)
+    cacheDeletePattern('cache:metrics:*').catch(() => {})
     reply.code(201); return { id: docRef.id, agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now }
   } catch (e: any) { return err(reply, 503, 'firestore', 'write failed') }
 })
@@ -694,10 +855,24 @@ app.post('/agent/run', async (request, reply) => {
 // GET /runs — paginated list
 app.get('/runs', async (request, reply) => {
   try {
-    const { status } = request.query as { status?: string }
-    let q = db.collection('runs').orderBy('createdAt', 'desc')
-    if (status) q = q.where('status', '==', status)
+    const { status, limit } = request.query as { status?: string; limit?: string }
+    const orgId = getRequestOrgIdSafe(request)
+    const q = buildListQuery(db, 'runs', orgId, { status, limit: limit || '50' })
+    const start = Date.now()
     const snap = await q.get()
+    const durationMs = Date.now() - start
+
+    attachQueryMetrics(request, {
+      collection: 'runs',
+      durationMs,
+      docsReturned: snap.size,
+      docsScanned: snap.size,
+      limit: parseInt(limit || '50', 10),
+      orderBy: 'createdAt',
+      direction: 'desc',
+      filters: status ? [`status=${status}`] : undefined,
+    })
+
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
     return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
   } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: e.message } } }
@@ -720,6 +895,8 @@ app.post('/run/:id/log', async (request, reply) => {
   })
   log.success('action logged', { runId: id, tool, decision })
   broadcastMetrics(getOrgId(claims))
+  cacheDeletePattern('cache:metrics:*').catch(() => {})
+  cacheDeletePattern('cache:audit:*').catch(() => {})
   reply.code(201); return { id: logRef.id, ...logDoc }
 })
 
@@ -734,6 +911,7 @@ app.patch('/run/:id/complete', async (request, reply) => {
     await transitionRun(db, id, 'completed', {}, requestId)
     if (run.taskId) await transitionTask(db, run.taskId, 'completed', { runId: id }, requestId)
     broadcastMetrics(getOrgId(claims))
+    cacheDeletePattern('cache:metrics:*').catch(() => {})
     return { id, status: 'completed', taskId: run.taskId }
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
@@ -748,30 +926,55 @@ app.patch('/run/:id/fail', async (request, reply) => {
   try {
     await failRunWithError(db, id, runError || 'Unknown error', requestId)
     const run = await fetchDoc('runs', id) as any
-    deliverWebhook(db, 'run.failed', {
+    webhookQueue.add('bulk', {
       event: 'run.failed',
-      timestamp: new Date().toISOString(),
-      runId: id,
-      agentId: run?.agentId || null,
-      taskId: run?.taskId || null,
-      error: runError || 'Unknown error',
-    }, run?.orgId || process.env.DEFAULT_ORG_ID).catch(() => {})
+      payload: {
+        event: 'run.failed',
+        timestamp: new Date().toISOString(),
+        runId: id,
+        agentId: run?.agentId || null,
+        taskId: run?.taskId || null,
+        error: runError || 'Unknown error',
+      },
+      orgId: run?.orgId || process.env.DEFAULT_ORG_ID || 'default',
+    }).catch(() => {})
     broadcastMetrics(getOrgId(claims))
+    cacheDeletePattern('cache:metrics:*').catch(() => {})
     return { id, status: 'failed' }
   } catch (e: any) { return err(reply, 409, 'conflict', e.message) }
 })
 
-// GET /audit — paginated with filtering
-app.get('/audit', async (request, reply) => {
-  try {
-    const { decision, tool } = request.query as { decision?: string; tool?: string }
-    let q = db.collection('actionIntents').orderBy('createdAt', 'desc')
-    if (decision) q = q.where('decision', '==', decision)
-    const snap = await q.get()
-    let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    if (tool) data = data.filter((d: any) => d.tool === tool)
-    return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
-  } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: 'audit query failed' } } }
+// GET /audit — paginated with filtering (cached 10s)
+app.get('/audit', {
+  handler: withCache(async (request, reply) => {
+    try {
+      const { decision, tool, limit } = request.query as { decision?: string; tool?: string; limit?: string }
+      const orgId = getRequestOrgIdSafe(request)
+      const q = buildListQuery(db, 'actionIntents', orgId, {
+        filterField: 'decision',
+        filterValue: decision,
+        limit: limit || '50',
+      })
+      const start = Date.now()
+      const snap = await q.get()
+      const durationMs = Date.now() - start
+
+      attachQueryMetrics(request, {
+        collection: 'actionIntents',
+        durationMs,
+        docsReturned: snap.size,
+        docsScanned: snap.size,
+        limit: parseInt(limit || '50', 10),
+        orderBy: 'createdAt',
+        direction: 'desc',
+        filters: decision ? [`decision=${decision}`] : undefined,
+      })
+
+      let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      if (tool) data = data.filter((d: any) => d.tool === tool)
+      return paginate(data, parsePaginationQuery(request.query as Record<string, unknown>))
+    } catch (e: any) { reply.code(503); return { error: { code: 'firestore', message: 'audit query failed' } } }
+  }, 10, (req) => `audit:${JSON.stringify(req.query)}`),
 })
 
 // GET /sessions, GET /sessions/:id
@@ -850,13 +1053,14 @@ app.get('/org/metrics', async (request, reply) => {
   enforceRoutes(app, db)
   healthRoutes(app, db)
   apiKeysRoutes(app, db)
+  analyticsRoutes(app, db)
   webhooksRoutes(app, db)
   notificationsRoutes(app, db)
   billingRoutes(app, db)
+  queueStatusRoutes(app, db)
   hardenAuth(app, db)
   auditTimeline(app, db)
   runTrace(app, db)
-  metrics(app, db)
 
 // Serve static HTML files (catch-all for unmatched GETs)
 app.get('/*', async (request, reply) => {
@@ -878,8 +1082,16 @@ app.get('/*', async (request, reply) => {
 // Start threshold checker
 startThresholdChecker()
 
+// Start system metrics collection (Node.js + Firestore gauges)
+startSystemMetrics(db)
+
 // Reset metrics every hour
 setInterval(resetMetrics, 60 * 60 * 1000)
+
+// Schedule monthly secret rotation in production
+if (!isDev) {
+  scheduleRotation()
+}
 
 // Start
 const PORT = parseInt(process.env.PORT || '3000', 10)
@@ -893,6 +1105,12 @@ app.listen({ port: PORT, host: HOST }, (listenErr) => {
 // Graceful shutdown
 async function gracefulShutdown(signal: string) {
   log.info(`received ${signal}, shutting down gracefully`)
+
+  // Flush pending audit entries before shutting down
+  try {
+    const { flushAuditQueue } = await import('./lib/batch.js')
+    await flushAuditQueue(db)
+  } catch {}
 
   // Close HTTP server
   await app.close()

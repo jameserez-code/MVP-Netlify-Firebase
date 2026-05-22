@@ -1,4 +1,51 @@
-// In-memory metrics collection with 1-hour TTL
+import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client'
+
+export const register = new Registry()
+
+// Enable default Node.js metrics (GC, event loop, memory, etc.)
+collectDefaultMetrics({ register })
+
+// HTTP request metrics
+export const httpRequestsTotal = new Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+  registers: [register],
+})
+
+export const httpRequestDuration = new Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration',
+  labelNames: ['method', 'route'],
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2, 5],
+  registers: [register],
+})
+
+// Business metrics
+export const enforcementsTotal = new Counter({
+  name: 'enforcements_total',
+  help: 'Total policy enforcements',
+  labelNames: ['decision', 'org_id'],
+  registers: [register],
+})
+
+export const activeAgents = new Gauge({
+  name: 'active_agents',
+  help: 'Number of active agents',
+  labelNames: ['org_id'],
+  registers: [register],
+})
+
+export const queueDepth = new Gauge({
+  name: 'queue_depth',
+  help: 'Current queue depth',
+  labelNames: ['queue_name'],
+  registers: [register],
+})
+
+// ---------------------------------------------------------------------------
+// In-memory metrics collection with 1-hour TTL (backward compatibility)
+// ---------------------------------------------------------------------------
 
 interface RequestRecord {
   method: string
@@ -32,6 +79,10 @@ function cleanupOldRecords() {
 export function recordRequest(method: string, path: string, status: number, duration: number) {
   cleanupOldRecords()
   requests.push({ method, path, status, duration, timestamp: Date.now() })
+
+  // Prometheus metrics
+  httpRequestsTotal.inc({ method, route: path, status_code: String(status) })
+  httpRequestDuration.observe({ method, route: path }, duration / 1000)
 }
 
 export function recordError(error: Error | string, endpoint: string) {

@@ -1,4 +1,6 @@
-// Simple in-memory cache with TTL for API response caching
+// Multi-tier cache: Memory (L1, 5s) + Redis (L2, configurable TTL)
+
+import { cacheGet, cacheSet, cacheDelete, cacheDeletePattern } from './redis-cache.js'
 
 interface CacheEntry {
   value: unknown
@@ -31,9 +33,11 @@ class MemoryCache {
   }
 }
 
-export const cache = new MemoryCache()
+export const memoryCache = new MemoryCache()
 
-// Helper to wrap a Fastify GET handler with caching
+export { cacheGet, cacheSet, cacheDelete, cacheDeletePattern }
+
+// Helper to wrap a Fastify GET handler with multi-tier caching
 export function withCache<T>(
   handler: (request: any, reply: any) => Promise<T>,
   ttlSeconds: number,
@@ -45,17 +49,31 @@ export function withCache<T>(
       return handler(request, reply)
     }
 
-    const cacheKey = keyGenerator ? keyGenerator(request) : `${request.method}:${request.url}`
-    const cached = cache.get<T>(cacheKey)
-    if (cached !== undefined) {
-      reply.header('Cache-Control', `max-age=${ttlSeconds}`)
-      reply.header('X-Cache', 'HIT')
-      return cached
+    const cacheKey = 'cache:' + (keyGenerator ? keyGenerator(request) : `${request.method}:${request.url}`)
+
+    // L1: Memory cache (5s TTL max)
+    const memoryTtl = Math.min(ttlSeconds, 5)
+    const memCached = memoryCache.get<T>(cacheKey)
+    if (memCached !== undefined) {
+      reply.header('Cache-Control', `max-age=${memoryTtl}`)
+      reply.header('X-Cache', 'HIT-L1')
+      return memCached
     }
 
+    // L2: Redis cache (full TTL)
+    const redisCached = await cacheGet<T>(cacheKey)
+    if (redisCached !== undefined) {
+      memoryCache.set(cacheKey, redisCached, memoryTtl)
+      reply.header('Cache-Control', `max-age=${memoryTtl}`)
+      reply.header('X-Cache', 'HIT-L2')
+      return redisCached
+    }
+
+    // L3: Database (handler)
     const result = await handler(request, reply)
-    cache.set(cacheKey, result, ttlSeconds)
-    reply.header('Cache-Control', `max-age=${ttlSeconds}`)
+    memoryCache.set(cacheKey, result, memoryTtl)
+    await cacheSet(cacheKey, result, ttlSeconds)
+    reply.header('Cache-Control', `max-age=${memoryTtl}`)
     reply.header('X-Cache', 'MISS')
     return result
   }

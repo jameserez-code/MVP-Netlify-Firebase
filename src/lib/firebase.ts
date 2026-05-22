@@ -1,8 +1,16 @@
 import admin from 'firebase-admin'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { CircuitBreaker } from './circuit-breaker.js'
 
 let _db: admin.firestore.Firestore | null = null
+
+const firebaseCircuitBreaker = new CircuitBreaker({
+  name: 'firebase-connection',
+  failureThreshold: 5,
+  resetTimeoutMs: 30_000,
+  halfOpenMaxCalls: 3,
+})
 
 export function initFirebase(): admin.firestore.Firestore {
   if (_db) return _db
@@ -69,4 +77,9 @@ export function initFirebase(): admin.firestore.Firestore {
 export function getDb(): admin.firestore.Firestore {
   if (!_db) return initFirebase()
   return _db
+}
+
+// Circuit-breaker-wrapped Firebase operations for resilience
+export async function firebaseOperation<T>(fn: () => Promise<T>): Promise<T> {
+  return firebaseCircuitBreaker.execute(fn)
 }

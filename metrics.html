@@ -65,7 +65,7 @@
     var history = [];
 
     async function refresh() {
-      var m = await fetch(API + '/metrics').then(r => r.json()).catch(() => null);
+      var m = await fetch(API + '/metrics', { headers: { Accept: 'application/json' } }).then(r => r.json()).catch(() => null);
       var tl = await fetch(API + '/audit/timeline?limit=30').then(r => r.json()).catch(() => null);
       var ag = await fetch(API + '/agents').then(r => r.json()).catch(() => null);
       if (!m || m.error) return;

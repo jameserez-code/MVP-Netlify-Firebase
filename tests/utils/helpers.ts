@@ -47,8 +47,8 @@ export async function getAuthToken(): Promise<string> {
   return data.token
 }
 
-export function verifyJwt(token: string): boolean {
-  const claims = verify(token)
+export async function verifyJwt(token: string): Promise<boolean> {
+  const claims = await verify(token)
   return claims !== null
 }
 

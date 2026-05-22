@@ -2,7 +2,31 @@
 
 > **OAuth for AI Agents.** A deterministic execution runtime that intercepts every AI tool call, verifies identity, evaluates against policies, and allows/denies/modifies before execution — with immutable audit logging and crash recovery.
 
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/jameserez-code/MVP-Netlify-Firebase/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/jameserez-code/MVP-Netlify-Firebase?style=social)](https://github.com/jameserez-code/MVP-Netlify-Firebase/stargazers)
+
 **Cryptographic identity. Pre-execution enforcement. Explainable decisions. Deterministic replay. Immutable audit. Crash recovery.**
+
+---
+
+## Quick Start
+
+```bash
+# 1. Clone & install
+git clone https://github.com/jameserez-code/MVP-Netlify-Firebase.git
+cd MVP-Netlify-Firebase && npm install
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env with your Firebase credentials
+
+# 3. Start backend & frontend
+npm run dev          # Backend: http://localhost:3000
+cd frontend && npm run dev   # Frontend: http://localhost:3001
+```
+
+**[Interactive Demo](https://your-url.com/demo)** — No signup required. Watch a simulated agent get blocked from deleting databases and leaking PII in real-time.
 
 ---
 
@@ -95,6 +119,14 @@ AI agents generate tool calls. Passport Agent intercepts every call:
 ```
 
 **Collections:** `tasks`, `runs`, `agents`, `policies`, `actionIntents`, `logs`, `sessions`, `users`
+
+### Dashboard Screenshots
+
+| Landing Page | Dashboard | Policy Builder | Audit Log |
+|:------------:|:---------:|:--------------:|:---------:|
+| ![Landing](docs/screenshots/landing.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![Policies](docs/screenshots/policies.png) | ![Audit](docs/screenshots/audit.png) |
+
+*Note: Place screenshots in `docs/screenshots/` directory.*
 
 ---
 
@@ -193,6 +225,33 @@ Deploy indexes before first use:
 
 ```bash
 firebase deploy --only firestore:indexes
+```
+
+### Backup Strategy
+
+Nightly backups are automated via GitHub Actions (`.github/workflows/ci.yml`) and can also be triggered manually:
+
+```bash
+# Run backup locally (exports collections to JSON and optionally uploads to GCS)
+npx tsx scripts/backup.ts
+```
+
+Set `BACKUP_GCS_BUCKET` to enable automatic upload to Google Cloud Storage.
+
+### Data Retention
+
+Configurable retention cleanup is available via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RETENTION_AUDIT_DAYS` | `90` | Delete audit logs older than N days |
+| `RETENTION_DEMO_SESSIONS_HOURS` | `24` | Delete demo sessions older than N hours |
+| `RETENTION_PASSWORD_RESET_HOURS` | `1` | Clear expired password reset tokens |
+| `RETENTION_VERIFICATION_HOURS` | `24` | Clear expired verification tokens |
+
+Run manually:
+```bash
+npx tsx scripts/retention-cleanup.ts
 ```
 
 ---
@@ -523,6 +582,45 @@ All transitions are validated. Invalid transitions are rejected with explicit er
 | `FIRESTORE_INDEXES.md` | Required Firestore indexes |
 | `DEPLOY.md` | Netlify deployment guide |
 | `SECURITY_REVIEW.md` | Security audit notes |
+
+---
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on:
+
+- Reporting issues
+- Submitting pull requests
+- Code style and conventions
+- Development setup
+- Testing requirements
+
+### Quick contribution workflow:
+
+```bash
+# 1. Fork and clone
+git clone https://github.com/YOUR_USERNAME/MVP-Netlify-Firebase.git
+
+# 2. Create a branch
+git checkout -b feature/your-feature-name
+
+# 3. Make changes and test
+npm test
+npm run test:integration
+
+# 4. Commit and push
+git commit -m "feat: add your feature"
+git push origin feature/your-feature-name
+
+# 5. Open a pull request
+```
+
+### Areas we need help:
+- [ ] Additional policy rule types (time-based, geo-based)
+- [ ] SDK clients for Python, Go, Rust
+- [ ] Terraform modules for infrastructure
+- [ ] More comprehensive e2e tests
+- [ ] Documentation translations
 
 ---
 

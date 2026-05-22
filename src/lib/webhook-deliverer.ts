@@ -2,6 +2,8 @@ import { createHmac } from 'crypto'
 import type { Firestore } from 'firebase-admin/firestore'
 import { log } from './logger.js'
 import { decryptWebhookSecret } from './crypto.js'
+import { CircuitBreaker } from './circuit-breaker.js'
+import { getDb } from './firebase.js'
 
 export interface WebhookDoc {
   id: string
@@ -21,6 +23,13 @@ export interface WebhookDoc {
 async function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
 }
+
+const webhookCircuitBreaker = new CircuitBreaker({
+  name: 'webhook-delivery',
+  failureThreshold: 5,
+  resetTimeoutMs: 30_000,
+  halfOpenMaxCalls: 3,
+})
 
 async function sendToWebhook(
   db: Firestore,
@@ -56,7 +65,9 @@ async function sendToWebhook(
 
   for (attempt = 1; attempt <= 3; attempt++) {
     try {
-      const res = await fetch(webhook.url, { method: 'POST', headers, body })
+      const res = await webhookCircuitBreaker.execute(() =>
+        fetch(webhook.url, { method: 'POST', headers, body }),
+      )
       responseStatus = res.status
       responseBody = await res.text()
       delivered = res.ok
@@ -102,15 +113,24 @@ async function sendToWebhook(
       failureCount: 0,
     })
   }
+
+  return delivery
 }
 
 export async function deliverWebhook(
-  db: Firestore,
+  dbOrWebhook: Firestore | WebhookDoc,
   event: string,
   payload: Record<string, unknown>,
   orgId?: string,
   forceWebhookId?: string,
-) {
+): Promise<any> {
+  // Single webhook delivery (used by worker)
+  if ('url' in (dbOrWebhook as any)) {
+    const db = getDb()
+    return sendToWebhook(db, dbOrWebhook as WebhookDoc, event, payload)
+  }
+
+  const db = dbOrWebhook as Firestore
   try {
     let docs: WebhookDoc[] = []
     if (forceWebhookId) {

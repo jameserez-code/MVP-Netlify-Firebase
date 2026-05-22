@@ -69,7 +69,7 @@ async function testAuthFlow() {
   }
 
   // Verify JWT is valid
-  if (loginRes.data.token && verifyJwt(loginRes.data.token)) {
+  if (loginRes.data.token && await verifyJwt(loginRes.data.token)) {
     p('JWT is cryptographically valid')
   } else {
     f('JWT verification', 'token invalid or missing')

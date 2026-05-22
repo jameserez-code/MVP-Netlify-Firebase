@@ -337,3 +337,42 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+export function generateEmail(template: string, data: any): { subject: string; html: string; text: string } {
+  switch (template) {
+    case 'verification': {
+      const { html, text } = verificationTemplate(data)
+      return { subject: 'Verify Your Email — Passport Agent', html, text }
+    }
+    case 'passwordReset': {
+      const { html, text } = passwordResetTemplate(data)
+      return { subject: 'Reset Your Password — Passport Agent', html, text }
+    }
+    case 'accountLocked': {
+      const { html, text } = accountLockedTemplate(data)
+      return { subject: 'Account Temporarily Locked', html, text }
+    }
+    case 'policyViolation': {
+      const { html, text } = policyViolationTemplate(data)
+      return { subject: 'Passport Agent — Policy Violation Detected', html, text }
+    }
+    case 'agentRevoked': {
+      const { html, text } = agentRevokedTemplate(data)
+      return { subject: 'Passport Agent — Agent Access Revoked', html, text }
+    }
+    case 'systemAlert': {
+      const { html, text } = systemAlertTemplate(data)
+      return { subject: `Passport Agent — System Alert: ${data.alertType || 'Alert'}`, html, text }
+    }
+    case 'welcome': {
+      const { html, text } = welcomeTemplate(data)
+      return { subject: 'Welcome to Passport Agent', html, text }
+    }
+    case 'digest': {
+      const { html, text } = digestTemplate(data)
+      return { subject: `Passport Agent — Daily Digest for ${data.orgName}`, html, text }
+    }
+    default:
+      throw new Error(`Unknown email template: ${template}`)
+  }
+}

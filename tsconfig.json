@@ -11,5 +11,5 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "netlify", "src/demo-server.ts", "src/diagnostics-format.ts", "src/guided-demo.ts", "src/tasks-verify.ts", "src/tui.ts"]
+  "exclude": ["node_modules", "dist", "netlify", "src/demo-server.ts", "src/diagnostics-format.ts", "src/guided-demo.ts", "src/tasks-verify.ts", "src/tui.ts", "src/lib/dead-letter.ts", "src/lib/queue.ts", "src/routes/queue-status.ts", "src/workers"]
 }

@@ -26,6 +26,11 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  Github,
+  MessageSquare,
+  ExternalLink,
+  Play,
+  Radio,
 } from 'lucide-react'
 
 function CountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
@@ -251,6 +256,25 @@ const result = await agent.run({
         </section>
       )}
 
+      {/* ─── Trusted By ─── */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+        <div className="max-w-5xl mx-auto">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-passport-dim mb-6 text-center">
+            Trusted by developers at
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 opacity-40">
+            {['Acme Corp', 'TechStart', 'DataFlow', 'CloudNine', 'SecureAI'].map((name) => (
+              <div key={name} className="flex items-center gap-2 text-passport-muted font-semibold text-sm sm:text-base">
+                <div className="w-6 h-6 rounded bg-passport-surface border border-passport-border flex items-center justify-center">
+                  <span className="text-[10px] font-mono">{name.charAt(0)}</span>
+                </div>
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Problem / Solution ─── */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
         <div className="max-w-5xl mx-auto">
@@ -464,6 +488,57 @@ const result = await agent.run({
           </div>
 
           {codeTab === 'sdk' ? <CodeBlock code={sdkCode} lang="typescript" /> : <CodeBlock code={curlCode} lang="bash" />}
+        </div>
+      </section>
+
+      {/* ─── Live Demo Embed ─── */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
+              See It In Action
+            </h2>
+            <p className="text-passport-muted max-w-xl mx-auto">
+              Watch a simulated agent attempt dangerous actions — and get blocked in real-time.
+            </p>
+          </div>
+          <div className="relative rounded-md overflow-hidden border border-passport-border bg-passport-surface">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-passport-border bg-passport-bg">
+              <div className="flex items-center gap-2">
+                <Radio size={12} className="text-passport-green animate-pulse" />
+                <span className="font-mono text-[10px] text-passport-dim uppercase tracking-wider">Live Demo</span>
+              </div>
+              <Link href="/demo" className="flex items-center gap-1.5 text-[10px] font-mono text-passport-green hover:text-passport-text transition-colors">
+                <ExternalLink size={10} />
+                Open full demo
+              </Link>
+            </div>
+            <div className="aspect-video bg-[#0a0c10] flex items-center justify-center">
+              <Link
+                href="/demo"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-passport-coral hover:bg-[#e07055] text-white font-mono font-semibold text-sm rounded-md transition-all duration-200 shadow-[0_0_20px_rgba(247,129,102,0.2)] hover:shadow-[0_0_30px_rgba(247,129,102,0.35)] hover:-translate-y-0.5"
+              >
+                <Play size={18} fill="currentColor" />
+                Start Interactive Demo
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── As Seen On ─── */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+        <div className="max-w-5xl mx-auto">
+          <div className="font-mono text-[10px] uppercase tracking-widest text-passport-dim mb-6 text-center">
+            As seen on
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 opacity-30">
+            {['Hacker News', 'Product Hunt', 'Reddit r/MachineLearning', 'GitHub Trending'].map((name) => (
+              <span key={name} className="text-passport-muted font-semibold text-xs sm:text-sm">
+                {name}
+              </span>
+            ))}
+          </div>
         </div>
       </section>
 

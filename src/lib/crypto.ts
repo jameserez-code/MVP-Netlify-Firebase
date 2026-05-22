@@ -96,6 +96,10 @@ export function getEngineSecret(): string {
   return ENGINE_SECRET
 }
 
+export function setEngineSecret(newSecret: string): void {
+  ENGINE_SECRET = newSecret
+}
+
 export function generateGatewayTicket(intentId: string, agentId: string, tool: string, parameters: Record<string, unknown>): string {
   const header = { alg: 'HS256', typ: 'GATEWAY_TICKET' }
   const now = Math.floor(Date.now() / 1000)

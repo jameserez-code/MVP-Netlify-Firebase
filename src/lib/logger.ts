@@ -23,6 +23,15 @@ function formatPretty(level: Level, message: string, context?: Record<string, un
   return parts.join(' ')
 }
 
+const FIELD_MAP: Record<string, string> = {
+  correlationId: 'correlation_id',
+  responseTimeMs: 'duration_ms',
+  ip: 'client_ip',
+  userAgent: 'user_agent',
+  orgId: 'org_id',
+  statusCode: 'status_code',
+}
+
 function formatJson(level: Level, message: string, context?: Record<string, unknown>): string {
   const entry: Record<string, unknown> = {
     timestamp: timestamp(),
@@ -30,17 +39,13 @@ function formatJson(level: Level, message: string, context?: Record<string, unkn
     message,
     service: 'passport-agent',
     version: '2.1.0',
+    environment: process.env.NODE_ENV || 'development',
   }
 
   if (context) {
-    if (context.correlationId) {
-      entry.correlationId = context.correlationId
-    }
-    // Merge remaining context fields
     for (const [key, value] of Object.entries(context)) {
-      if (key !== 'correlationId') {
-        entry[key] = value
-      }
+      const mappedKey = FIELD_MAP[key] || key
+      entry[mappedKey] = value
     }
   }
 

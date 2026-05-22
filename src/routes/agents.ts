@@ -9,6 +9,9 @@ import {
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
 import { publishEvent } from '../lib/events.js'
 import { checkLimit } from '../lib/usage.js'
+import { optimizeQuery, attachQueryMetrics } from '../lib/query-optimizer.js'
+import { buildListQuery } from '../lib/query-builder.js'
+import { withCache, cacheDeletePattern } from '../lib/cache.js'
 
 export default async function agentsRoutes(app: FastifyInstance, db: Firestore) {
 
@@ -78,7 +81,8 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       })
 
       log.success('agent registered', { agentId, passportNumber, model })
-      publishEvent(orgId, 'agents', { type: 'registered', agentId, name, model, provider, timestamp: new Date().toISOString() })
+      await publishEvent(orgId, 'agents', { type: 'registered', agentId, name, model, provider, timestamp: new Date().toISOString() })
+      await cacheDeletePattern('cache:agents:*')
       deliverWebhook(db, 'agent.registered', {
         event: 'agent.registered',
         timestamp: new Date().toISOString(),
@@ -107,23 +111,40 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // GET /agents
   // ---------------------------------------------------------------------------
   app.get('/agents', async (request, reply) => {
-    const { status } = (request.query || {}) as { status?: string }
+    const { status, limit } = (request.query || {}) as { status?: string; limit?: string }
     const orgId = process.env.DEFAULT_ORG_ID
     if (!orgId) {
       reply.code(500)
       return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
     }
     try {
-      let q = db.collection('agents').where('orgId', '==', orgId)
+      const q = buildListQuery(db, 'agents', orgId, { status, limit: limit || '50' })
+      const start = Date.now()
       const snap = await q.get()
-      let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      if (status) data = data.filter((a: any) => a.status === status)
+      const durationMs = Date.now() - start
+
+      attachQueryMetrics(request, {
+        collection: 'agents',
+        durationMs,
+        docsReturned: snap.size,
+        docsScanned: snap.size,
+        limit: parseInt(limit || '50', 10),
+        orderBy: 'createdAt',
+        direction: 'desc',
+        filters: status ? [`status=${status}`] : undefined,
+      })
+
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
 
       const options = parsePaginationQuery(request.query as Record<string, unknown>)
       if (status) options.filters = { ...options.filters, status }
       const result = paginate(data, options)
 
-      log.info('agents list', { count: result.data.length, total: result.pagination.total })
+      log.info('agents list', {
+        count: result.data.length,
+        total: result.pagination.total,
+        queryDurationMs: durationMs,
+      })
       return result
     } catch (e: any) {
       log.error('agents list failed', { error: e.message })
@@ -133,12 +154,40 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   })
 
   // ---------------------------------------------------------------------------
-  // GET /agents/:id
+  // GET /agents
   // ---------------------------------------------------------------------------
-  app.get('/agents/:id', async (request, reply) => {
-    const snap = await db.collection('agents').doc((request.params as any).id).get()
-    if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'agent not found' } } }
-    return { id: snap.id, ...snap.data() }
+  app.get('/agents', {
+    handler: withCache(async (request, reply) => {
+      const { status, limit } = (request.query || {}) as { status?: string; limit?: string }
+      const orgId = process.env.DEFAULT_ORG_ID
+      if (!orgId) {
+        reply.code(500)
+        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+      }
+      try {
+        let q = db.collection('agents').where('orgId', '==', orgId)
+        // Composite index hint: agents — orgId Ascending, createdAt Descending
+        // Composite index hint: agents — orgId Ascending, status Ascending, createdAt Descending
+        q = optimizeQuery(q, {
+          limit: parseInt(limit || '50', 10),
+          orderBy: { field: 'createdAt', direction: 'desc' },
+        })
+        const snap = await q.get()
+        let data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        if (status) data = data.filter((a: any) => a.status === status)
+
+        const options = parsePaginationQuery(request.query as Record<string, unknown>)
+        if (status) options.filters = { ...options.filters, status }
+        const result = paginate(data, options)
+
+        log.info('agents list', { count: result.data.length, total: result.pagination.total })
+        return result
+      } catch (e: any) {
+        log.error('agents list failed', { error: e.message })
+        reply.code(503)
+        return { error: { code: 'firestore', message: e.message } }
+      }
+    }, 30, (req) => `agents:list:${JSON.stringify(req.query)}`),
   })
 
   // ---------------------------------------------------------------------------
@@ -162,7 +211,8 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       revokedBy,
     })
     log.success('agent revoked', { agentId: id, reason, revokedBy })
-    publishEvent(orgId || process.env.DEFAULT_ORG_ID || 'default', 'agents', { type: 'revoked', agentId: id, reason: reason || 'No reason provided', timestamp: new Date().toISOString() })
+    await publishEvent(orgId || process.env.DEFAULT_ORG_ID || 'default', 'agents', { type: 'revoked', agentId: id, reason: reason || 'No reason provided', timestamp: new Date().toISOString() })
+    await cacheDeletePattern('cache:agents:*')
     deliverWebhook(db, 'agent.revoked', {
       event: 'agent.revoked',
       timestamp: new Date().toISOString(),
@@ -216,6 +266,7 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
     })
 
     log.success('agent key rotated', { agentId: id })
+    await cacheDeletePattern('cache:agents:*')
     return { agentId: id, newSecretKey: newKey, newSecretKeyPrefix: newKey.substring(0, 14) }
   })
 }

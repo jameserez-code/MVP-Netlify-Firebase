@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
 
 env:
   NODE_VERSION: '20'
@@ -142,3 +144,55 @@ jobs:
         working-directory: frontend
         run: npm audit --audit-level=moderate
         continue-on-error: false
+
+      - name: Run dependency audit script
+        run: npx tsx scripts/audit-dependencies.ts
+        continue-on-error: false
+
+      - name: Check for outdated dependencies
+        run: npm outdated || true
+
+      - name: License compliance check
+        run: |
+          npx license-checker --production --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD;Unlicense;CC0-1.0' || {
+            echo "License compliance check failed — review non-whitelisted licenses above"
+            exit 1
+          }
+        continue-on-error: false
+
+      - name: Snyk vulnerability scan
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            npm install -g snyk
+            snyk test --severity-threshold=high
+          else
+            echo "Skipping Snyk scan: no SNYK_TOKEN configured"
+          fi
+        continue-on-error: true
+
+  backup:
+    name: Nightly Backup
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 2 * * *'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run backup
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          BACKUP_GCS_BUCKET: ${{ secrets.BACKUP_GCS_BUCKET }}
+        run: npx tsx scripts/backup.ts

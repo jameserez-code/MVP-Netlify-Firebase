@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
+import { isBlacklisted } from './session-store.js'
 
 let JWT_SECRET_HEX: string | null = null
 let JWT_SECRET: Buffer | null = null
@@ -18,12 +19,14 @@ function ensureSecret(): Buffer {
 interface Claims {
   sub: string   // userId
   role: string  // org_admin | agent
+  orgId?: string
+  scopes?: string[]
   iat: number
   exp: number
   jti: string
 }
 
-export function sign(payload: Pick<Claims, 'sub' | 'role'>): string {
+export function sign(payload: Pick<Claims, 'sub' | 'role' | 'orgId'>): string {
   const secret = ensureSecret()
   const now = Math.floor(Date.now() / 1000)
   const claims: Claims = {
@@ -42,7 +45,7 @@ export function sign(payload: Pick<Claims, 'sub' | 'role'>): string {
   return `${sigInput}.${sig}`
 }
 
-export function verify(token: string): Claims | null {
+export async function verify(token: string): Promise<Claims | null> {
   try {
     const secret = ensureSecret()
     const parts = token.split('.')
@@ -59,6 +62,11 @@ export function verify(token: string): Claims | null {
     const now = Math.floor(Date.now() / 1000)
     if (claims.exp < now) return null
 
+    // Check Redis blacklist
+    if (claims.jti && await isBlacklisted(claims.jti)) {
+      return null
+    }
+
     return claims
   } catch {
     return null
@@ -68,4 +76,9 @@ export function verify(token: string): Claims | null {
 export function getSecret(): string {
   ensureSecret()
   return JWT_SECRET_HEX!
+}
+
+export function setSecret(newSecret: string): void {
+  JWT_SECRET_HEX = newSecret
+  JWT_SECRET = Buffer.from(newSecret, 'hex')
 }

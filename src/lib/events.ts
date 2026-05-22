@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws'
+import { redis } from './redis.js'
 
 const rooms = new Map<string, Set<WebSocket>>()
 
@@ -30,7 +31,7 @@ export function removeClient(client: WebSocket) {
   }
 }
 
-export function publishEvent(orgId: string, channel: string, data: unknown) {
+export function broadcastToOrgClients(orgId: string, channel: string, data: unknown) {
   const key = `${orgId}:${channel}`
   const clients = rooms.get(key)
   if (!clients || clients.size === 0) return
@@ -41,5 +42,17 @@ export function publishEvent(orgId: string, channel: string, data: unknown) {
       // OPEN
       client.send(message)
     }
+  }
+}
+
+export async function publishEvent(orgId: string, channel: string, data: unknown) {
+  // Local broadcast
+  broadcastToOrgClients(orgId, channel, data)
+
+  // Redis pub/sub for cross-instance broadcast
+  try {
+    await redis.publish(`org:${orgId}:events`, JSON.stringify({ channel, data }))
+  } catch {
+    // silent fail — Redis pub/sub is best-effort
   }
 }

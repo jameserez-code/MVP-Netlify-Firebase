@@ -1,122 +1,187 @@
 // Policy Templates — pre-built, production-tested policy configurations
 // Import and modify these to quickly set up common agent scenarios
 
+export interface TemplatePolicy {
+  name: string
+  allowedTools: string[]
+  deniedTools: string[]
+  allowedDomains?: string[]
+  deniedDomains?: string[]
+  piiDetection: boolean
+  maxCost: number
+}
+
 export interface PolicyTemplate {
+  id: string
   name: string
   description: string
-  scenario: string
-  rules: {
-    allowedTools: Array<{ toolName: string; parameterConstraints: Record<string, unknown> }>
-    deniedTools: string[]
-    allowedDomains: Array<{ pattern: string; methods: string[] }>
-    deniedDomains: string[]
-    dataRestrictions: { denyPiiInParameters: boolean; denySecretsInParameters: boolean }
-  }
+  category: string
+  policies: TemplatePolicy[]
 }
 
 export const TEMPLATES: PolicyTemplate[] = [
   {
-    name: 'Read-Only Support Bot',
-    description: 'Can look up orders and inventory. Cannot send email, delete data, or access admin systems.',
-    scenario: 'Customer support agent that answers queries about orders and products.',
-    rules: {
-      allowedTools: [
-        { toolName: 'lookup_order', parameterConstraints: { orderId: { type: 'string', minLength: 1 } } },
-        { toolName: 'check_inventory', parameterConstraints: { sku: { type: 'string', minLength: 1 } } },
-        { toolName: 'search_kb', parameterConstraints: { query: { type: 'string', maxLength: 500 } } },
-      ],
-      deniedTools: ['send_email', 'delete_record', 'modify_order', 'refund_order', 'access_admin'],
-      allowedDomains: [
-        { pattern: '*.internal.com', methods: ['GET'] },
-        { pattern: 'api.knowledgebase.io', methods: ['GET'] },
-      ],
-      deniedDomains: ['*.evil.com', '169.254.169.254', 'localhost', '127.0.0.1', '10.0.0.0/8'],
-      dataRestrictions: { denyPiiInParameters: true, denySecretsInParameters: true },
-    },
+    id: 'safe-customer-support',
+    name: 'Safe Customer Support Agent',
+    description: 'Allows web search and database reads. Blocks destructive actions and PII.',
+    category: 'customer-support',
+    policies: [
+      {
+        name: 'Safe Web Search',
+        allowedTools: ['web_search', 'read_database', 'send_email'],
+        deniedTools: ['delete_database', 'write_database', 'execute_code'],
+        deniedDomains: ['localhost', '127.0.0.1'],
+        piiDetection: true,
+        maxCost: 10,
+      }
+    ]
   },
   {
-    name: 'CI/CD Pipeline Agent',
-    description: 'Can trigger builds, read logs, and notify teams. Cannot push to production or access admin panels.',
-    scenario: 'CI/CD automation agent that monitors pipelines and retries failed builds.',
-    rules: {
-      allowedTools: [
-        { toolName: 'trigger_build', parameterConstraints: { branch: { type: 'string' } } },
-        { toolName: 'read_logs', parameterConstraints: { buildId: { type: 'string' } } },
-        { toolName: 'notify_slack', parameterConstraints: { channel: { type: 'string' } } },
-        { toolName: 'create_pr', parameterConstraints: { title: { type: 'string' } } },
-      ],
-      deniedTools: ['deploy', 'push_main', 'access_admin', 'rotate_secrets', 'modify_firewall'],
-      allowedDomains: [
-        { pattern: 'api.github.com', methods: ['GET', 'POST'] },
-        { pattern: 'hooks.slack.com', methods: ['POST'] },
-        { pattern: '*.internal-ci.com', methods: ['GET'] },
-      ],
-      deniedDomains: ['*.admin-panel.com', '169.254.169.254', 'localhost'],
-      dataRestrictions: { denyPiiInParameters: false, denySecretsInParameters: true },
-    },
+    id: 'read-only-analyst',
+    name: 'Read-Only Data Analyst',
+    description: 'Read-only access to databases. No writes, no external APIs.',
+    category: 'data-analysis',
+    policies: [
+      {
+        name: 'Read-Only Database',
+        allowedTools: ['query_database', 'generate_chart', 'export_csv'],
+        deniedTools: ['write_database', 'delete_table', 'update_row'],
+        piiDetection: true,
+        maxCost: 50,
+      }
+    ]
   },
   {
-    name: 'Document Processor',
-    description: 'Can read, extract, and validate documents. Cannot write to external APIs or send data outside the org.',
-    scenario: 'Agent that processes incoming PDFs, extracts data, and routes to teams.',
-    rules: {
-      allowedTools: [
-        { toolName: 'read_document', parameterConstraints: { path: { type: 'string' } } },
-        { toolName: 'extract_text', parameterConstraints: { documentId: { type: 'string' } } },
-        { toolName: 'validate_fields', parameterConstraints: { ruleset: { type: 'string' } } },
-      ],
-      deniedTools: ['send_email', 'write_external', 'share_document', 'delete_document'],
-      allowedDomains: [
-        { pattern: '*.internal-docs.com', methods: ['GET'] },
-      ],
-      deniedDomains: ['*.external-api.com', '169.254.169.254'],
-      dataRestrictions: { denyPiiInParameters: true, denySecretsInParameters: true },
-    },
+    id: 'social-media-safe',
+    name: 'Social Media Manager',
+    description: 'Text generation and posting. No external URLs or file uploads.',
+    category: 'social-media',
+    policies: [
+      {
+        name: 'Safe Social Media',
+        allowedTools: ['generate_text', 'post_tweet', 'schedule_post'],
+        deniedTools: ['upload_file', 'access_billing', 'delete_account'],
+        piiDetection: false,
+        maxCost: 5,
+      }
+    ]
   },
   {
-    name: 'Internal Tools Agent',
-    description: 'Full access to internal APIs. Can send reports via email. Limited to *.acme.com domains only.',
-    scenario: 'Trusted internal agent that queries databases and generates reports.',
-    rules: {
-      allowedTools: [
-        { toolName: 'query_db', parameterConstraints: { sql: { type: 'string', maxLength: 1000 } } },
-        { toolName: 'generate_report', parameterConstraints: { format: { enum: ['pdf', 'csv'] } } },
-        { toolName: 'send_email', parameterConstraints: { to: { type: 'string' } } },
-        { toolName: 'read_file', parameterConstraints: { path: { type: 'string' } } },
-      ],
-      deniedTools: ['delete_record', 'drop_table', 'access_admin'],
-      allowedDomains: [
-        { pattern: '*.acme.com', methods: ['GET', 'POST', 'PUT'] },
-        { pattern: 'api.sendgrid.com', methods: ['POST'] },
-      ],
-      deniedDomains: ['*.external.com', '169.254.169.254', 'localhost'],
-      dataRestrictions: { denyPiiInParameters: false, denySecretsInParameters: true },
-    },
+    id: 'e-commerce-agent',
+    name: 'E-commerce Agent',
+    description: 'Inventory checks and order lookups. No payment processing.',
+    category: 'e-commerce',
+    policies: [
+      {
+        name: 'Safe E-commerce',
+        allowedTools: ['check_inventory', 'lookup_order', 'track_shipment'],
+        deniedTools: ['process_payment', 'refund_order', 'delete_order', 'modify_inventory'],
+        piiDetection: true,
+        maxCost: 20,
+      }
+    ]
   },
   {
-    name: 'Strict Compliance Agent',
-    description: 'Read-only access to everything. Every action audited. Zero data exfiltration risk.',
-    scenario: 'Financial services agent that processes transactions under strict compliance.',
-    rules: {
-      allowedTools: [
-        { toolName: 'read_transaction', parameterConstraints: { transactionId: { type: 'string' } } },
-        { toolName: 'validate_compliance', parameterConstraints: { ruleset: { type: 'string' } } },
-        { toolName: 'audit_log', parameterConstraints: { query: { type: 'string' } } },
-      ],
-      deniedTools: ['write_transaction', 'approve_transfer', 'send_email', 'export_data'],
-      allowedDomains: [
-        { pattern: '*.internal-bank.com', methods: ['GET'] },
-      ],
-      deniedDomains: ['169.254.169.254', 'localhost', '127.0.0.1', '0.0.0.0'],
-      dataRestrictions: { denyPiiInParameters: true, denySecretsInParameters: true },
-    },
+    id: 'hr-onboarding',
+    name: 'HR Onboarding Agent',
+    description: 'Document generation and onboarding tasks. No salary data access.',
+    category: 'hr',
+    policies: [
+      {
+        name: 'Safe HR',
+        allowedTools: ['generate_document', 'schedule_meeting', 'send_welcome_email'],
+        deniedTools: ['access_payroll', 'view_salary', 'modify_benefits', 'delete_employee'],
+        piiDetection: true,
+        maxCost: 15,
+      }
+    ]
   },
+  {
+    id: 'devops-monitoring',
+    name: 'DevOps Monitoring Agent',
+    description: 'Read metrics and logs. No deployments or infrastructure changes.',
+    category: 'devops',
+    policies: [
+      {
+        name: 'Read-Only DevOps',
+        allowedTools: ['read_metrics', 'read_logs', 'check_health', 'list_pods'],
+        deniedTools: ['deploy', 'scale_cluster', 'delete_pod', 'modify_config', 'restart_service'],
+        piiDetection: false,
+        maxCost: 30,
+      }
+    ]
+  },
+  {
+    id: 'legal-document-review',
+    name: 'Legal Document Review',
+    description: 'Read-only document analysis. No external sharing.',
+    category: 'legal',
+    policies: [
+      {
+        name: 'Read-Only Legal',
+        allowedTools: ['read_document', 'analyze_clause', 'compare_versions'],
+        deniedTools: ['share_document', 'send_email', 'upload_external', 'delete_document'],
+        piiDetection: true,
+        maxCost: 25,
+      }
+    ]
+  },
+  {
+    id: 'research-assistant',
+    name: 'Research Assistant',
+    description: 'Web search and summarization. No file writes.',
+    category: 'research',
+    policies: [
+      {
+        name: 'Safe Research',
+        allowedTools: ['web_search', 'read_webpage', 'summarize_text'],
+        deniedTools: ['write_file', 'upload_file', 'send_email', 'execute_code'],
+        piiDetection: false,
+        maxCost: 15,
+      }
+    ]
+  },
+  {
+    id: 'code-review-bot',
+    name: 'Code Review Bot',
+    description: 'Read code and suggest improvements. No execution.',
+    category: 'development',
+    policies: [
+      {
+        name: 'Safe Code Review',
+        allowedTools: ['read_code', 'analyze_diff', 'suggest_fix', 'run_linter'],
+        deniedTools: ['execute_code', 'write_code', 'deploy', 'access_secrets'],
+        piiDetection: false,
+        maxCost: 10,
+      }
+    ]
+  },
+  {
+    id: 'compliance-auditor',
+    name: 'Compliance Auditor',
+    description: 'Read-only access to audit logs and compliance data.',
+    category: 'compliance',
+    policies: [
+      {
+        name: 'Read-Only Audit',
+        allowedTools: ['read_audit_log', 'read_compliance_report', 'export_csv'],
+        deniedTools: ['modify_log', 'delete_log', 'write_report', 'send_email'],
+        piiDetection: true,
+        maxCost: 40,
+      }
+    ]
+  }
 ]
 
-export function findTemplate(name: string): PolicyTemplate | undefined {
-  return TEMPLATES.find(t => t.name === name)
+export function getTemplates(): PolicyTemplate[] {
+  return TEMPLATES
 }
 
-export function listTemplates(): string[] {
-  return TEMPLATES.map(t => `${t.name} — ${t.scenario}`)
+export function findTemplateById(id: string): PolicyTemplate | undefined {
+  return TEMPLATES.find(t => t.id === id)
+}
+
+export function getCategories(): string[] {
+  const cats = new Set(TEMPLATES.map(t => t.category))
+  return ['all', ...Array.from(cats)]
 }

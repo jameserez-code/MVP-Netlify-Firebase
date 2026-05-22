@@ -253,6 +253,29 @@ export async function deletePolicy(id: string) {
   })
 }
 
+// Policy Templates
+export async function listPolicyTemplates(params?: { category?: string; search?: string }) {
+  const search = new URLSearchParams()
+  if (params?.category) search.set('category', params.category)
+  if (params?.search) search.set('search', params.search)
+  const query = search.toString()
+  return fetchJson(`/policies/templates${query ? '?' + query : ''}`)
+}
+
+export async function createPolicyFromTemplate(data: { templateId: string; name?: string; overrides?: Record<string, unknown> }) {
+  return fetchJson('/policies/from-template', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function savePolicyTemplate(data: { name: string; description?: string; policyIds: string[]; public?: boolean }) {
+  return fetchJson('/policies/templates', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
 // Audit
 export async function getAudit(params?: { decision?: string; limit?: number }) {
   const search = new URLSearchParams()
@@ -285,6 +308,24 @@ export async function getAnalyticsPolicies(period = '7d') {
 // Metrics & Diagnostics
 export async function getMetrics() {
   return fetchJson('/metrics')
+}
+
+export async function getPrometheusMetrics() {
+  const url = `${API_BASE}/metrics`
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 10_000)
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'text/plain' },
+    })
+    clearTimeout(timeoutId)
+    if (!res.ok) throw new Error(`Prometheus metrics failed (HTTP ${res.status})`)
+    return res.text()
+  } catch (error: any) {
+    clearTimeout(timeoutId)
+    throw error
+  }
 }
 
 export async function getDiagnostics() {

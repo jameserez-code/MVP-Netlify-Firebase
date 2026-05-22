@@ -6,6 +6,10 @@ import { generateGatewayTicket, TICKET_TTL_SECONDS } from '../lib/crypto.js'
 import { deliverWebhook } from '../lib/webhook-deliverer.js'
 import { publishEvent } from '../lib/events.js'
 import { checkLimit, incrementEnforcement } from '../lib/usage.js'
+import { optimizeQuery } from '../lib/query-optimizer.js'
+import { cacheDeletePattern } from '../lib/cache.js'
+import { enforcementsTotal } from '../lib/metrics.js'
+import { queueAuditEntry } from '../lib/batch.js'
 
 const require = createRequire(import.meta.url)
 const { evaluateIntent } = require('../../netlify/functions/src/engine/evaluator.js')
@@ -45,7 +49,11 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         return { error: { code: 'limit_exceeded', message: 'Daily enforcement limit reached. Upgrade to Pro.', plan: 'free' } }
       }
 
-      const snap = await db.collection('policies').where('orgId', '==', agentOrgId).get()
+      // Composite index hint: policies — orgId Ascending, createdAt Descending
+      const snap = await optimizeQuery(
+        db.collection('policies').where('orgId', '==', agentOrgId),
+        { limit: 200, orderBy: { field: 'createdAt', direction: 'desc' } },
+      ).get()
       const policies = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter((p: any) => p.status === 'active')
         .filter((p: any) => (p.scope?.agentId === '*' || p.scope?.agentId === intent.agentId))
@@ -79,8 +87,10 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
         decisionReason: decision.reason || null, violatedRule: decision.violatedRule || null,
         createdAt: new Date().toISOString(),
       }
-      db.collection('actionIntents').doc(intent.intentId).set(auditEntry).catch(() => {})
-      publishEvent(agentOrgId, 'audit', auditEntry)
+      queueAuditEntry(db, { id: intent.intentId, data: auditEntry })
+      await publishEvent(agentOrgId, 'audit', auditEntry)
+      cacheDeletePattern('cache:metrics:*').catch(() => {})
+      cacheDeletePattern('cache:audit:*').catch(() => {})
 
       if (decision.decision === 'deny') {
         deliverWebhook(db, 'policy.violation', {
@@ -121,6 +131,7 @@ export default async function enforceRoutes(app: FastifyInstance, db: Firestore)
       }
 
       incrementEnforcement(db, agentOrgId).catch(() => {})
+      enforcementsTotal.inc({ decision: decision.decision, org_id: agentOrgId })
       log.info('enforce', { intentId: intent.intentId, decision: decision.decision })
       return response
 
