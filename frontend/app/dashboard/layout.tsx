@@ -23,7 +23,7 @@ function Breadcrumbs() {
   }
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-passport-dim mb-4">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-passport-dim">
       <span className="font-mono uppercase tracking-wider">{labels[segments[0]] || segments[0]}</span>
       {segments.length > 1 && (
         <>
@@ -42,6 +42,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const mainRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,13 +51,20 @@ export default function DashboardLayout({
     }
   }, [router])
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <div className="min-h-screen bg-passport-bg">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-passport-green focus:text-white focus:rounded-passport focus:outline-none"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-passport-green focus:text-white focus:rounded-passport focus:outline-none focus:ring-2 focus:ring-passport-azure focus:ring-offset-2 focus:ring-offset-passport-bg"
       >
         Skip to main content
+        <span className="ml-2 font-mono text-[10px] opacity-70">
+          <kbd className="kbd">Press Ctrl+K to search</kbd>
+        </span>
       </a>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       {/* Shimmer bar */}
@@ -75,10 +83,16 @@ export default function DashboardLayout({
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-60'
         }`}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center justify-between mb-2">
-            <Breadcrumbs />
-            <ActivityFeed />
+        <div
+          className={`max-w-6xl mx-auto px-4 sm:px-6 py-6 ${
+            mounted ? 'animate-fade-in-up' : ''
+          }`}
+        >
+          <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 -mt-6 mb-2 bg-passport-bg/80 backdrop-blur-md border-b border-passport-border/50">
+            <div className="flex items-center justify-between">
+              <Breadcrumbs />
+              <ActivityFeed />
+            </div>
           </div>
           {children}
         </div>

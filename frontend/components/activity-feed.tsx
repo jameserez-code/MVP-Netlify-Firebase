@@ -16,6 +16,9 @@ import {
   CheckCheck,
   Activity,
   X,
+  Trash2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 
 interface ActivityEvent {
@@ -34,12 +37,32 @@ function formatRelativeTime(dateString: string): string {
   const diffHour = Math.floor(diffMin / 60)
   const diffDay = Math.floor(diffHour / 24)
 
-  if (diffSec < 10) return 'just now'
+  if (diffSec < 5) return 'just now'
   if (diffSec < 60) return `${diffSec}s ago`
   if (diffMin < 60) return `${diffMin}m ago`
   if (diffHour < 24) return `${diffHour}h ago`
   if (diffDay < 7) return `${diffDay}d ago`
   return date.toLocaleDateString()
+}
+
+function ActivityTimestamp({ timestamp }: { timestamp: string }) {
+  const [display, setDisplay] = useState(formatRelativeTime(timestamp))
+
+  useEffect(() => {
+    const date = new Date(timestamp)
+    const update = () => setDisplay(formatRelativeTime(timestamp))
+    const diffMs = Date.now() - date.getTime()
+    const interval = diffMs < 60000 ? 5000 : diffMs < 3600000 ? 30000 : 60000
+    const timer = setInterval(update, interval)
+    return () => clearInterval(timer)
+  }, [timestamp])
+
+  return (
+    <span className="text-[10px] text-passport-dim flex items-center gap-1 mt-1">
+      <Clock size={10} />
+      {display}
+    </span>
+  )
 }
 
 function getEventIcon(type: ActivityEvent['type']) {
@@ -100,8 +123,11 @@ function inferDescription(entry: any): string {
 export default function ActivityFeed() {
   const [isOpen, setIsOpen] = useState(false)
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
+  const [soundEnabled, setSoundEnabled] = useState(false)
+  const [animIds, setAnimIds] = useState<Set<string>>(new Set())
   const panelRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number>(0)
+  const prevEntriesLen = useRef(0)
 
   const { data: wsData, connected: wsConnected } = useRealtime(
     'audit',
@@ -128,6 +154,19 @@ export default function ActivityFeed() {
     }
   }, [wsConnected, wsData])
 
+  useEffect(() => {
+    if (entries.length > prevEntriesLen.current) {
+      const newIds = entries.slice(0, entries.length - prevEntriesLen.current).map((e: any) =>
+        e.id || e.intentId || Math.random().toString(36).slice(2)
+      )
+      setAnimIds(new Set(newIds))
+      const timer = setTimeout(() => setAnimIds(new Set()), 300)
+      prevEntriesLen.current = entries.length
+      return () => clearTimeout(timer)
+    }
+    prevEntriesLen.current = entries.length
+  }, [entries])
+
   const events: ActivityEvent[] = entries.map((entry: any) => ({
     id: entry.id || entry.intentId || Math.random().toString(36).slice(2),
     type: inferEventType(entry),
@@ -140,6 +179,11 @@ export default function ActivityFeed() {
   const markAllRead = useCallback(() => {
     setReadIds(new Set(events.map((e) => e.id)))
   }, [events])
+
+  const clearAll = useCallback(() => {
+    setEntries([])
+    prevEntriesLen.current = 0
+  }, [])
 
   // Close on outside click
   useEffect(() => {
@@ -228,6 +272,22 @@ export default function ActivityFeed() {
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  className="text-xs text-passport-muted hover:text-passport-text transition-colors px-2 py-1 rounded-passport hover:bg-passport-surface-2"
+                  aria-label={soundEnabled ? 'Mute notifications' : 'Unmute notifications'}
+                  title={soundEnabled ? 'Sound on' : 'Sound off'}
+                >
+                  {soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                </button>
+                <button
+                  onClick={clearAll}
+                  className="text-xs text-passport-muted hover:text-passport-red transition-colors px-2 py-1 rounded-passport hover:bg-passport-red/5"
+                  aria-label="Clear all activity"
+                  title="Clear all"
+                >
+                  <Trash2 size={14} />
+                </button>
+                <button
                   onClick={markAllRead}
                   className="text-xs text-passport-muted hover:text-passport-text transition-colors px-2 py-1 rounded-passport hover:bg-passport-surface-2"
                   aria-label="Mark all as read"
@@ -253,10 +313,13 @@ export default function ActivityFeed() {
               ) : (
                 events.map((event) => {
                   const isUnread = !readIds.has(event.id)
+                  const isAnimated = animIds.has(event.id)
                   return (
                     <div
                       key={event.id}
                       className={`flex items-start gap-3 p-3 rounded-passport border transition-all ${
+                        isAnimated ? 'animate-slide-in-right-item' : ''
+                      } ${
                         isUnread ? getEventColor(event.type) : 'bg-passport-bg border-passport-border'
                       }`}
                     >
@@ -265,10 +328,7 @@ export default function ActivityFeed() {
                         <p className={`text-sm ${isUnread ? 'text-passport-text font-medium' : 'text-passport-muted'}`}>
                           {event.description}
                         </p>
-                        <span className="text-[10px] text-passport-dim flex items-center gap-1 mt-1">
-                          <Clock size={10} />
-                          {formatRelativeTime(event.timestamp)}
-                        </span>
+                        <ActivityTimestamp timestamp={event.timestamp} />
                       </div>
                       {isUnread && (
                         <span className="mt-1.5 w-2 h-2 rounded-full bg-passport-azure shrink-0" aria-hidden="true" />

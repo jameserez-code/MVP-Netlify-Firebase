@@ -1,11 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { login, setToken } from '@/lib/api'
 import { useToast } from '@/components/toast'
-import { Terminal, Shield, AlertCircle, Eye, EyeOff, Info, CheckCircle } from 'lucide-react'
+import { Terminal, Shield, AlertCircle, Eye, EyeOff, Info, CheckCircle, ArrowLeft } from 'lucide-react'
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  let score = 0
+  if (password.length >= 8) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+  if (password.length >= 12) score++
+
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong']
+  const barColors = (i: number) => {
+    if (i >= score) return 'bg-passport-border'
+    if (score <= 2) return 'bg-passport-red'
+    if (score === 3) return 'bg-passport-amber'
+    return 'bg-passport-green'
+  }
+
+  if (!password) return null
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full ${barColors(i)}`} />
+        ))}
+      </div>
+      <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 4)]}</p>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,6 +45,8 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [shakeCard, setShakeCard] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('passport_remember_email')
@@ -24,6 +54,7 @@ export default function LoginPage() {
       setEmail(saved)
       setRememberMe(true)
     }
+    setTimeout(() => emailRef.current?.focus(), 100)
   }, [])
 
   function validate(): boolean {
@@ -37,7 +68,11 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      setShakeCard(true)
+      setTimeout(() => setShakeCard(false), 500)
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -53,6 +88,8 @@ export default function LoginPage() {
     } catch (err: any) {
       const msg = err.message || 'Invalid credentials'
       setError(msg)
+      setShakeCard(true)
+      setTimeout(() => setShakeCard(false), 500)
       addToast(msg, 'error')
     } finally {
       setLoading(false)
@@ -62,12 +99,32 @@ export default function LoginPage() {
   const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || 'demo123'
 
   return (
-    <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4 py-12 relative">
+      {/* Subtle background glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(600px at 50% 40%, rgba(46,160,67,0.04) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Back to Home */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-passport-muted hover:text-passport-text transition-colors"
+      >
+        <ArrowLeft size={16} />
+        Back to Home
+      </Link>
+
+      <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-passport-border bg-passport-surface/50 backdrop-blur-sm mb-4">
+            <Terminal size={24} className="text-passport-green" />
+          </div>
           <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <Shield size={24} className="text-passport-green group-hover:drop-shadow-[0_0_8px_rgba(46,160,67,0.4)] transition-all" />
+            <Shield size={20} className="text-passport-green group-hover:drop-shadow-[0_0_8px_rgba(46,160,67,0.4)] transition-all" />
             <span className="font-mono text-sm font-bold text-passport-green tracking-wider uppercase">
               Passport Agent
             </span>
@@ -87,7 +144,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="glass-panel p-6 sm:p-8">
+        <div className={`glass-panel p-6 sm:p-8 ${shakeCard ? 'animate-shake' : ''}`}>
           <div className="mb-6">
             <h1 className="text-xl font-bold text-passport-text mb-1">
               Sign In
@@ -108,11 +165,13 @@ export default function LoginPage() {
             <div>
               <label className="label-text">Email</label>
               <input
+                ref={emailRef}
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: '' })) }}
                 className={`input-field ${fieldErrors.email ? 'border-passport-red' : ''}`}
                 placeholder="admin@example.com"
+                autoComplete="email"
               />
               {fieldErrors.email && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.email}</p>
@@ -120,7 +179,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="label-text">Password</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label-text mb-0">Password</label>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -128,6 +189,7 @@ export default function LoginPage() {
                   onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })) }}
                   className={`input-field pr-10 ${fieldErrors.password ? 'border-passport-red' : ''}`}
                   placeholder="••••••••"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -140,6 +202,7 @@ export default function LoginPage() {
               {fieldErrors.password && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
               )}
+              <PasswordStrengthBar password={password} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -179,7 +242,17 @@ export default function LoginPage() {
                 </>
               )}
             </button>
+
+            <p className="text-center text-[10px] text-passport-dim">
+              Press <kbd className="px-1 py-0.5 text-[9px] border border-passport-border rounded bg-passport-surface font-mono">Enter</kbd> to sign in
+            </p>
           </form>
+
+          <div className="mt-6 flex items-center gap-4">
+            <div className="flex-1 h-px bg-passport-border" />
+            <span className="text-[10px] text-passport-dim font-mono uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-passport-border" />
+          </div>
         </div>
 
         <p className="text-center mt-6 text-sm text-passport-muted">

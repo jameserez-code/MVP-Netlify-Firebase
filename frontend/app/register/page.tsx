@@ -1,11 +1,63 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { register, resendVerification, seedOrg, setToken, login } from '@/lib/api'
 import { useToast } from '@/components/toast'
-import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw } from 'lucide-react'
+import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw, User, Building2, ArrowLeft } from 'lucide-react'
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  let score = 0
+  if (password.length >= 8) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+  if (password.length >= 12) score++
+
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong']
+  const barColors = (i: number) => {
+    if (i >= score) return 'bg-passport-border'
+    if (score <= 2) return 'bg-passport-red'
+    if (score === 3) return 'bg-passport-amber'
+    return 'bg-passport-green'
+  }
+
+  if (!password) return null
+  return (
+    <div>
+      <div className="mt-2 flex gap-1">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full ${barColors(i)}`} />
+        ))}
+      </div>
+      <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 4)]}</p>
+      <PasswordRequirements password={password} />
+    </div>
+  )
+}
+
+function PasswordRequirements({ password }: { password: string }) {
+  if (password.length >= 8 && /\d/.test(password) && /[^a-zA-Z0-9]/.test(password)) return null
+
+  const checks = [
+    { met: password.length >= 8, label: 'At least 8 characters' },
+    { met: /\d/.test(password), label: 'At least 1 number' },
+    { met: /[^a-zA-Z0-9]/.test(password), label: 'At least 1 special character' },
+  ]
+
+  return (
+    <ul className="mt-2 space-y-1">
+      {checks.map((c) => (
+        <li key={c.label} className="flex items-center gap-1.5 text-[10px]">
+          <span className={c.met ? 'text-passport-green' : 'text-passport-dim'}>
+            {c.met ? '✓' : '—'}
+          </span>
+          <span className={c.met ? 'text-passport-green' : 'text-passport-muted'}>{c.label}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -13,11 +65,18 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [shakeCard, setShakeCard] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setTimeout(() => nameRef.current?.focus(), 100)
+  }, [])
 
   function validate(): boolean {
     const errors: Record<string, string> = {}
@@ -28,13 +87,18 @@ export default function RegisterPage() {
     else if (password.length < 8) errors.password = 'Password must be at least 8 characters'
     else if (!/\d/.test(password)) errors.password = 'Password must contain at least 1 number'
     else if (!/[^a-zA-Z0-9]/.test(password)) errors.password = 'Password must contain at least 1 special character'
+    if (confirmPassword && password !== confirmPassword) errors.confirmPassword = 'Passwords do not match'
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!validate()) return
+    if (!validate()) {
+      setShakeCard(true)
+      setTimeout(() => setShakeCard(false), 500)
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -44,6 +108,8 @@ export default function RegisterPage() {
     } catch (err: any) {
       const msg = err.message || 'Registration failed'
       setError(msg)
+      setShakeCard(true)
+      setTimeout(() => setShakeCard(false), 500)
       addToast(msg, 'error')
     } finally {
       setLoading(false)
@@ -103,20 +169,45 @@ export default function RegisterPage() {
     )
   }
 
+  const passwordsMatch = confirmPassword && password === confirmPassword
+
   return (
-    <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4 py-12 relative">
+      {/* Subtle background glow */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(600px at 50% 40%, rgba(46,160,67,0.04) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Back to Home */}
+      <Link
+        href="/"
+        className="absolute top-6 left-6 flex items-center gap-2 text-sm text-passport-muted hover:text-passport-text transition-colors"
+      >
+        <ArrowLeft size={16} />
+        Back to Home
+      </Link>
+
+      <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border border-passport-border bg-passport-surface/50 backdrop-blur-sm mb-4">
+            <Building2 size={24} className="text-passport-green" />
+          </div>
           <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <Shield size={24} className="text-passport-green group-hover:drop-shadow-[0_0_8px_rgba(46,160,67,0.4)] transition-all" />
+            <Shield size={20} className="text-passport-green group-hover:drop-shadow-[0_0_8px_rgba(46,160,67,0.4)] transition-all" />
             <span className="font-mono text-sm font-bold text-passport-green tracking-wider uppercase">
               Passport Agent
             </span>
           </Link>
         </div>
 
-        <div className="glass-panel p-6 sm:p-8">
-          <div className="mb-6">
+        <div className={`glass-panel p-6 sm:p-8 ${shakeCard ? 'animate-shake' : ''}`}>
+          <div className="mb-2">
+            <div className="font-mono text-[10px] text-passport-dim uppercase tracking-wider mb-3">
+              Step 1 of 1
+            </div>
             <h1 className="text-xl font-bold text-passport-text mb-1">
               Create Account
             </h1>
@@ -126,22 +217,27 @@ export default function RegisterPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-start gap-2">
+            <div className="mt-4 p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-start gap-2">
               <AlertCircle size={16} className="text-passport-red mt-0.5 shrink-0" />
               <span className="text-sm text-passport-red">{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4" noValidate>
             <div>
               <label className="label-text">Organization Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => { setName(e.target.value); setFieldErrors((prev) => ({ ...prev, name: '' })) }}
-                className={`input-field ${fieldErrors.name ? 'border-passport-red' : ''}`}
-                placeholder="Acme Corp"
-              />
+              <div className="relative">
+                <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-passport-dim" />
+                <input
+                  ref={nameRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setFieldErrors((prev) => ({ ...prev, name: '' })) }}
+                  className={`input-field pl-10 ${fieldErrors.name ? 'border-passport-red' : ''}`}
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <p className="text-[10px] text-passport-muted mt-1 ml-0.5">This will be your workspace name</p>
               {fieldErrors.name && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.name}</p>
               )}
@@ -149,13 +245,17 @@ export default function RegisterPage() {
 
             <div>
               <label className="label-text">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: '' })) }}
-                className={`input-field ${fieldErrors.email ? 'border-passport-red' : ''}`}
-                placeholder="admin@example.com"
-              />
+              <div className="relative">
+                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-passport-dim" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: '' })) }}
+                  className={`input-field pl-10 ${fieldErrors.email ? 'border-passport-red' : ''}`}
+                  placeholder="admin@example.com"
+                  autoComplete="email"
+                />
+              </div>
               {fieldErrors.email && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.email}</p>
               )}
@@ -168,10 +268,32 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })) }}
                 className={`input-field ${fieldErrors.password ? 'border-passport-red' : ''}`}
-                placeholder="••••••••"
+                placeholder="Min. 8 characters"
+                autoComplete="new-password"
               />
               {fieldErrors.password && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
+              )}
+              <PasswordStrengthBar password={password} />
+            </div>
+
+            <div>
+              <label className="label-text">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: '' })) }}
+                  className={`input-field pr-10 ${fieldErrors.confirmPassword ? 'border-passport-red' : passwordsMatch ? 'border-passport-green/50' : ''}`}
+                  placeholder="Re-enter password"
+                  autoComplete="new-password"
+                />
+                {passwordsMatch && (
+                  <CheckCircle size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-passport-green" />
+                )}
+              </div>
+              {fieldErrors.confirmPassword && (
+                <p className="text-xs text-passport-red mt-1">{fieldErrors.confirmPassword}</p>
               )}
             </div>
 

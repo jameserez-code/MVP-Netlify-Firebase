@@ -14,6 +14,7 @@ import {
   CheckCircle,
   ClipboardList,
   Clock,
+  Copy,
   Download,
   Filter,
   RefreshCw,
@@ -23,6 +24,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  ChevronDown,
 } from 'lucide-react'
 
 interface AuditEntry {
@@ -67,6 +69,14 @@ export default function AuditPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [page, setPage] = useState(0)
+  const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  function copyEventId(id: string) {
+    navigator.clipboard.writeText(id)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
 
   async function exportToCSV() {
     try {
@@ -342,11 +352,12 @@ export default function AuditPage() {
                   {paginated.map((entry) => (
                     <tr
                       key={entry.id}
-                      className="border-b border-passport-border/50 hover:bg-passport-surface/50 transition-colors"
+                      className="border-b border-passport-border/50 hover:bg-passport-surface/50 transition-colors group cursor-pointer"
+                      onClick={() => setExpandedRow(expandedRow === entry.id ? null : entry.id)}
                     >
                       <td className="px-4 py-3">
                         <span
-                          className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${decisionBadge(entry.decision)}`}
+                          className={`inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded badge-pulse-on-hover cursor-default ${decisionBadge(entry.decision)}`}
                         >
                           {decisionIcon(entry.decision)}
                           {entry.decision}
@@ -358,7 +369,17 @@ export default function AuditPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-passport-text">{entry.tool || '—'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-passport-text">{entry.tool || '—'}</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); copyEventId(entry.id) }}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-passport-surface-2 text-passport-dim hover:text-passport-text transition-all"
+                            aria-label="Copy event ID"
+                            title="Copy event ID"
+                          >
+                            {copiedId === entry.id ? <CheckCircle size={12} className="text-passport-green" /> : <Copy size={12} />}
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
                         <span className="text-xs text-passport-muted truncate max-w-[200px] block">
@@ -366,17 +387,51 @@ export default function AuditPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className="font-mono text-[10px] text-passport-dim flex items-center gap-1">
-                          <Clock size={10} />
-                          {entry.timestamp
-                            ? new Date(entry.timestamp).toLocaleTimeString()
-                            : entry.createdAt
-                            ? new Date(entry.createdAt).toLocaleTimeString()
-                            : '—'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] text-passport-dim flex items-center gap-1">
+                            <Clock size={10} />
+                            {entry.timestamp
+                              ? new Date(entry.timestamp).toLocaleTimeString()
+                              : entry.createdAt
+                              ? new Date(entry.createdAt).toLocaleTimeString()
+                              : '—'}
+                          </span>
+                          <ChevronDown
+                            size={12}
+                            className={`text-passport-dim transition-transform ${expandedRow === entry.id ? 'rotate-180' : ''}`}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
+                  {expandedRow && (
+                    <tr key={`expanded-${expandedRow}`} className="border-b border-passport-border/50 bg-passport-surface/30">
+                      <td colSpan={5} className="px-4 py-3">
+                        <div className="text-xs text-passport-muted">
+                          {(() => {
+                            const entry = paginated.find((e) => e.id === expandedRow)
+                            if (!entry) return null
+                            return (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <span className="label-text">Event ID</span>
+                                  <code className="font-mono text-[11px] text-passport-text break-all">{entry.id}</code>
+                                </div>
+                                {entry.parameters && Object.keys(entry.parameters).length > 0 && (
+                                  <div>
+                                    <span className="label-text">Parameters</span>
+                                    <code className="font-mono text-[11px] text-passport-text break-all">
+                                      {JSON.stringify(entry.parameters, null, 2)}
+                                    </code>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

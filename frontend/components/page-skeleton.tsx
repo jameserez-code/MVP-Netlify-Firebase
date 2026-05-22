@@ -8,12 +8,12 @@ export function PageSkeleton() {
       {/* Header skeleton */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-2">
-          <div className="h-8 w-48 rounded bg-passport-surface-2 animate-pulse" />
-          <div className="h-4 w-72 rounded bg-passport-surface-2 animate-pulse" />
+          <div className="h-8 w-48 rounded skeleton-shimmer" />
+          <div className="h-4 w-72 rounded skeleton-shimmer" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-9 w-24 rounded bg-passport-surface-2 animate-pulse" />
-          <div className="h-9 w-32 rounded bg-passport-surface-2 animate-pulse" />
+          <div className="h-9 w-24 rounded skeleton-shimmer" />
+          <div className="h-9 w-32 rounded skeleton-shimmer" />
         </div>
       </div>
 
@@ -27,17 +27,17 @@ export function PageSkeleton() {
 
       {/* Content cards */}
       <div className="glass-panel p-5 space-y-3">
-        <div className="h-6 w-32 rounded bg-passport-surface-2 animate-pulse" />
+        <div className="h-6 w-32 rounded skeleton-shimmer" />
         <SkeletonText lines={4} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="glass-panel p-5 space-y-3">
-          <div className="h-6 w-40 rounded bg-passport-surface-2 animate-pulse" />
+          <div className="h-6 w-40 rounded skeleton-shimmer" />
           <SkeletonText lines={3} />
         </div>
         <div className="glass-panel p-5 space-y-3">
-          <div className="h-6 w-40 rounded bg-passport-surface-2 animate-pulse" />
+          <div className="h-6 w-40 rounded skeleton-shimmer" />
           <SkeletonText lines={3} />
         </div>
       </div>

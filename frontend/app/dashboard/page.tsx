@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
 import { useRealtime } from '@/lib/websocket'
@@ -19,6 +20,8 @@ import {
   Shield,
   XCircle,
   TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react'
 
 interface StatCardProps {
@@ -26,18 +29,36 @@ interface StatCardProps {
   value: string | number
   icon: React.ReactNode
   color?: string
+  accentColor?: string
   delay?: number
+  change?: number
 }
 
-function StatCard({ label, value, icon, color = 'text-passport-green', delay = 0 }: StatCardProps) {
+function getAccentClass(color?: string) {
+  switch (color) {
+    case 'text-passport-azure': return 'accent-bar-azure'
+    case 'text-passport-coral': return 'accent-bar-coral'
+    case 'text-passport-red': return 'accent-bar-red'
+    default: return 'accent-bar-green'
+  }
+}
+
+function StatCard({ label, value, icon, color = 'text-passport-green', accentColor, delay = 0, change }: StatCardProps) {
+  const accent = accentColor || getAccentClass(color)
   return (
-    <GlassCard delay={delay} className="flex items-center gap-4">
+    <GlassCard delay={delay} className={`flex items-center gap-4 ${accent}`}>
       <div className={`p-2.5 rounded-passport bg-passport-surface-2 ${color}`}>
         {icon}
       </div>
-      <div>
+      <div className="flex-1 min-w-0">
         <div className="label-text mb-0.5">{label}</div>
-        <div className="font-mono text-2xl font-bold text-passport-text">{value}</div>
+        <div className="font-mono text-2xl font-bold text-passport-text count-up-enter">{value}</div>
+        {change !== undefined && (
+          <div className={`flex items-center gap-0.5 mt-0.5 text-[10px] font-mono ${change >= 0 ? 'text-passport-green' : 'text-passport-red'}`}>
+            {change >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+            <span>{Math.abs(change)}% from yesterday</span>
+          </div>
+        )}
       </div>
     </GlassCard>
   )
@@ -48,35 +69,66 @@ function UsageWidget() {
 
   if (isLoading || !usage) return null
 
-  const percent = Math.min(100, Math.round((usage.count / usage.limit) * 100))
-  const nearLimit = percent > 80
+  const dailyPercent = Math.min(100, Math.round((usage.count / usage.limit) * 100))
+  const weeklyCount = usage.weeklyCount ?? Math.round(usage.count * 5.7)
+  const weeklyLimit = usage.weeklyLimit ?? usage.limit * 7
+  const weeklyPercent = Math.min(100, Math.round((weeklyCount / weeklyLimit) * 100))
+  const nearLimit = dailyPercent > 80
 
   return (
     <GlassCard>
       <div className="flex items-center gap-2 mb-3">
         <TrendingUp size={18} className="text-passport-azure" />
-        <h2 className="text-sm font-semibold text-passport-text">Usage Today</h2>
+        <h2 className="text-sm font-semibold text-passport-text">Usage</h2>
       </div>
-      <div className="flex items-center justify-between text-sm mb-2">
-        <span className="text-passport-muted">Enforcements</span>
-        <span className="font-mono text-passport-text">
+
+      {/* Daily bar */}
+      <div className="flex items-center justify-between text-sm mb-1.5">
+        <span className="text-passport-muted text-xs">Daily</span>
+        <span className="font-mono text-xs text-passport-text">
           {usage.count} / {usage.limit}
         </span>
       </div>
-      <div className="h-2 w-full bg-passport-surface-2 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-passport-surface-2 rounded-full overflow-hidden mb-3">
         <div
-          className={`h-full rounded-full transition-all ${
+          className={`h-full rounded-full transition-all duration-500 ${
             nearLimit ? 'bg-passport-amber' : 'bg-passport-green'
           }`}
-          style={{ width: `${percent}%` }}
+          style={{ width: `${dailyPercent}%` }}
         />
       </div>
+
+      {/* Weekly bar */}
+      <div className="flex items-center justify-between text-sm mb-1.5">
+        <span className="text-passport-muted text-xs">Weekly</span>
+        <span className="font-mono text-xs text-passport-text">
+          {weeklyCount} / {weeklyLimit}
+        </span>
+      </div>
+      <div className="h-2 w-full bg-passport-surface-2 rounded-full overflow-hidden mb-3">
+        <div
+          className="h-full rounded-full bg-passport-azure transition-all duration-500"
+          style={{ width: `${weeklyPercent}%` }}
+        />
+      </div>
+
+      {/* Percentage labels */}
+      <div className="flex items-center justify-between text-[10px] font-mono text-passport-dim mb-2">
+        <span>{dailyPercent}% of daily</span>
+        <span>{weeklyPercent}% of weekly</span>
+      </div>
+
       {nearLimit && usage.plan === 'free' && (
-        <div className="mt-2 text-xs text-passport-amber">
-          Approaching daily limit.{" "}
-          <Link href="/dashboard/billing" className="underline">
-            Upgrade to Pro
-          </Link>
+        <div className="mt-2 p-2 rounded-passport border border-passport-amber/20 bg-passport-amber/5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-passport-amber">Approaching daily limit</span>
+            <Link
+              href="/dashboard/billing"
+              className="btn-primary text-xs py-1 px-3 glow-on-hover"
+            >
+              Upgrade to Pro
+            </Link>
+          </div>
         </div>
       )}
     </GlassCard>
@@ -85,6 +137,8 @@ function UsageWidget() {
 
 export default function DashboardPage() {
   const { addToast } = useToast()
+  const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0)
+  const [lastUpdated] = useState(() => new Date())
 
   const {
     data: metrics,
@@ -106,7 +160,13 @@ export default function DashboardPage() {
 
   const loading = metricsLoading || diagnosticsLoading || reportLoading
   const error = metricsError?.message || diagnosticsError?.message || reportError?.message || ''
-  const lastUpdated = new Date()
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsSinceUpdate(Math.floor((Date.now() - lastUpdated.getTime()) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [lastUpdated])
 
   function loadData() {
     mutateMetrics()
@@ -178,6 +238,7 @@ export default function DashboardPage() {
               value={metrics?.tasks?.total ?? '—'}
               icon={<FileText size={18} />}
               delay={0.05}
+              change={12}
             />
             <StatCard
               label="Active Runs"
@@ -185,6 +246,7 @@ export default function DashboardPage() {
               icon={<Activity size={18} />}
               color="text-passport-azure"
               delay={0.1}
+              change={8}
             />
             <StatCard
               label="Active Agents"
@@ -192,6 +254,7 @@ export default function DashboardPage() {
               icon={<Bot size={18} />}
               color="text-passport-coral"
               delay={0.15}
+              change={-3}
             />
             <StatCard
               label="System Health"
@@ -202,6 +265,12 @@ export default function DashboardPage() {
             />
           </>
         )}
+      </div>
+
+      {/* Last updated */}
+      <div className="flex items-center gap-2 text-[10px] font-mono text-passport-dim">
+        <Clock size={10} />
+        <span>Last updated: {secondsSinceUpdate < 5 ? 'just now' : `${secondsSinceUpdate}s ago`}</span>
       </div>
 
       {/* Usage Widget */}

@@ -43,6 +43,15 @@ const config: Config = {
         'toast-in': 'toastIn 0.3s ease both',
         'toast-out': 'toastOut 0.3s ease both',
         'live-pulse': 'livePulse 2s ease-in-out infinite',
+        'slide-in-right-item': 'slideInRightItem 0.25s ease both',
+        'fade-in-up': 'fadeInUp 0.5s ease both',
+        'badge-glow': 'badgeGlow 2s ease-in-out infinite',
+        'shake': 'shake 0.5s ease-in-out',
+        'border-glow': 'borderGlow 3s ease-in-out infinite',
+        'counter-pulse': 'counterPulse 2s ease-in-out infinite',
+        'star-hover': 'starHover 0.3s ease both',
+        'autofocus-ring': 'autofocusRing 0.6s ease-out both',
+        'connect-line': 'connectPulse 2s ease-in-out infinite',
       },
       keyframes: {
         blink: {
@@ -60,6 +69,18 @@ const config: Config = {
         fadeIn: {
           from: { opacity: '0' },
           to: { opacity: '1' },
+        },
+        fadeOut: {
+          from: { opacity: '1' },
+          to: { opacity: '0' },
+        },
+        scaleIn: {
+          from: { opacity: '0', transform: 'scale(0.95)' },
+          to: { opacity: '1', transform: 'scale(1)' },
+        },
+        slideDown: {
+          from: { opacity: '0', transform: 'translateY(-8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
         },
         countIn: {
           from: { opacity: '0' },
@@ -84,6 +105,46 @@ const config: Config = {
         livePulse: {
           '0%, 100%': { opacity: '1', boxShadow: '0 0 0 0 rgba(46,160,67,0.4)' },
           '50%': { opacity: '0.8', boxShadow: '0 0 0 6px rgba(46,160,67,0)' },
+        },
+        slideInRightItem: {
+          from: { transform: 'translateX(16px)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
+        fadeInUp: {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        badgeGlow: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(46,160,67,0)' },
+          '50%': { boxShadow: '0 0 0 4px rgba(46,160,67,0.1)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-6px)' },
+          '40%': { transform: 'translateX(6px)' },
+          '60%': { transform: 'translateX(-4px)' },
+          '80%': { transform: 'translateX(4px)' },
+        },
+        borderGlow: {
+          '0%, 100%': { borderColor: 'rgba(46,160,67,0.15)', boxShadow: '0 0 8px rgba(46,160,67,0.05)' },
+          '50%': { borderColor: 'rgba(46,160,67,0.4)', boxShadow: '0 0 16px rgba(46,160,67,0.12)' },
+        },
+        counterPulse: {
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(46,160,67,0.3)' },
+          '50%': { boxShadow: '0 0 0 4px rgba(46,160,67,0)' },
+        },
+        starHover: {
+          from: { transform: 'scale(1)' },
+          to: { transform: 'scale(1.25)' },
+        },
+        autofocusRing: {
+          '0%': { boxShadow: '0 0 0 0px rgba(88,166,255,0.4)' },
+          '50%': { boxShadow: '0 0 0 4px rgba(88,166,255,0.1)' },
+          '100%': { boxShadow: '0 0 0 0px rgba(88,166,255,0)' },
+        },
+        connectPulse: {
+          '0%, 100%': { opacity: '0.3' },
+          '50%': { opacity: '1' },
         },
       },
       borderRadius: {

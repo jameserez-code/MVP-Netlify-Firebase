@@ -23,6 +23,7 @@ interface ToastContextType {
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined)
+const MAX_VISIBLE_TOASTS = 5
 
 const toastIcons: Record<ToastType, React.ReactNode> = {
   success: <CheckCircle size={16} className="text-passport-green shrink-0" />,
@@ -104,7 +105,7 @@ function ToastItem({
 
   return (
     <div
-      className={`relative overflow-hidden ${exiting ? 'animate-toast-out' : 'animate-toast-in'}`}
+      className={`relative overflow-hidden w-full ${exiting ? 'animate-toast-out' : 'animate-toast-in'}`}
       style={{
         transform: `translateX(${translateX}px)`,
         transition: translateX > 0 ? 'none' : 'transform 0.2s ease',
@@ -171,7 +172,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const addToast = useCallback((message: string, type: ToastType = 'info', action?: ToastAction) => {
     const id = Math.random().toString(36).slice(2)
-    setToasts((prev) => [...prev, { id, message, type, action }])
+    setToasts((prev) => {
+      const next = [...prev, { id, message, type, action }]
+      if (next.length > MAX_VISIBLE_TOASTS) {
+        return next.slice(next.length - MAX_VISIBLE_TOASTS)
+      }
+      return next
+    })
   }, [])
 
   useEffect(() => {
@@ -191,7 +198,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {toasts.length > 0 && toasts[toasts.length - 1].message}
       </div>
-      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[320px] max-w-[calc(100vw-2rem)]" role="region" aria-label="Notifications">
+      <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-[320px] max-w-[calc(100vw-2rem)] sm:w-[320px]" role="region" aria-label="Notifications">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
         ))}

@@ -1,7 +1,7 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import Navbar from '@/components/navbar'
 import GlassCard from '@/components/glass-card'
 import TerminalCursor from '@/components/terminal-cursor'
@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Play,
   Radio,
+  ArrowUp,
 } from 'lucide-react'
 
 function CountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
@@ -126,15 +127,68 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
     <div className="border border-passport-border rounded-md overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-passport-surface/50 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-passport-surface/50 transition-colors min-h-[44px]"
       >
         <span className="text-sm font-medium text-passport-text">{question}</span>
         {open ? <ChevronUp size={16} className="text-passport-muted shrink-0" /> : <ChevronDown size={16} className="text-passport-muted shrink-0" />}
       </button>
-      {open && (
-        <div className="px-5 pb-4 text-sm text-passport-muted leading-relaxed animate-fade-in">
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ maxHeight: open ? '300px' : '0px' }}
+      >
+        <div className="px-5 pb-4 text-sm text-passport-muted leading-relaxed">
           {answer}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function BackToTop() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 600)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="fixed bottom-8 right-8 z-40 w-11 h-11 rounded-full border border-passport-border bg-passport-surface/90 backdrop-blur-md text-passport-muted hover:text-passport-green hover:border-passport-green/50 transition-all duration-200 shadow-lg flex items-center justify-center back-to-top-visible"
+      aria-label="Back to top"
+    >
+      <ArrowUp size={18} />
+    </button>
+  )
+}
+
+function PasswordStrengthBar({ password }: { password: string }) {
+  let score = 0
+  if (password.length >= 8) score++
+  if (/\d/.test(password)) score++
+  if (/[^a-zA-Z0-9]/.test(password)) score++
+  if (password.length >= 12) score++
+
+  const colors = ['strength-bg', 'strength-bg', 'strength-bg', 'strength-bg']
+  const labels = ['', 'Weak', 'Fair', 'Strong']
+  if (score >= 1) colors[0] = score <= 2 ? 'strength-weak' : score === 3 ? 'strength-fair' : 'strength-strong'
+  if (score >= 2) colors[1] = score <= 2 ? 'strength-weak' : score === 3 ? 'strength-fair' : 'strength-strong'
+  if (score >= 3) colors[2] = score === 3 ? 'strength-fair' : 'strength-strong'
+  if (score >= 4) colors[3] = 'strength-strong'
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1">
+        {colors.map((c, i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full ${c}`} />
+        ))}
+      </div>
+      {password && (
+        <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 3)]}</p>
       )}
     </div>
   )
@@ -144,6 +198,15 @@ export default function LandingPage() {
   const [metrics, setMetrics] = useState<any>(null)
   const [codeTab, setCodeTab] = useState<'sdk' | 'curl'>('sdk')
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+  const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
+
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMousePos({
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height,
+    })
+  }, [])
 
   useEffect(() => {
     fetch('http://localhost:3000/metrics')
@@ -175,9 +238,23 @@ const result = await agent.run({
       <Navbar />
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/20 bg-passport-green/5 text-passport-green text-xs font-mono mb-8">
+      <section
+        id="hero"
+        onMouseMove={onMouseMove}
+        className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden scroll-mt-20"
+      >
+        {/* Parallax radial gradient */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(600px at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(46,160,67,0.06) 0%, transparent 70%)`,
+          }}
+        />
+        {/* Grid pattern overlay */}
+        <div className="absolute inset-0 hero-grid-bg opacity-30 pointer-events-none" />
+
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/20 bg-passport-green/5 text-passport-green text-xs font-mono mb-8 animate-border-glow">
             <span className="w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" />
             v2.1 — Now with Policy Enforcement
           </div>
@@ -195,12 +272,12 @@ const result = await agent.run({
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register" className="btn-primary text-base px-6 py-3">
+            <Link href="/register" className="btn-primary text-base px-8 py-3.5 w-full sm:w-auto btn-glow-hover">
               <Terminal size={16} />
               Start Building
               <ChevronRight size={16} />
             </Link>
-            <Link href="/login" className="btn-secondary text-base px-6 py-3">
+            <Link href="/login" className="btn-secondary text-base px-8 py-3.5 w-full sm:w-auto">
               Sign In to Console
             </Link>
           </div>
@@ -209,7 +286,7 @@ const result = await agent.run({
 
       {/* Live Metrics */}
       {metrics && (
-        <section className="pb-20 px-4 sm:px-6 lg:px-8">
+        <section id="metrics" className="pt-12 pb-12 px-4 sm:px-6 lg:px-8 scroll-mt-20">
           <div className="max-w-5xl mx-auto">
             <div className="font-mono text-[10px] uppercase tracking-widest text-passport-dim mb-4 text-center">
               Live System Metrics
@@ -257,7 +334,8 @@ const result = await agent.run({
       )}
 
       {/* ─── Trusted By ─── */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="trusted" className="py-16 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-16" />
         <div className="max-w-5xl mx-auto">
           <div className="font-mono text-[10px] uppercase tracking-widest text-passport-dim mb-6 text-center">
             Trusted by developers at
@@ -276,7 +354,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── Problem / Solution ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="problem-solution" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <div className="grid md:grid-cols-2 gap-8">
             {/* Problem */}
@@ -327,7 +406,8 @@ const result = await agent.run({
       </section>
 
       {/* Features */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -340,7 +420,7 @@ const result = await agent.run({
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <GlassCard delay={0.05}>
+            <GlassCard delay={0.05} className="h-full">
               <Shield size={24} className="text-passport-green mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Agent Passports
@@ -351,7 +431,7 @@ const result = await agent.run({
               </p>
             </GlassCard>
 
-            <GlassCard delay={0.1}>
+            <GlassCard delay={0.1} className="h-full">
               <Lock size={24} className="text-passport-azure mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Policy Enforcement
@@ -362,7 +442,7 @@ const result = await agent.run({
               </p>
             </GlassCard>
 
-            <GlassCard delay={0.15}>
+            <GlassCard delay={0.15} className="h-full">
               <Eye size={24} className="text-passport-coral mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Full Audit Trail
@@ -373,7 +453,7 @@ const result = await agent.run({
               </p>
             </GlassCard>
 
-            <GlassCard delay={0.2}>
+            <GlassCard delay={0.2} className="h-full">
               <Zap size={24} className="text-passport-amber mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Stateless Scaling
@@ -384,7 +464,7 @@ const result = await agent.run({
               </p>
             </GlassCard>
 
-            <GlassCard delay={0.25}>
+            <GlassCard delay={0.25} className="h-full">
               <Key size={24} className="text-passport-green mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Secret Rotation
@@ -395,7 +475,7 @@ const result = await agent.run({
               </p>
             </GlassCard>
 
-            <GlassCard delay={0.3}>
+            <GlassCard delay={0.3} className="h-full">
               <FileCheck size={24} className="text-passport-azure mb-4" />
               <h3 className="text-lg font-semibold text-passport-text mb-2">
                 Compliance Ready
@@ -410,7 +490,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── How It Works ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -423,9 +504,8 @@ const result = await agent.run({
 
           <div className="grid md:grid-cols-3 gap-6 relative">
             {/* Connector line (desktop only) */}
-            <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px bg-passport-border" />
-            <div className="hidden md:block absolute top-10 left-[33.33%] w-0 h-0 border-l-[5px] border-l-passport-border border-y-[4px] border-y-transparent" />
-            <div className="hidden md:block absolute top-10 left-[66.67%] w-0 h-0 border-l-[5px] border-l-passport-border border-y-[4px] border-y-transparent" />
+            <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px" style={{ background: 'linear-gradient(90deg, rgba(46,160,67,0.3), rgba(46,160,67,0.15), rgba(46,160,67,0.3))' }} />
+            <div className="hidden md:block absolute top-12 left-[50%] w-2 h-2 rounded-full bg-passport-green connect-line-pulse -translate-x-1/2 -translate-y-1/2" />
 
             {[
               {
@@ -444,7 +524,7 @@ const result = await agent.run({
                 desc: 'Every tool call is intercepted and evaluated in real-time',
               },
             ].map((step, idx) => (
-              <GlassCard key={step.title} delay={0.05 * (idx + 1)} className="text-center relative z-10">
+              <GlassCard key={step.title} delay={0.05 * (idx + 1)} className="text-center relative z-10 h-full">
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-passport-surface border border-passport-border mb-4">
                   {step.icon}
                 </div>
@@ -458,33 +538,43 @@ const result = await agent.run({
       </section>
 
       {/* ─── Code Snippet ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="code" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-8 text-center">
             Install in 30 Seconds
           </h2>
 
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setCodeTab('sdk')}
-              className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                codeTab === 'sdk'
-                  ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
-                  : 'text-passport-muted hover:text-passport-text border border-transparent'
-              }`}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCodeTab('sdk')}
+                className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+                  codeTab === 'sdk'
+                    ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
+                    : 'text-passport-muted hover:text-passport-text border border-transparent'
+                }`}
+              >
+                SDK
+              </button>
+              <button
+                onClick={() => setCodeTab('curl')}
+                className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+                  codeTab === 'curl'
+                    ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
+                    : 'text-passport-muted hover:text-passport-text border border-transparent'
+                }`}
+              >
+                cURL
+              </button>
+            </div>
+            <Link
+              href="#demo"
+              className="flex items-center gap-1.5 text-xs font-mono text-passport-green hover:text-passport-text transition-colors"
             >
-              SDK
-            </button>
-            <button
-              onClick={() => setCodeTab('curl')}
-              className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                codeTab === 'curl'
-                  ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
-                  : 'text-passport-muted hover:text-passport-text border border-transparent'
-              }`}
-            >
-              cURL
-            </button>
+              <Play size={12} />
+              Try it
+            </Link>
           </div>
 
           {codeTab === 'sdk' ? <CodeBlock code={sdkCode} lang="typescript" /> : <CodeBlock code={curlCode} lang="bash" />}
@@ -492,7 +582,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── Live Demo Embed ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="demo" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -527,7 +618,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── As Seen On ─── */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="as-seen" className="py-16 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-16" />
         <div className="max-w-5xl mx-auto">
           <div className="font-mono text-[10px] uppercase tracking-widest text-passport-dim mb-6 text-center">
             As seen on
@@ -543,7 +635,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── Testimonials ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-14 text-center">
             Trusted by Engineering Teams
@@ -566,12 +659,16 @@ const result = await agent.run({
                 title: 'Security Engineer',
               },
             ].map((t, i) => (
-              <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col">
+              <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col h-full">
                 <div className="text-passport-green text-lg font-serif mb-4">"</div>
                 <p className="text-sm text-passport-text leading-relaxed mb-6 flex-1">{t.quote}</p>
-                <div className="flex items-center gap-1 mb-3">
+                <div className="flex items-center gap-1 mb-3 group">
                   {Array.from({ length: 5 }).map((_, s) => (
-                    <Star key={s} size={14} className="text-passport-amber fill-passport-amber" />
+                    <Star
+                      key={s}
+                      size={14}
+                      className="text-passport-amber fill-passport-amber transition-transform duration-200 group-hover:[&:nth-child(-n+3)]:scale-125"
+                    />
                   ))}
                 </div>
                 <div className="font-semibold text-passport-text text-sm">{t.name}</div>
@@ -583,7 +680,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── Pricing ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">Simple Pricing</h2>
@@ -612,7 +710,7 @@ const result = await agent.run({
 
           <div className="grid md:grid-cols-3 gap-4">
             {/* Free */}
-            <GlassCard hover={false} className="flex flex-col">
+            <GlassCard hover={false} className="flex flex-col h-full">
               <div className="label-text mb-2">Free</div>
               <div className="text-3xl font-bold text-passport-text mb-6">$0<span className="text-base font-normal text-passport-muted">/month</span></div>
               <ul className="space-y-3 mb-8 flex-1">
@@ -627,8 +725,8 @@ const result = await agent.run({
             </GlassCard>
 
             {/* Pro */}
-            <GlassCard hover={false} className="flex flex-col relative border-passport-green/30">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-passport-green text-[10px] font-mono font-bold text-white tracking-wider uppercase">
+            <GlassCard hover={false} className="flex flex-col relative border-passport-green/30 pro-card-glow h-full">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-passport-green text-[10px] font-mono font-bold text-white tracking-wider uppercase animate-counter-pulse">
                 Most Popular
               </div>
               <div className="label-text mb-2">Pro</div>
@@ -664,7 +762,7 @@ const result = await agent.run({
             </GlassCard>
 
             {/* Enterprise */}
-            <GlassCard hover={false} className="flex flex-col">
+            <GlassCard hover={false} className="flex flex-col h-full">
               <div className="label-text mb-2">Enterprise</div>
               <div className="text-3xl font-bold text-passport-text mb-6">Custom</div>
               <ul className="space-y-3 mb-8 flex-1">
@@ -682,7 +780,8 @@ const result = await agent.run({
       </section>
 
       {/* ─── FAQ ─── */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="faq" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-10 text-center">
             Frequently Asked Questions
@@ -713,7 +812,8 @@ const result = await agent.run({
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+      <section id="cta" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
         <div className="max-w-3xl mx-auto text-center">
           <GlassCard className="p-10 sm:p-14" hover={false}>
             <Server size={32} className="text-passport-green mx-auto mb-6" />
@@ -725,11 +825,11 @@ const result = await agent.run({
               open-source version.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register" className="btn-primary text-base px-6 py-3">
+              <Link href="/register" className="btn-primary text-base px-8 py-3.5 w-full sm:w-auto">
                 <Terminal size={16} />
                 Create Organization
               </Link>
-              <Link href="/login" className="btn-secondary text-base px-6 py-3">
+              <Link href="/login" className="btn-secondary text-base px-8 py-3.5 w-full sm:w-auto">
                 Sign In
               </Link>
             </div>
@@ -738,11 +838,50 @@ const result = await agent.run({
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 text-center border-t border-passport-border">
-        <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
-        </p>
+      <footer id="footer" className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
+            <div>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Product</h4>
+              <ul className="space-y-2">
+                <li><Link href="#features" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Features</Link></li>
+                <li><Link href="#pricing" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Pricing</Link></li>
+                <li><Link href="#demo" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Demo</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li><a href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Documentation</a></li>
+                <li><a href="/playground" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Playground</a></li>
+                <li><a href="#faq" className="text-xs text-passport-muted hover:text-passport-text transition-colors">FAQ</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Developers</h4>
+              <ul className="space-y-2">
+                <li><a href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">API Reference</a></li>
+                <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">GitHub</a></li>
+                <li><a href="/login" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Status</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Legal</h4>
+              <ul className="space-y-2">
+                <li><a href="/privacy" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Privacy</a></li>
+                <li><a href="/terms" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Terms</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="font-mono text-[10px] text-passport-dim tracking-wider">
+              Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
+            </p>
+          </div>
+        </div>
       </footer>
+
+      <BackToTop />
     </div>
   )
 }

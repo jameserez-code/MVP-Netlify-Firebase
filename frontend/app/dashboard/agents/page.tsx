@@ -26,6 +26,7 @@ import {
   X,
   Pause,
   QrCode,
+  Circle,
 } from 'lucide-react'
 
 const QRCodeDisplay = dynamic(() => import('@/components/qrcode-display'), {
@@ -65,6 +66,7 @@ export default function AgentsPage() {
   const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState('')
   const [showSecret, setShowSecret] = useState(false)
+  const [formStep, setFormStep] = useState(0)
 
   useEffect(() => {
     if (newAgent) {
@@ -151,16 +153,12 @@ export default function AgentsPage() {
     }
   }
 
-  const statusIcon = (status?: string) => {
+  const statusDot = (status?: string) => {
     switch (status) {
-      case 'active':
-        return <CheckCircle size={12} className="inline mr-1" />
-      case 'suspended':
-        return <Pause size={12} className="inline mr-1" />
-      case 'revoked':
-        return <X size={12} className="inline mr-1" />
-      default:
-        return <CheckCircle size={12} className="inline mr-1" />
+      case 'active': return 'bg-passport-green'
+      case 'suspended': return 'bg-passport-amber'
+      case 'revoked': return 'bg-passport-red'
+      default: return 'bg-passport-dim'
     }
   }
 
@@ -265,9 +263,22 @@ export default function AgentsPage() {
 
       {/* Registration form */}
       {showForm && (
-        <GlassCard hover={false}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-passport-text">Register New Agent</h2>
+          <GlassCard hover={false}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-passport-text">Register New Agent</h2>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={`flex items-center gap-1.5 text-xs font-mono transition-colors ${formStep === 0 ? 'text-passport-green' : 'text-passport-dim'}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] border ${formStep === 0 ? 'border-passport-green bg-passport-green/10 text-passport-green' : 'border-passport-border text-passport-dim'}`}>1</span>
+                    Details
+                  </span>
+                  <span className="w-8 h-px bg-passport-border" />
+                  <span className={`flex items-center gap-1.5 text-xs font-mono transition-colors ${formStep === 1 ? 'text-passport-green' : 'text-passport-dim'}`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] border ${formStep === 1 ? 'border-passport-green bg-passport-green/10 text-passport-green' : 'border-passport-border text-passport-dim'}`}>2</span>
+                    Key
+                  </span>
+                </div>
+              </div>
             <button
               onClick={() => setShowForm(false)}
               className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
@@ -429,8 +440,8 @@ export default function AgentsPage() {
                       <span className="font-mono text-xs text-passport-muted">{agent.model || '—'}</span>
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
-                      <span className={`inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${statusBadge(agent.status)}`}>
-                        {statusIcon(agent.status)}
+                      <span className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${statusBadge(agent.status)}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusDot(agent.status)}`} />
                         {agent.status || 'active'}
                       </span>
                     </td>

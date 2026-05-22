@@ -20,6 +20,7 @@ import {
   Shield,
   Trash2,
   X,
+  XCircle,
   DollarSign,
   Globe,
   Lock,
@@ -28,6 +29,7 @@ import {
   ShieldCheck,
   LayoutGrid,
   Download,
+  ChevronRight,
 } from 'lucide-react'
 
 interface Policy {
@@ -76,6 +78,37 @@ const DEFAULT_FORM: FormState = {
   requireApproval: false,
 }
 
+function highlightJson(json: string): React.ReactNode {
+  const tokenPattern = /("(?:[^"\\]|\\.)*"\s*(?=:))|("(?:[^"\\]|\\.)*")|(\btrue\b|\bfalse\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}[\]])|(:)/g
+  const tokens: { text: string; className: string }[] = []
+  let m
+  let lastIdx = 0
+
+  while ((m = tokenPattern.exec(json)) !== null) {
+    if (m.index > lastIdx) {
+      tokens.push({ text: json.slice(lastIdx, m.index), className: '' })
+    }
+    if (m[1]) tokens.push({ text: m[1], className: 'json-key' })
+    else if (m[2]) tokens.push({ text: m[2], className: 'json-string' })
+    else if (m[3]) tokens.push({ text: m[3], className: 'json-boolean' })
+    else if (m[4]) tokens.push({ text: m[4], className: 'json-null' })
+    else if (m[5]) tokens.push({ text: m[5], className: 'json-number' })
+    else if (m[6]) tokens.push({ text: m[6], className: 'json-brace' })
+    else if (m[7]) tokens.push({ text: m[7], className: 'text-passport-muted' })
+    lastIdx = tokenPattern.lastIndex
+  }
+  if (lastIdx < json.length) {
+    tokens.push({ text: json.slice(lastIdx), className: '' })
+  }
+  return (
+    <>
+      {tokens.map((t, i) => (
+        <span key={i} className={t.className}>{t.text}</span>
+      ))}
+    </>
+  )
+}
+
 function buildRules(form: FormState): Record<string, any> {
   const rules: Record<string, any> = {}
   if (form.allowedTools.length || form.deniedTools.length) {
@@ -110,6 +143,12 @@ export default function PoliciesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showSuccess, setShowSuccess] = useState(false)
+  const [wizardStep, setWizardStep] = useState(0)
+
+  const wizardSteps = [
+    { label: 'Tools & Domains', description: 'Select allowed/denied tools and domains' },
+    { label: 'Cost & Settings', description: 'Set budget limits and extra controls' },
+  ]
 
   function loadPolicies() {
     mutate()
@@ -251,7 +290,34 @@ export default function PoliciesPage() {
         <div className="grid lg:grid-cols-2 gap-4">
           <GlassCard hover={false}>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-passport-text">Create Policy</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-passport-text">Create Policy</h2>
+                <div className="flex items-center gap-2 mt-1.5">
+                  {wizardSteps.map((step, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWizardStep(i)}
+                        className={`flex items-center gap-1.5 text-xs font-mono transition-colors ${
+                          wizardStep === i ? 'text-passport-green' : 'text-passport-dim hover:text-passport-muted'
+                        }`}
+                      >
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] border transition-colors ${
+                            wizardStep === i
+                              ? 'border-passport-green bg-passport-green/10 text-passport-green'
+                              : 'border-passport-border text-passport-dim'
+                          }`}
+                        >
+                          {i + 1}
+                        </span>
+                        {step.label}
+                      </button>
+                      {i < wizardSteps.length - 1 && <span className="w-6 h-px bg-passport-border" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
               <button
                 onClick={() => setShowForm(false)}
                 className="text-passport-dim hover:text-passport-text transition-colors p-1 rounded-passport hover:bg-passport-surface-2"
@@ -278,7 +344,9 @@ export default function PoliciesPage() {
                 )}
               </div>
 
-              {/* Allowed Tools */}
+                {wizardStep === 0 && (
+                  <>
+                    {/* Allowed Tools */}
               <div>
                 <label className="label-text flex items-center gap-1.5">
                   <Unlock size={12} className="text-passport-green" />
@@ -337,8 +405,8 @@ export default function PoliciesPage() {
                 </div>
               </div>
 
-              {/* Domains */}
-              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Domains */}
+                <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label-text flex items-center gap-1.5">
                     <Globe size={12} className="text-passport-azure" />
@@ -364,7 +432,11 @@ export default function PoliciesPage() {
                   />
                 </div>
               </div>
+                  </>
+                )}
 
+                {wizardStep === 1 && (
+                  <>
               {/* Cost */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
@@ -429,6 +501,8 @@ export default function PoliciesPage() {
                   </span>
                 </label>
               </div>
+                  </>
+                )}
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -438,18 +512,38 @@ export default function PoliciesPage() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn-primary disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
-                  ) : (
-                    <Shield size={14} />
-                  )}
-                  Create Policy
-                </button>
+                {wizardStep > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setWizardStep(wizardStep - 1)}
+                    className="btn-secondary"
+                  >
+                    Back
+                  </button>
+                )}
+                {wizardStep < wizardSteps.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setWizardStep(wizardStep + 1)}
+                    className="btn-primary"
+                  >
+                    Next
+                    <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+                    ) : (
+                      <Shield size={14} />
+                    )}
+                    Create Policy
+                  </button>
+                )}
               </div>
             </form>
           </GlassCard>
@@ -460,8 +554,8 @@ export default function PoliciesPage() {
               <FileText size={16} className="text-passport-azure" />
               <h2 className="text-sm font-semibold text-passport-text">JSON Preview</h2>
             </div>
-            <pre className="flex-1 p-3 rounded-passport bg-passport-bg border border-passport-border font-mono text-[11px] text-passport-muted overflow-auto">
-              {jsonPreview}
+            <pre className="flex-1 p-3 rounded-passport bg-passport-bg border border-passport-border font-mono text-[11px] leading-relaxed overflow-auto whitespace-pre-wrap">
+              {highlightJson(jsonPreview)}
             </pre>
           </GlassCard>
         </div>
@@ -525,6 +619,18 @@ export default function PoliciesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
+                  {Array.isArray(policy.rules?.tools?.allow) && policy.rules!.tools!.allow!.length > 0 && (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-1 rounded bg-passport-green/10 text-passport-green">
+                      <CheckCircle size={10} />
+                      {policy.rules!.tools!.allow!.length} allow
+                    </span>
+                  )}
+                  {Array.isArray(policy.rules?.tools?.deny) && policy.rules!.tools!.deny!.length > 0 && (
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-1 rounded bg-passport-red/10 text-passport-red">
+                      <XCircle size={10} />
+                      {policy.rules!.tools!.deny!.length} deny
+                    </span>
+                  )}
                   <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-passport-green/10 text-passport-green">
                     Active
                   </span>

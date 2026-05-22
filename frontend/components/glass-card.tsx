@@ -16,7 +16,7 @@ const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
         ref={ref}
         className={`glass-panel p-5 ${hover ? 'glass-panel-hover' : ''} ${className}`}
         style={{
-          animation: `slideUp 0.4s ease both`,
+          animation: `slideUp 0.3s ease both`,
           animationDelay: `${delay}s`,
         }}
       >
