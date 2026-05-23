@@ -1,0 +1,3 @@
+## 2025-05-15 - Accessibility for Dynamic Dashboards
+**Learning:** In dashboards where content is conditionally shown via CSS classes like `.hidden`, automated accessibility verification (e.g., via Playwright) must perform the full user journey (Gate code -> Sign-In -> Dashboard) to correctly locate and verify interactive elements. Decorative icons and characters (e.g., terminal `>`) should be explicitly hidden with `aria-hidden="true"` to prevent screen reader noise.
+**Action:** Always include authentication steps in frontend verification scripts and use `aria-hidden` for all non-informative visual embellishments.
