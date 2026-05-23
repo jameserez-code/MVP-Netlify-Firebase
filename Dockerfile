@@ -5,15 +5,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package*.json tsconfig.json ./
-RUN npm ci
+COPY package*.json pnpm-lock.yaml tsconfig.json ./
+RUN corepack enable && pnpm install --no-frozen-lockfile
 
 COPY src/ ./src/
 COPY public/ ./public/
 COPY sdk/ ./sdk/
 COPY *.html ./
 
-RUN npm run build
+RUN pnpm run build
 
 # Production stage
 FROM node:20-alpine
@@ -21,9 +21,10 @@ FROM node:20-alpine
 WORKDIR /app
 
 RUN apk add --no-cache curl
+RUN corepack enable
 
-COPY package*.json ./
-RUN npm ci --production && npm cache clean --force
+COPY package*.json pnpm-lock.yaml ./
+RUN pnpm install --prod --no-frozen-lockfile
 
 COPY --from=builder /app/dist ./dist
 COPY public/ ./public/
@@ -36,4 +37,4 @@ ENV NODE_ENV=production
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:3000/health || exit 1
 
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
