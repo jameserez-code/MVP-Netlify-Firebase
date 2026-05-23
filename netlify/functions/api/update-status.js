@@ -35,7 +35,6 @@ exports.handler = async function(event, context) {
 
     // In production: update Firestore document
     // For MVP: return success (frontend handles localStorage persistence)
-    // The orgId from auth should be used to scope the update in production
 
     return ok({
       success: true,

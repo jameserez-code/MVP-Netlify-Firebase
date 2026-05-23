@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json tsconfig.json ./
-RUN npm ci
+RUN npm install
 
 COPY src/ ./src/
 COPY public/ ./public/
@@ -23,7 +23,7 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 COPY package*.json ./
-RUN npm ci --production && npm cache clean --force
+RUN npm install --production && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
 COPY public/ ./public/
