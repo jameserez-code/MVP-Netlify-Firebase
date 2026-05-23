@@ -89,7 +89,7 @@ async function fetchJson(path: string, options?: RequestInit) {
       const err = await res.json().catch(() => ({}))
       const message = err.error?.message || err.message
       const error = new Error(message || `Request failed (HTTP ${res.status})`)
-      captureApiError(error, { path, status: res.status }).catch(() => {})
+      captureApiError(error, `${path} [${res.status}]`)
       if (message) throw error
       if (res.status === 403) throw new Error('Access denied. You do not have permission.')
       if (res.status === 404) throw new Error('Resource not found.')

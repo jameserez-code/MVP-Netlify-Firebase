@@ -159,7 +159,7 @@ export default function DashboardPage() {
   )
 
   const loading = metricsLoading || diagnosticsLoading || reportLoading
-  const error = metricsError?.message || diagnosticsError?.message || reportError?.message || ''
+  const error = (metricsError as any)?.message || (diagnosticsError as any)?.message || (reportError as any)?.message || ''
 
   useEffect(() => {
     const interval = setInterval(() => {
