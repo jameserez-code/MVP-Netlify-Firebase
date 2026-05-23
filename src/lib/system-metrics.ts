@@ -2,91 +2,99 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { register } from './metrics.js'
 import { Gauge, Counter, Histogram } from 'prom-client'
 
-// ---------------------------------------------------------------------------
-// System metrics — Node.js + Firestore
-// ---------------------------------------------------------------------------
+function safeGauge(opts: { name: string; help: string; registers: any[]; labelNames?: string[] }): Gauge<string> {
+  try { return new Gauge(opts) } catch { return new Gauge({ ...opts, name: opts.name + '_custom' }) }
+}
+
+function safeCounter(opts: { name: string; help: string; registers: any[]; labelNames?: string[] }): Counter<string> {
+  try { return new Counter(opts) } catch { return new Counter({ ...opts, name: opts.name + '_custom' }) }
+}
+
+function safeHistogram(opts: { name: string; help: string; registers: any[]; labelNames?: string[]; buckets?: number[] }): Histogram<string> {
+  try { return new Histogram(opts) } catch { return new Histogram({ ...opts, name: opts.name + '_custom', buckets: opts.buckets }) }
+}
 
 // Node.js memory breakdown
-export const nodeMemoryHeapUsed = new Gauge({
+export const nodeMemoryHeapUsed = safeGauge({
   name: 'nodejs_memory_heap_used_bytes',
   help: 'Node.js heap used in bytes',
   registers: [register],
 })
 
-export const nodeMemoryHeapTotal = new Gauge({
+export const nodeMemoryHeapTotal = safeGauge({
   name: 'nodejs_memory_heap_total_bytes',
   help: 'Node.js heap total in bytes',
   registers: [register],
 })
 
-export const nodeMemoryRss = new Gauge({
+export const nodeMemoryRss = safeGauge({
   name: 'nodejs_memory_rss_bytes',
   help: 'Node.js RSS in bytes',
   registers: [register],
 })
 
-export const nodeMemoryExternal = new Gauge({
+export const nodeMemoryExternal = safeGauge({
   name: 'nodejs_memory_external_bytes',
   help: 'Node.js external memory in bytes',
   registers: [register],
 })
 
 // CPU usage (user + system time since last check)
-export const nodeCpuUser = new Gauge({
+export const nodeCpuUser = safeGauge({
   name: 'nodejs_cpu_user_seconds_total',
   help: 'Node.js CPU user time in seconds',
   registers: [register],
 })
 
-export const nodeCpuSystem = new Gauge({
+export const nodeCpuSystem = safeGauge({
   name: 'nodejs_cpu_system_seconds_total',
   help: 'Node.js CPU system time in seconds',
   registers: [register],
 })
 
 // Event loop lag
-export const nodeEventLoopLag = new Gauge({
+export const nodeEventLoopLag = safeGauge({
   name: 'nodejs_eventloop_lag_seconds',
   help: 'Node.js event loop lag in seconds',
   registers: [register],
 })
 
 // Active handles / requests (best effort)
-export const nodeActiveHandles = new Gauge({
+export const nodeActiveHandles = safeGauge({
   name: 'nodejs_active_handles',
   help: 'Number of active handles',
   registers: [register],
 })
 
-export const nodeActiveRequests = new Gauge({
+export const nodeActiveRequests = safeGauge({
   name: 'nodejs_active_requests',
   help: 'Number of active requests',
   registers: [register],
 })
 
 // Firestore metrics
-export const firestoreQueriesTotal = new Counter({
+export const firestoreQueriesTotal = safeCounter({
   name: 'firestore_queries_total',
   help: 'Total Firestore queries executed',
   labelNames: ['collection'],
   registers: [register],
 })
 
-export const firestoreReadsTotal = new Counter({
+export const firestoreReadsTotal = safeCounter({
   name: 'firestore_reads_total',
   help: 'Total Firestore document reads',
   labelNames: ['collection'],
   registers: [register],
 })
 
-export const firestoreWritesTotal = new Counter({
+export const firestoreWritesTotal = safeCounter({
   name: 'firestore_writes_total',
   help: 'Total Firestore document writes',
   labelNames: ['collection', 'operation'],
   registers: [register],
 })
 
-export const firestoreLatency = new Histogram({
+export const firestoreLatency = safeHistogram({
   name: 'firestore_operation_duration_seconds',
   help: 'Firestore operation latency',
   labelNames: ['operation', 'collection'],

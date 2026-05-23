@@ -101,7 +101,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
 
     let customerId = org.stripeCustomerId as string | undefined
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await stripe!.customers.create({
         email: org.ownerId || org.email || undefined,
         name: org.name || undefined,
         metadata: { orgId: claims.orgId },
@@ -113,7 +113,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     const priceId = await getOrCreateProPrice()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripe!.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
@@ -146,7 +146,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
       return err(reply, 404, 'not_found', 'No subscription found')
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await stripe!.billingPortal.sessions.create({
       customer: org.stripeCustomerId,
       return_url: `${appUrl}/dashboard/billing`,
     })
@@ -173,7 +173,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
 
     if (org.stripeSubscriptionId) {
       try {
-        const sub = await stripe.subscriptions.retrieve(org.stripeSubscriptionId) as any
+        const sub = await stripe!.subscriptions.retrieve(org.stripeSubscriptionId) as any
         return {
           plan: org.plan || 'free',
           status: sub.status,
@@ -204,13 +204,13 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     const org = orgSnap.exists ? (orgSnap.data() as any) : null
     if (!org?.stripeCustomerId) return { invoices: [] }
 
-    const invoices = await stripe.invoices.list({
+    const invoices = await stripe!.invoices.list({
       customer: org.stripeCustomerId,
       limit: 20,
     })
 
     return {
-      invoices: invoices.data.map((i) => ({
+      invoices: invoices.data.map((i: any) => ({
         id: i.id,
         number: i.number,
         amount_due: i.amount_due,
@@ -233,7 +233,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     if (!org?.stripeSubscriptionId)
       return err(reply, 404, 'not_found', 'No subscription found')
 
-    await stripe.subscriptions.update(org.stripeSubscriptionId, {
+    await stripe!.subscriptions.update(org.stripeSubscriptionId, {
       cancel_at_period_end: true,
     })
     await orgSnap.ref.set({ cancelAtPeriodEnd: true }, { merge: true })
@@ -257,7 +257,7 @@ export default async function billingRoutes(app: FastifyInstance, db: Firestore)
     }
 
     try {
-      event = stripe.webhooks.constructEvent(
+      event = stripe!.webhooks.constructEvent(
         payload,
         sig,
         webhookSecret

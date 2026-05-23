@@ -65,7 +65,7 @@ async function poll() {
     // Create run (atomic: task pending→running, run created)
     const runRef = db.collection('runs').doc()
     const now = new Date().toISOString()
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: any) => {
       const currentSnap = await tx.get(db.collection('tasks').doc(task.id))
       if (!currentSnap.exists || currentSnap.data()?.status !== 'pending') {
         throw new Error(`CONFLICT: task ${task.id} is no longer pending`)
@@ -89,7 +89,7 @@ async function poll() {
     const timeoutId = setTimeout(async () => {
       log.warn('execution timeout — failing run', { runId: runRef.id })
       try {
-        await db.runTransaction(async (tx) => {
+        await db.runTransaction(async (tx: any) => {
           tx.update(runRef, { status: 'timed_out', endedAt: new Date().toISOString(), error: 'Execution timeout' })
           tx.update(db.collection('tasks').doc(task.id), { status: 'failed', error: 'Execution timeout', failedAt: new Date().toISOString() })
         })
@@ -101,7 +101,7 @@ async function poll() {
     clearTimeout(timeoutId)
 
     // Complete
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: any) => {
       const endTime = new Date().toISOString()
       tx.update(runRef, { status: 'completed', endedAt: endTime, updatedAt: endTime })
       tx.update(db.collection('tasks').doc(task.id), { status: 'completed', completedAt: endTime, updatedAt: endTime })

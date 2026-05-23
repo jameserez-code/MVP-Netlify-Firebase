@@ -3,7 +3,7 @@ import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom
 export const register = new Registry()
 
 // Enable default Node.js metrics (GC, event loop, memory, etc.)
-collectDefaultMetrics({ register })
+try { collectDefaultMetrics({ register }) } catch {}
 
 // HTTP request metrics
 export const httpRequestsTotal = new Counter({

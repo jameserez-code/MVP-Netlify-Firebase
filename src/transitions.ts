@@ -40,7 +40,7 @@ export async function transitionTask(
     if (nextStatus === 'failed') update.failedAt = timestamp
     if (nextStatus === 'cancelled') update.cancelledAt = timestamp
 
-    tx.update(ref, update)
+    tx.update(ref, update as any)
 
     // Emit transition log
     const logRef = db.collection('logs').doc()
@@ -96,7 +96,7 @@ export async function transitionRun(
       }
     }
 
-    tx.update(ref, update)
+    tx.update(ref, update as any)
 
     const logRef = db.collection('logs').doc()
     tx.set(logRef, {
@@ -144,7 +144,7 @@ export async function failRunWithError(
       updatedAt: timestamp,
     }
 
-    tx.update(ref, update)
+    tx.update(ref, update as any)
 
     // Mirror failure to the task
     if (taskId) {

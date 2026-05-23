@@ -1,0 +1,40 @@
+{
+  "agent_demo": {
+    "id": "agent_demo",
+    "name": "Demo Bot",
+    "model": "gpt-4o",
+    "provider": "openai",
+    "orgId": "org_demo",
+    "status": "active",
+    "registeredAt": "2026-05-23T23:40:31.302Z",
+    "lastSeenAt": null,
+    "revokedAt": null,
+    "revokedBy": null,
+    "revokedReason": null,
+    "metadata": {},
+    "passport": {
+      "passportNumber": "PP-DEM1-DEM1",
+      "model": "gpt-4o",
+      "provider": "openai",
+      "modelVersion": "gpt-4o",
+      "systemPromptHash": "sha256:demo",
+      "origin": {
+        "createdBy": "seed",
+        "createdAt": "2026-05-23T23:40:31.302Z",
+        "environment": "demo"
+      }
+    },
+    "signingKey": {
+      "keyId": "ak_live_demo_a",
+      "secretHash": "7a90853ce72423abaff6908c67778b63314622596ca4c2e7b0947361117a455389c8b6467a378782eec1ac63507eea9485453bcd90b4fe4d0ac27112ce5c5578",
+      "secretSalt": "28929fb05c893d9adad93d696d8b66f27423cc4716a643a1a29b69e737826cc3",
+      "algorithm": "hmac-sha256",
+      "iterations": 50000,
+      "rotatedAt": null
+    },
+    "capabilities": [
+      "task:execute",
+      "network:http"
+    ]
+  }
+}

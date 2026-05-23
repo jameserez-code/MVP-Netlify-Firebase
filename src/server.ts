@@ -5,7 +5,7 @@ import { resolve } from 'path'
 import { randomUUID, createHash } from 'crypto'
 import multipart from '@fastify/multipart'
 import compress from '@fastify/compress'
-import { initFirebase } from './lib/firebase.js'
+import { initFirebase, isUsingLocalStore } from './lib/firebase.js'
 import { log } from './lib/logger.js'
 import { sign, verify } from './lib/jwt.js'
 import { storeBlacklist } from './lib/session-store.js'
@@ -81,7 +81,11 @@ if (process.env.DATADOG_API_KEY) {
 // Validate environment before starting
 validateEnv()
 
-const db = initFirebase()
+const db: any = initFirebase()
+if (isUsingLocalStore()) {
+  const { seedDemoData } = await import('./lib/seed-local.js')
+  await seedDemoData(db as any)
+}
 const app = Fastify({
   logger: false,
   bodyLimit: 1024 * 1024, // 1MB max body size
@@ -849,7 +853,7 @@ app.post('/agent/run', { preHandler: requireRole(['org_member']) }, async (reque
     const requestId = generateId('req_', 8)
     await transitionTask(db, taskId, 'queued', {}, requestId)
     const docRef = db.collection('runs').doc(); const now = new Date().toISOString()
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: any) => {
       tx.update(db.collection('tasks').doc(taskId), { status: 'running', startedAt: now, updatedAt: now })
       tx.set(docRef, { agentId, taskId, sessionId: `sess_${docRef.id}`, status: 'running', startedAt: now, endedAt: null, error: null, updatedAt: now, createdAt: now, totalActions: 0, allowedActions: 0, deniedActions: 0, orgId })
     })
@@ -900,7 +904,7 @@ app.post('/run/:id/log', async (request, reply) => {
   const logRef = db.collection('logs').doc()
   const logDoc = { agentId: run.agentId, runId: id, tool, decision, reason: reason || null, parameters: parameters || {}, timestamp: new Date().toISOString(), requestId: generateId('req_', 8) }
   try {
-    await db.runTransaction(async (tx) => {
+    await db.runTransaction(async (tx: any) => {
       tx.set(logRef, logDoc)
       tx.update(db.collection('runs').doc(id), { totalActions: run.totalActions + 1, allowedActions: run.allowedActions + (decision === 'allow' ? 1 : 0), deniedActions: run.deniedActions + (decision === 'deny' ? 1 : 0) })
     })
@@ -1003,7 +1007,7 @@ app.get('/audit', {
 // GET /sessions, GET /sessions/:id
 app.get('/sessions', async (request, reply) => {
   const claims = await requireAuth(request, reply); if (!claims) return
-  try { const snap = await db.collection('sessions').where('orgId', '==', getOrgId(claims)).orderBy('startedAt', 'desc').limit(20).get(); return { data: snap.docs.map(d => ({ id: d.id, ...d.data() })) } }
+  try { const snap = await db.collection('sessions').where('orgId', '==', getOrgId(claims)).orderBy('startedAt', 'desc').limit(20).get(); return { data: snap.docs.map((d: any) => ({ id: d.id, ...d.data() })) } }
   catch (e: any) { log.error('sessions list failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'session query failed' } } }
 })
 
@@ -1015,8 +1019,8 @@ app.get('/sessions/:id', async (request, reply) => {
     const ssnData = ssn.data() as any
     if (ssnData?.orgId && ssnData.orgId !== getOrgId(claims)) { reply.code(403); return { error: { code: 'forbidden', message: 'session does not belong to your organization' } } }
     const runs = await db.collection('runs').where('sessionId', '==', id).get()
-    const logs = runs.docs.length > 0 ? await db.collection('logs').where('runId', 'in', runs.docs.map(d => d.id)).get() : { docs: [] }
-    return { session: { id, ...ssnData }, runs: runs.docs.map(d => ({ id: d.id, ...d.data() })), logs: logs.docs.map(d => ({ id: d.id, ...d.data() })) }
+    const logs = runs.docs.length > 0 ? await db.collection('logs').where('runId', 'in', runs.docs.map((d: any) => d.id)).get() : { docs: [] }
+    return { session: { id, ...ssnData }, runs: runs.docs.map((d: any) => ({ id: d.id, ...d.data() })), logs: logs.docs.map((d: any) => ({ id: d.id, ...d.data() })) }
   } catch (e: any) { log.error('session detail failed', { error: e.message }); reply.code(503); return { error: { code: 'firestore', message: 'session detail query failed' } } }
 })
 

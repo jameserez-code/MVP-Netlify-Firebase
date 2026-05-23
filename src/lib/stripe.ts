@@ -2,13 +2,13 @@ import Stripe from 'stripe'
 import { CircuitBreaker } from './circuit-breaker.js'
 
 const secretKey = process.env.STRIPE_SECRET_KEY
-if (!secretKey) {
-  throw new Error('STRIPE_SECRET_KEY is required')
-}
 
-export const stripe = new Stripe(secretKey, {
-  apiVersion: '2024-06-20',
-} as any)
+export let stripe: Stripe | null = null
+if (secretKey) {
+  stripe = new Stripe(secretKey, {
+    apiVersion: '2024-06-20',
+  } as any)
+}
 
 const stripeCircuitBreaker = new CircuitBreaker({
   name: 'stripe-api',
@@ -18,17 +18,18 @@ const stripeCircuitBreaker = new CircuitBreaker({
 })
 
 export async function getOrCreateProPrice(): Promise<string> {
+  if (!stripe) throw new Error('Stripe not configured')
   return stripeCircuitBreaker.execute(async () => {
-    const prices = await stripe.prices.list({ limit: 10 })
+    const prices = await stripe!.prices.list({ limit: 10 })
     const existing = prices.data.find((p) => p.metadata?.plan === 'pro' && p.active)
     if (existing) return existing.id
 
-    const product = await stripe.products.create({
+    const product = await stripe!.products.create({
       name: 'Passport Agent Pro',
       metadata: { plan: 'pro' },
     })
 
-    const price = await stripe.prices.create({
+    const price = await stripe!.prices.create({
       unit_amount: 2900,
       currency: 'usd',
       recurring: { interval: 'month' },

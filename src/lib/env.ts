@@ -64,11 +64,7 @@ export function validateEnv(options: ValidateEnvOptions = {}): EnvConfig {
           '  (B) GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json'
         )
       } else {
-        errors.push(
-          'Firebase credentials required. Provide either:\n' +
-          '  (A) FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY\n' +
-          '  (B) GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json'
-        )
+        console.warn('[ENV] Firebase credentials not configured. Will use local file-based storage.')
       }
     }
   }

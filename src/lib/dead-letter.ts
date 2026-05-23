@@ -39,7 +39,7 @@ export async function getDeadLetters(queueName?: string): Promise<DeadLetter[]> 
   let q = db.collection('deadLetters').orderBy('createdAt', 'desc')
   if (queueName) q = q.where('queue', '==', queueName)
   const snap = await q.limit(100).get()
-  return snap.docs.map((d) => d.data() as DeadLetter)
+  return snap.docs.map((d: any) => d.data() as DeadLetter)
 }
 
 export async function retryDeadLetter(docId: string): Promise<void> {

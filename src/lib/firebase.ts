@@ -2,11 +2,13 @@ import admin from 'firebase-admin'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 import { CircuitBreaker } from './circuit-breaker.js'
+import { LocalFirestore, getLocalDb } from './local-store.js'
 
-let _db: admin.firestore.Firestore | null = null
+let _db: any = null
 let _firebaseConnected = false
 let _lastSuccessfulConnection = 0
 let _connectionFailures = 0
+let _usingLocalStore = false
 
 const firebaseCircuitBreaker = new CircuitBreaker({
   name: 'firebase-connection',
@@ -87,7 +89,11 @@ export async function firestoreOperation<T>(fn: () => Promise<T>): Promise<T> {
   return firebaseCircuitBreaker.execute(() => retryOperation(fn))
 }
 
-export function initFirebase(): admin.firestore.Firestore {
+export function isUsingLocalStore(): boolean {
+  return _usingLocalStore
+}
+
+export function initFirebase(): any {
   if (_db) return _db
 
   // 1. Try environment variables first (deployments like Vercel, Netlify, Lambda)
@@ -136,30 +142,16 @@ export function initFirebase(): admin.firestore.Firestore {
     return _db
   }
 
-  // 4. Nothing configured — attempt demo/graceful degradation
-  console.warn('Firebase credentials not found. Running without database.\nAgents can still register and evaluate policies in-memory for demo purposes.')
-  _db = null
-  _firebaseConnected = false
-  // Return a stub object that prevents crashes but won't persist
-  const msg = [
-    'Firebase credentials not found. Configure one of:',
-    '',
-    'Option A — Environment variables (deployments):',
-    '  FIREBASE_PROJECT_ID=your-project',
-    '  FIREBASE_CLIENT_EMAIL=firebase-adminsdk@...',
-    '  FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n..."',
-    '',
-    'Option B — Service account file (local):',
-    '  Create service-account.json from:',
-    '  Firebase Console → Project Settings → Service accounts → Generate new private key',
-    '',
-    'Option C — Demo mode (no Firebase):',
-    '  npm run demo    → runs without Firebase',
-  ].join('\n')
-  throw new Error(msg)
+  // 4. No Firebase configured — fall back to local file-based store
+  console.log('\n  Using local file-based storage (data/ directory). No Firebase configured.\n')
+  _db = getLocalDb()
+  _firebaseConnected = true
+  _usingLocalStore = true
+  _lastSuccessfulConnection = Date.now()
+  return _db
 }
 
-export function getDb(): admin.firestore.Firestore {
+export function getDb(): any {
   if (!_db) return initFirebase()
   return _db
 }

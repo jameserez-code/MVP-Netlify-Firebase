@@ -13,7 +13,7 @@ export async function batchWrite(
     const batch = db.batch()
     const chunk = documents.slice(i, i + BATCH_SIZE)
     for (const doc of chunk) {
-      batch.set(db.collection(collection).doc(doc.id), doc.data)
+      batch.set(db.collection(collection).doc(doc.id), doc.data as any)
     }
     await batch.commit()
     written += chunk.length
@@ -51,7 +51,7 @@ export async function batchUpdate(
     const batch = db.batch()
     const chunk = updates.slice(i, i + BATCH_SIZE)
     for (const update of chunk) {
-      batch.update(db.collection(collection).doc(update.id), update.data)
+      batch.update(db.collection(collection).doc(update.id), update.data as any)
     }
     await batch.commit()
     updated += chunk.length
