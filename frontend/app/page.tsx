@@ -12,10 +12,12 @@ import {
   Eye,
   Zap,
   Terminal,
+  TrendingUp,
   ChevronRight,
   Key,
   FileCheck,
   Server,
+  ShoppingCart,
   X,
   Check,
   ShieldCheck,
@@ -26,6 +28,8 @@ import {
   ChevronDown,
   ChevronUp,
   Github,
+  Headphones,
+  HeartPulse,
   ExternalLink,
   Play,
   Radio,
@@ -496,6 +500,149 @@ const result = await agent.run({
                 </p>
               </GlassCard>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Who Uses Passport Agent ─── */}
+      <section id="use-cases" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="section-divider mb-24" />
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <ScrollFadeHeading>
+              <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
+                Who Uses Passport Agent
+              </h2>
+              <p className="text-passport-muted max-w-xl mx-auto">
+                From startups to Fortune 500 — every company deploying AI agents needs enforcement.
+              </p>
+            </ScrollFadeHeading>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-5">
+            <GlassCard delay={0.05} className="h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Headphones size={24} className="text-passport-green shrink-0" />
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-green">
+                  ENTERPRISE SUPPORT
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-passport-text mb-3">
+                Customer Support Agents
+              </h3>
+              <p className="text-sm text-passport-muted leading-relaxed mb-3">
+                Agents need order/CRM access but must never touch payments, delete data, or leak PII.
+              </p>
+              <p className="text-sm leading-relaxed mb-4 flex-1">
+                Passport allows{' '}
+                <span className="font-mono text-passport-green">lookup_order</span>,{' '}
+                <span className="font-mono text-passport-green">read_customer</span>,{' '}
+                <span className="font-mono text-passport-green">send_email</span>
+                {' '}— blocks everything else.
+              </p>
+              <div className="pt-4 border-t border-passport-border">
+                <div className="font-mono text-2xl font-bold text-passport-green">Zero</div>
+                <div className="text-xs text-passport-muted mt-0.5">
+                  unauthorized actions across 10K+ interactions/day
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard delay={0.1} className="h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp size={24} className="text-passport-azure shrink-0" />
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-azure">
+                  FINTECH
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-passport-text mb-3">
+                Financial Data Analysts
+              </h3>
+              <p className="text-sm text-passport-muted leading-relaxed mb-3">
+                Agents need market data access but must never write to production or expose customer PII.
+              </p>
+              <p className="text-sm leading-relaxed mb-4 flex-1">
+                Passport enforces read-only database access with PII detection and domain restrictions.
+              </p>
+              <div className="pt-4 border-t border-passport-border">
+                <div className="font-mono text-2xl font-bold text-passport-green">SOC 2 Compliant</div>
+                <div className="text-xs text-passport-muted mt-0.5">
+                  Full audit trail for FINRA
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard delay={0.15} className="h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <Server size={24} className="text-passport-coral shrink-0" />
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-coral">
+                  CLOUD INFRASTRUCTURE
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-passport-text mb-3">
+                DevOps Infrastructure Agents
+              </h3>
+              <p className="text-sm text-passport-muted leading-relaxed mb-3">
+                Agents need to monitor and scale — must never delete clusters or modify IAM.
+              </p>
+              <p className="text-sm leading-relaxed mb-4 flex-1">
+                Passport blocks destructive operations while allowing safe monitoring and scaling.
+              </p>
+              <div className="pt-4 border-t border-passport-border">
+                <div className="font-mono text-2xl font-bold text-passport-green">Zero</div>
+                <div className="text-xs text-passport-muted mt-0.5">
+                  production incidents in 6 months
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard delay={0.2} className="h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <HeartPulse size={24} className="text-passport-amber shrink-0" />
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-amber">
+                  HEALTHCARE
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-passport-text mb-3">
+                Clinical Decision Support
+              </h3>
+              <p className="text-sm text-passport-muted leading-relaxed mb-3">
+                Agents need patient data access but must never modify records or share externally.
+              </p>
+              <p className="text-sm leading-relaxed mb-4 flex-1">
+                Passport enforces HIPAA-compliant read-only access with double PII protection.
+              </p>
+              <div className="pt-4 border-t border-passport-border">
+                <div className="font-mono text-2xl font-bold text-passport-green">HIPAA Compliant</div>
+                <div className="text-xs text-passport-muted mt-0.5">
+                  FDA-ready deployment
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard delay={0.25} className="h-full flex flex-col">
+              <div className="flex items-center gap-3 mb-4">
+                <ShoppingCart size={24} className="text-passport-green shrink-0" />
+                <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-green">
+                  E-COMMERCE
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-passport-text mb-3">
+                E-Commerce Personalization
+              </h3>
+              <p className="text-sm text-passport-muted leading-relaxed mb-3">
+                Agents recommend products and apply coupons — must never process payments or change prices.
+              </p>
+              <p className="text-sm leading-relaxed mb-4 flex-1">
+                Passport restricts agents to recommendation and coupon actions — nothing else.
+              </p>
+              <div className="pt-4 border-t border-passport-border">
+                <div className="font-mono text-2xl font-bold text-passport-green">50% Increase</div>
+                <div className="text-xs text-passport-muted mt-0.5">
+                  conversion. Zero payment incidents
+                </div>
+              </div>
+            </GlassCard>
           </div>
         </div>
       </section>
