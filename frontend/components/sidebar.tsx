@@ -20,6 +20,7 @@ import {
   CreditCard,
   Download,
   ChevronDown,
+  Webhook,
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { isLoggedIn, clearToken } from '@/lib/api'
@@ -30,9 +31,10 @@ const navItems = [
   { href: '/dashboard/policies', label: 'Policies', icon: FileText, shortcut: '3' },
   { href: '/dashboard/audit', label: 'Audit', icon: ClipboardList, shortcut: '4' },
   { href: '/dashboard/api-keys', label: 'API Keys', icon: KeyRound, shortcut: '5' },
-  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard, shortcut: '6' },
-  { href: '/dashboard/exports', label: 'Exports', icon: Download, shortcut: '7' },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings, shortcut: '8' },
+  { href: '/dashboard/webhooks', label: 'Webhooks', icon: Webhook, shortcut: '6' },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard, shortcut: '7' },
+  { href: '/dashboard/exports', label: 'Exports', icon: Download, shortcut: '8' },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings, shortcut: '9' },
 ]
 
 const orgs = ['Personal', 'Team Alpha', 'Enterprise']

@@ -17,6 +17,7 @@ function Breadcrumbs() {
     policies: 'Policies',
     audit: 'Audit',
     'api-keys': 'API Keys',
+    webhooks: 'Webhooks',
     billing: 'Billing',
     exports: 'Exports',
     settings: 'Settings',
