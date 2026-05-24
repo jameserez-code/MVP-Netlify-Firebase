@@ -6,5 +6,7 @@ class StubQueue {
 
 export const webhookQueue = new StubQueue()
 export const emailQueue = new StubQueue()
+export const auditQueue = new StubQueue()
+export const cleanupQueue = new StubQueue()
 export const webhookCleanupQueue = new StubQueue()
 export const deadLetterQueue = new StubQueue()

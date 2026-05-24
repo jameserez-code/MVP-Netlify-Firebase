@@ -257,6 +257,13 @@ export async function createPolicy(data: { name: string; rules: Record<string, u
   })
 }
 
+export async function updatePolicy(id: string, data: { name?: string; status?: string; rules?: Record<string, unknown>; priority?: number }) {
+  return fetchJson(`/policies/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
 export async function deletePolicy(id: string) {
   return fetchJson(`/policies/${id}`, {
     method: 'DELETE',

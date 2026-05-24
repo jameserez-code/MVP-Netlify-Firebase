@@ -21,7 +21,7 @@ import {
   Twitter,
   RefreshCw,
 } from 'lucide-react'
-import { createPolicy, registerAgent, completeOnboarding } from '@/lib/api'
+import { createPolicy, registerAgent, enforceIntent, completeOnboarding } from '@/lib/api'
 
 /* ─── Types ─── */
 
@@ -35,6 +35,7 @@ interface OnboardingState {
   agentSecret: string
   demoCompleted: boolean
   onboardingCompleted: boolean
+  policyId: string
 }
 
 const STORAGE_KEY = 'passport_onboarding'
@@ -51,6 +52,7 @@ function loadState(): OnboardingState {
       agentSecret: '',
       demoCompleted: false,
       onboardingCompleted: false,
+      policyId: '',
     }
   }
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -72,6 +74,7 @@ function loadState(): OnboardingState {
     agentSecret: '',
     demoCompleted: false,
     onboardingCompleted: false,
+    policyId: '',
   }
 }
 
@@ -179,7 +182,7 @@ function StepWelcome({ onNext }: { onNext: () => void }) {
 
 const ALL_TOOLS = ['web_search', 'read_database', 'write_database', 'delete_database', 'send_email', 'api_call']
 
-function StepCreatePolicy({ onNext }: { onNext: () => void }) {
+function StepCreatePolicy({ onNext, onPolicyCreated }: { onNext: () => void; onPolicyCreated: (id: string) => void }) {
   const [name, setName] = useState('Safe Web Search')
   const [allowed, setAllowed] = useState<string[]>(['web_search', 'read_database'])
   const [denied, setDenied] = useState<string[]>(['delete_database', 'write_database'])
@@ -198,7 +201,7 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
     setLoading(true)
     setError('')
     try {
-      await createPolicy({
+      const result = await createPolicy({
         name,
         rules: {
           allowedTools: allowed,
@@ -208,6 +211,7 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
           piiDetection: pii,
         },
       })
+      if (result.id) onPolicyCreated(result.id)
       onNext()
     } catch (err: any) {
       setError(err.message || 'Failed to create policy')
@@ -350,7 +354,7 @@ function StepCreatePolicy({ onNext }: { onNext: () => void }) {
 
 /* ─── Step 3: Register First Agent ─── */
 
-function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: OnboardingState }) {
+function StepRegisterAgent({ onNext, state, onAgentCreated }: { onNext: () => void; state: OnboardingState; onAgentCreated: (id: string, secret: string) => void }) {
   const [name, setName] = useState('Customer Support Bot')
   const [model, setModel] = useState('GPT-4o')
   const [provider, setProvider] = useState('OpenAI')
@@ -364,7 +368,11 @@ function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: Onboa
     setError('')
     try {
       const res = await registerAgent({ name, model, provider, systemPrompt })
-      setResult({ id: res.id || `agent_${Date.now().toString(36)}`, secret: res.secret || 'passport_secret_' + Math.random().toString(36).slice(2) })
+      const id = res.id || res.agentId
+      const secret = res.secret || res.secretKey
+      if (!id) throw new Error('No agent ID returned from server')
+      setResult({ id, secret: secret || 'No secret returned' })
+      onAgentCreated(id, secret || '')
     } catch (err: any) {
       setError(err.message || 'Failed to register agent')
     } finally {
@@ -400,6 +408,18 @@ function StepRegisterAgent({ onNext, state }: { onNext: () => void; state: Onboa
           <div className="glass-panel p-4">
             <div className="label-text">Agent ID</div>
             <div className="font-mono text-sm text-passport-text break-all">{result.id}</div>
+          </div>
+
+          <div className="glass-panel p-4 flex flex-col items-center">
+            <div className="label-text mb-2">Agent QR Code</div>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(result.id)}`}
+              alt="Agent QR Code"
+              className="rounded border border-passport-border"
+              width={150}
+              height={150}
+            />
+            <span className="text-[10px] font-mono text-passport-dim mt-1">Scan to verify agent identity</span>
           </div>
 
           <div className="glass-panel p-4 border-passport-amber/20">
@@ -531,11 +551,12 @@ const DEMO_ACTIONS: DemoAction[] = [
   { tool: 'api_call', decision: 'modify', reason: 'PII detected in parameters — data redacted', line: 'api_call({ url: "api.example.com/users", payload: { ssn: "■■■" } })', policyName: 'No PII Access' },
 ]
 
-function StepRunDemo({ onNext }: { onNext: () => void }) {
+function StepRunDemo({ onNext, agentId }: { onNext: () => void; agentId: string }) {
   const [lines, setLines] = useState<{ text: string; color: string }[]>([])
   const [running, setRunning] = useState(false)
   const [done, setDone] = useState(false)
   const [currentActionIdx, setCurrentActionIdx] = useState(-1)
+  const [apiConnected, setApiConnected] = useState(true)
   const actionRef = useRef<number>(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -546,8 +567,9 @@ function StepRunDemo({ onNext }: { onNext: () => void }) {
     setDone(false)
     setCurrentActionIdx(-1)
     actionRef.current = 0
+    setApiConnected(true)
 
-    intervalRef.current = setInterval(() => {
+    const runNext = async () => {
       const i = actionRef.current
       if (i >= DEMO_ACTIONS.length) {
         if (intervalRef.current) clearInterval(intervalRef.current)
@@ -556,25 +578,61 @@ function StepRunDemo({ onNext }: { onNext: () => void }) {
         return
       }
       const action = DEMO_ACTIONS[i]
-      const color = action.decision === 'allow' ? 'text-passport-green' : action.decision === 'deny' ? 'text-passport-red' : 'text-passport-azure'
       setCurrentActionIdx(i)
 
-      setLines((prev) => [
-        ...prev,
-        { text: `> ${action.line}`, color: 'text-passport-dim' },
-        { text: `  ─ Evaluating against active policies...`, color: 'text-passport-muted' },
-        { text: `  ${action.decision === 'allow' ? '✓' : action.decision === 'deny' ? '✗' : '⚠'} ${action.decision.toUpperCase()} — ${action.reason}`, color },
-        ...(action.policyName ? [{ text: `  ─ Matched policy: ${action.policyName}`, color: 'text-passport-muted' }] : []),
-      ])
+      if (agentId && apiConnected) {
+        try {
+          const intentId = `intent_${Date.now()}_${i}`
+          const result = await enforceIntent({
+            intent: {
+              intentId,
+              agentId,
+              tool: action.tool,
+              parameters: { action: action.tool, index: i },
+            },
+          })
+          const decision = result.decision || 'allow'
+          const color = decision === 'allow' ? 'text-passport-green' : decision === 'deny' ? 'text-passport-red' : 'text-passport-azure'
+          setLines((prev) => [
+            ...prev,
+            { text: `> ${action.line}`, color: 'text-passport-dim' },
+            { text: `  ─ Evaluating against active policies...`, color: 'text-passport-muted' },
+            { text: `  ${decision === 'allow' ? '✓' : decision === 'deny' ? '✗' : '⚠'} ${decision.toUpperCase()} — ${result.reason || action.reason}`, color },
+            ...(action.policyName ? [{ text: `  ─ Matched policy: ${action.policyName}`, color: 'text-passport-muted' }] : []),
+          ])
+        } catch {
+          setApiConnected(false)
+          const color = action.decision === 'allow' ? 'text-passport-green' : action.decision === 'deny' ? 'text-passport-red' : 'text-passport-azure'
+          setLines((prev) => [
+            ...prev,
+            { text: `> ${action.line}`, color: 'text-passport-dim' },
+            { text: `  ─ (Simulated) Evaluating against active policies...`, color: 'text-passport-muted' },
+            { text: `  ${action.decision === 'allow' ? '✓' : action.decision === 'deny' ? '✗' : '⚠'} ${action.decision.toUpperCase()} — ${action.reason}`, color },
+            ...(action.policyName ? [{ text: `  ─ Matched policy: ${action.policyName}`, color: 'text-passport-muted' }] : []),
+          ])
+        }
+      } else {
+        const color = action.decision === 'allow' ? 'text-passport-green' : action.decision === 'deny' ? 'text-passport-red' : 'text-passport-azure'
+        setLines((prev) => [
+          ...prev,
+          { text: `> ${action.line}`, color: 'text-passport-dim' },
+          { text: `  ─ (Simulated) Evaluating against active policies...`, color: 'text-passport-muted' },
+          { text: `  ${action.decision === 'allow' ? '✓' : action.decision === 'deny' ? '✗' : '⚠'} ${action.decision.toUpperCase()} — ${action.reason}`, color },
+          ...(action.policyName ? [{ text: `  ─ Matched policy: ${action.policyName}`, color: 'text-passport-muted' }] : []),
+        ])
+      }
+
       actionRef.current++
-    }, 1200)
-  }, [running])
+      setTimeout(runNext, 1200)
+    }
+
+    intervalRef.current = setTimeout(runNext, 500) as any
+  }, [running, agentId, apiConnected])
 
   useEffect(() => {
-    const t = setTimeout(runDemo, 500)
+    runDemo()
     return () => {
-      clearTimeout(t)
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      if (intervalRef.current) clearTimeout(intervalRef.current)
     }
   }, [runDemo])
 
@@ -699,9 +757,14 @@ function StepReady({ state }: { state: OnboardingState }) {
     setFinishing(true)
     try {
       await completeOnboarding()
-    } catch {}
-    localStorage.removeItem(STORAGE_KEY)
-    router.push('/dashboard')
+      setTimeout(() => {
+        localStorage.removeItem(STORAGE_KEY)
+        router.push('/dashboard')
+      }, 2000)
+    } catch {
+      localStorage.removeItem(STORAGE_KEY)
+      router.push('/dashboard')
+    }
   }
 
   const shareUrl = 'https://passport-agent-demo.netlify.app'
@@ -788,6 +851,18 @@ export default function OnboardingPage() {
     saveState(next)
   }
 
+  const setPolicyId = (policyId: string) => {
+    const next = { ...state, policyId }
+    setState(next)
+    saveState(next)
+  }
+
+  const setAgentData = (agentId: string, agentSecret: string) => {
+    const next = { ...state, agentId, agentSecret }
+    setState(next)
+    saveState(next)
+  }
+
   const nextStep = () => {
     if (state.step < 5) {
       setDirection('forward')
@@ -851,9 +926,9 @@ export default function OnboardingPage() {
           <div className="min-h-[400px] flex items-center justify-center w-full max-w-3xl">
             <StepWrapper direction={direction} stepKey={state.step}>
               {state.step === 1 && <StepWelcome onNext={nextStep} />}
-              {state.step === 2 && <StepCreatePolicy onNext={nextStep} />}
-              {state.step === 3 && <StepRegisterAgent onNext={nextStep} state={state} />}
-              {state.step === 4 && <StepRunDemo onNext={nextStep} />}
+              {state.step === 2 && <StepCreatePolicy onNext={nextStep} onPolicyCreated={setPolicyId} />}
+              {state.step === 3 && <StepRegisterAgent onNext={nextStep} state={state} onAgentCreated={setAgentData} />}
+              {state.step === 4 && <StepRunDemo onNext={nextStep} agentId={state.agentId} />}
               {state.step === 5 && <StepReady state={state} />}
             </StepWrapper>
           </div>

@@ -28,13 +28,20 @@ import {
   History,
   Code2,
   BarChart3,
+  Wifi,
+  WifiOff,
+  Server,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react'
+import { getBaseUrl } from '@/lib/api'
 
 /* ────────────────────────────────────────────────────────────────
    Types
    ──────────────────────────────────────────────────────────────── */
 
 type Decision = 'allowed' | 'denied' | 'modified'
+type RunMode = 'simulation' | 'live'
 
 interface SimAction {
   id: string
@@ -62,6 +69,9 @@ interface LogEntry {
   reason: string
   policyName?: string
   timestamp: number
+  latency?: number
+  ticket?: string
+  fullResponse?: Record<string, unknown>
 }
 
 interface Scenario {
@@ -69,6 +79,30 @@ interface Scenario {
   label: string
   persona: string
   actions: SimAction[]
+}
+
+interface EnforcementResponse {
+  [key: string]: unknown
+  intentId?: string
+  decision?: string
+  reason?: string
+  policyName?: string
+  ticket?: string
+  modifiedParameters?: Record<string, unknown>
+  gatewayTicket?: string
+}
+
+interface ApiPolicy {
+  id: string
+  name: string
+  description?: string
+  status?: string
+  active?: boolean
+  rules?: {
+    allowedTools?: string[]
+    blockedTools?: string[]
+    blockedPatterns?: { label?: string; pattern?: string; regex?: string }[]
+  }
 }
 
 /* ────────────────────────────────────────────────────────────────
@@ -219,6 +253,34 @@ function formatTime(totalSeconds: number): string {
   return `${m}:${s}`
 }
 
+function mapApiDecision(apiDecision?: string): Decision {
+  if (apiDecision === 'deny') return 'denied'
+  if (apiDecision === 'modify') return 'modified'
+  return 'allowed'
+}
+
+function generateCurlCommand(baseUrl: string, token: string, tool: string, params: Record<string, unknown>): string {
+  const body = JSON.stringify({ agentId: 'agent_demo', tool, parameters: params })
+  return `curl -X POST ${baseUrl}/enforce \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer ${token}" \\\n  -d '${body.replace(/'/g, "'\\''")}'`
+}
+
+function transformApiPolicies(apiPolicies: ApiPolicy[]): Policy[] {
+  return apiPolicies.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description || '',
+    active: p.status ? p.status === 'active' : (p.active ?? true),
+    rules: {
+      allowedTools: p.rules?.allowedTools || [],
+      blockedTools: p.rules?.blockedTools || [],
+      blockedPatterns: (p.rules?.blockedPatterns || []).map((bp) => ({
+        label: bp.label || bp.pattern || '',
+        regex: new RegExp(bp.pattern || bp.regex || '^$'),
+      })),
+    },
+  }))
+}
+
 /* ────────────────────────────────────────────────────────────────
    Sub-Components
    ──────────────────────────────────────────────────────────────── */
@@ -346,6 +408,16 @@ export default function DemoPage() {
   const [processingDots, setProcessingDots] = useState(0)
   const [pendingAction, setPendingAction] = useState<SimAction | null>(null)
 
+  // ── Live API mode state ──
+  const [mode, setMode] = useState<RunMode>('simulation')
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null)
+  const [apiChecking, setApiChecking] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
+  const [tokenLoading, setTokenLoading] = useState(false)
+  const [policiesLoading, setPoliciesLoading] = useState(false)
+  const [expandedResultIds, setExpandedResultIds] = useState<Set<string>>(new Set())
+  const [liveApiError, setLiveApiError] = useState<string | null>(null)
+
   const consoleEndRef = useRef<HTMLDivElement>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const simTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -353,10 +425,18 @@ export default function DemoPage() {
   const speedRef = useRef(speed)
   const policiesRef = useRef(policies)
   const isPlayingRef = useRef(isPlaying)
+  const modeRef = useRef(mode)
+  const tokenRef = useRef(token)
+  const cancelledRef = useRef(false)
+
+  const API_BASE = getBaseUrl()
+  const isLocalDemo = API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1')
 
   useEffect(() => { speedRef.current = speed }, [speed])
   useEffect(() => { policiesRef.current = policies }, [policies])
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
+  useEffect(() => { modeRef.current = mode }, [mode])
+  useEffect(() => { tokenRef.current = token }, [token])
 
   const scenario = SCENARIOS.find((s) => s.id === scenarioId) || SCENARIOS[0]
   const totalActions = logs.length
@@ -375,6 +455,84 @@ export default function DemoPage() {
       typeIntervalRef.current = null
     }
   }, [])
+
+  // ── Health check on mount ──
+  useEffect(() => {
+    let cancelled = false
+    setApiChecking(true)
+    fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) })
+      .then((r) => {
+        if (cancelled) return
+        setApiOnline(r.ok)
+        setApiChecking(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setApiOnline(false)
+        setApiChecking(false)
+      })
+    return () => { cancelled = true }
+  }, [API_BASE])
+
+  // ── Auto-login for live mode ──
+  useEffect(() => {
+    if (mode !== 'live' || apiOnline === false) return
+    setTokenLoading(true)
+    setLiveApiError(null)
+    fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@demo.com', password: 'demo123' }),
+      signal: AbortSignal.timeout(10000),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.token) {
+          setToken(data.token)
+          tokenRef.current = data.token
+        } else {
+          throw new Error(data.error?.message || 'No token in response')
+        }
+        setTokenLoading(false)
+      })
+      .catch((err) => {
+        setLiveApiError(`Login failed: ${err.message}`)
+        setApiOnline(false)
+        setTokenLoading(false)
+      })
+  }, [mode, apiOnline, API_BASE])
+
+  // ── Fetch real policies in live mode ──
+  useEffect(() => {
+    if (mode !== 'live' || !token) return
+    setPoliciesLoading(true)
+    fetch(`${API_BASE}/policies`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const apiPolicies: ApiPolicy[] = data.policies || data
+        if (Array.isArray(apiPolicies) && apiPolicies.length > 0) {
+          setPolicies(transformApiPolicies(apiPolicies))
+        }
+        setPoliciesLoading(false)
+      })
+      .catch(() => {
+        setPoliciesLoading(false)
+      })
+  }, [mode, token, API_BASE])
+
+  // ── Heartbeat re-check ──
+  useEffect(() => {
+    if (!started) return
+    const interval = setInterval(() => {
+      fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) })
+        .then((r) => setApiOnline(r.ok))
+        .catch(() => setApiOnline(false))
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [started, API_BASE])
 
   // Auto-scroll console
   useEffect(() => {
@@ -455,7 +613,7 @@ export default function DemoPage() {
     return () => clearTimeout(t)
   }, [showToast])
 
-  // ─── Simulation Runner ───
+  // ─── Simulation / Live Runner ───
   useEffect(() => {
     if (!isPlaying) {
       clearAllTimers()
@@ -483,12 +641,182 @@ export default function DemoPage() {
     const action = actions[actionIndex]
     const shouldAnimateTyping = actionIndex < 3 && logs.length < 3
 
+    // ── LIVE API MODE ──
+    if (modeRef.current === 'live' && tokenRef.current) {
+      let cancelled = false
+      cancelledRef.current = false
+
+      setPendingAction(action)
+      setPhase('typing')
+      setTypedText('')
+      setTriggeredPolicyId(null)
+
+      let charIdx = 0
+      if (shouldAnimateTyping) {
+        typeIntervalRef.current = setInterval(() => {
+          charIdx++
+          setTypedText(action.raw.slice(0, charIdx))
+          if (charIdx >= action.raw.length) {
+            if (typeIntervalRef.current) clearInterval(typeIntervalRef.current)
+            typeIntervalRef.current = null
+            if (!cancelled) setPhase('evaluating')
+          }
+        }, 14)
+      } else {
+        setTypedText(action.raw)
+        const t = setTimeout(() => {
+          if (!cancelled) setPhase('evaluating')
+        }, 60 / speedRef.current)
+        simTimersRef.current.push(t)
+      }
+
+      const evalDelay = shouldAnimateTyping ? 300 : 150
+
+      const evalTimer = setTimeout(() => {
+        if (cancelled) return
+
+        const currentToken = tokenRef.current
+        if (!currentToken) {
+          if (!cancelled) {
+            setLiveApiError('JWT expired — switching to simulation')
+            setMode('simulation')
+          }
+          return
+        }
+
+        const startTime = performance.now()
+
+        fetch(`${API_BASE}/enforce`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${currentToken}`,
+          },
+          body: JSON.stringify({
+            agentId: 'agent_demo',
+            tool: action.tool,
+            parameters: action.params,
+          }),
+          signal: AbortSignal.timeout(15000),
+        })
+          .then((r) => {
+            if (!r.ok) {
+              return r.json().then((err) => {
+                throw new Error(err.error?.message || `HTTP ${r.status}`)
+              })
+            }
+            return r.json()
+          })
+          .then((data: EnforcementResponse) => {
+            if (cancelled) return
+
+            const latency = Math.round(performance.now() - startTime)
+            const decision = mapApiDecision(data.decision)
+            const reason = data.reason || (decision === 'allowed' ? 'allowed by policy engine' : 'denied by policy engine')
+
+            const newLog: LogEntry = {
+              id: `${action.id}-${Date.now()}`,
+              action,
+              decision,
+              reason,
+              policyName: data.policyName,
+              timestamp: Date.now(),
+              latency,
+              ticket: data.gatewayTicket || data.ticket,
+              fullResponse: data,
+            }
+
+            setLogs((prev) => [...prev, newLog])
+            setEnforcementLatency(latency)
+            setDecisionHistory((prev) => [...prev, decision].slice(-30))
+            setTriggeredPolicyId(data.policyName || null)
+            setPhase('complete')
+            setPendingAction(null)
+
+            const nextDelay = 400 / speedRef.current
+            const advanceTimer = setTimeout(() => {
+              setActionIndex((prev) => prev + 1)
+              setPhase('idle')
+            }, nextDelay)
+            simTimersRef.current.push(advanceTimer)
+          })
+          .catch((err) => {
+            if (cancelled) return
+
+            const errorMsg = err.message || 'Unknown API error'
+
+            // If 401, try to refresh token
+            if (err.message?.includes('401') || err.message?.includes('token')) {
+              fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'admin@demo.com', password: 'demo123' }),
+                signal: AbortSignal.timeout(10000),
+              })
+                .then((r) => r.json())
+                .then((data) => {
+                  if (data.token && !cancelled) {
+                    setToken(data.token)
+                    tokenRef.current = data.token
+                    setLiveApiError('Token refreshed — continuing')
+                    setTimeout(() => setLiveApiError(null), 3000)
+                  } else if (!cancelled) {
+                    setLiveApiError('Token refresh failed — using simulation')
+                    setMode('simulation')
+                  }
+                })
+                .catch(() => {
+                  if (!cancelled) {
+                    setLiveApiError('API unreachable — using simulation')
+                    setMode('simulation')
+                  }
+                })
+            } else {
+              // Fallback to simulation evaluation
+              setLiveApiError(`API error: ${errorMsg} — using simulation`)
+              const simResult = evaluateAction(action, policiesRef.current)
+              const latency = Math.round(performance.now() - startTime)
+              const newLog: LogEntry = {
+                id: `${action.id}-${Date.now()}`,
+                action,
+                decision: simResult.decision,
+                reason: `[SIM] ${simResult.reason}`,
+                policyName: simResult.policyName,
+                timestamp: Date.now(),
+                latency,
+              }
+              setLogs((prev) => [...prev, newLog])
+              setEnforcementLatency(latency)
+              setDecisionHistory((prev) => [...prev, simResult.decision].slice(-30))
+              setTriggeredPolicyId(simResult.policyName || null)
+              setPhase('complete')
+              setPendingAction(null)
+
+              const nextDelay = 400 / speedRef.current
+              const advanceTimer = setTimeout(() => {
+                setActionIndex((prev) => prev + 1)
+                setPhase('idle')
+              }, nextDelay)
+              simTimersRef.current.push(advanceTimer)
+            }
+          })
+
+      }, evalDelay / speedRef.current)
+      simTimersRef.current.push(evalTimer)
+
+      return () => {
+        cancelled = true
+        cancelledRef.current = true
+        clearAllTimers()
+      }
+    }
+
+    // ── SIMULATION MODE (existing) ──
     setPendingAction(action)
     setPhase('typing')
     setTypedText('')
     setTriggeredPolicyId(null)
 
-    // Phase 1: Typing animation
     let charIdx = 0
     if (shouldAnimateTyping) {
       typeIntervalRef.current = setInterval(() => {
@@ -506,7 +834,6 @@ export default function DemoPage() {
       simTimersRef.current.push(t)
     }
 
-    // Phase 2: Evaluating -> Decision
     const baseMin = shouldAnimateTyping ? 800 : 1000
     const baseMax = shouldAnimateTyping ? 1200 : 1500
     const evalDelay = (baseMin + Math.random() * (baseMax - baseMin)) / speedRef.current
@@ -529,7 +856,6 @@ export default function DemoPage() {
       setPhase('complete')
       setPendingAction(null)
 
-      // Advance to next action
       const nextDelay = (shouldAnimateTyping ? 500 : 300) / speedRef.current
       const advanceTimer = setTimeout(() => {
         setActionIndex((prev) => prev + 1)
@@ -542,9 +868,31 @@ export default function DemoPage() {
     return () => clearAllTimers()
   }, [isPlaying, actionIndex, scenarioId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const togglePolicy = useCallback((id: string) => {
-    setPolicies((prev) => prev.map((p) => (p.id === id ? { ...p, active: !p.active } : p)))
-  }, [])
+  // ─── Callbacks ───
+
+  const togglePolicy = useCallback(async (id: string) => {
+    const policy = policies.find((p) => p.id === id)
+    if (!policy) return
+
+    const newActive = !policy.active
+
+    if (modeRef.current === 'live' && tokenRef.current) {
+      try {
+        await fetch(`${API_BASE}/policies/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${tokenRef.current}`,
+          },
+          body: JSON.stringify({ status: newActive ? 'active' : 'inactive' }),
+          signal: AbortSignal.timeout(5000),
+        })
+      } catch {
+        // Update local state even if API call fails
+      }
+    }
+    setPolicies((prev) => prev.map((p) => (p.id === id ? { ...p, active: newActive } : p)))
+  }, [policies, API_BASE])
 
   const resetPolicies = useCallback(() => {
     setPolicies(DEFAULT_POLICIES.map((p) => ({ ...p })))
@@ -559,6 +907,27 @@ export default function DemoPage() {
     })
   }, [])
 
+  const toggleResultExpand = useCallback((id: string) => {
+    setExpandedResultIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const copyCurl = useCallback(async (action: SimAction) => {
+    const currentToken = tokenRef.current || 'YOUR_JWT_TOKEN'
+    const cmd = generateCurlCommand(API_BASE, currentToken, action.tool, action.params)
+    try {
+      await navigator.clipboard.writeText(cmd)
+      setToastMessage('cURL command copied!')
+    } catch {
+      setToastMessage('Failed to copy cURL')
+    }
+    setShowToast(true)
+  }, [API_BASE])
+
   const handleStart = () => {
     setStarted(true)
     setIsPlaying(true)
@@ -572,6 +941,7 @@ export default function DemoPage() {
     setTriggeredPolicyId(null)
     setPhase('idle')
     setPendingAction(null)
+    setLiveApiError(null)
   }
 
   const handleReset = () => {
@@ -586,6 +956,7 @@ export default function DemoPage() {
     setTriggeredPolicyId(null)
     setPhase('idle')
     setPendingAction(null)
+    setLiveApiError(null)
   }
 
   const handleScenarioChange = (id: string) => {
@@ -600,6 +971,22 @@ export default function DemoPage() {
     setTriggeredPolicyId(null)
     setPhase('idle')
     setPendingAction(null)
+    setLiveApiError(null)
+  }
+
+  const handleModeToggle = (newMode: RunMode) => {
+    if (newMode === mode) return
+    setMode(newMode)
+    if (newMode === 'live' && apiOnline === false) {
+      // Will attempt to connect; if it fails, apiOnline stays false
+    }
+    // Reset simulation state when switching modes
+    setIsPlaying(false)
+    setLogs([])
+    setActionIndex(0)
+    setPhase('idle')
+    setPendingAction(null)
+    setLiveApiError(null)
   }
 
   const handleShare = async () => {
@@ -638,6 +1025,18 @@ export default function DemoPage() {
         {toastMessage}
       </div>
 
+      {/* Demo Mode Banner */}
+      {isLocalDemo && (
+        <div className="bg-passport-amber/5 border-b border-passport-amber/20 py-1.5">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2">
+            <Server size={12} className="text-passport-amber shrink-0" />
+            <p className="text-[11px] font-mono text-passport-amber/80 leading-relaxed">
+              Running in demo mode — enforcement is using local policies. Deploy with Firebase for production use.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-passport-border bg-passport-bg/92 backdrop-blur-xl sticky top-0 z-40">
         <div
@@ -654,6 +1053,25 @@ export default function DemoPage() {
             <span className="font-mono text-sm font-bold text-passport-green tracking-wider uppercase">Passport Agent</span>
           </Link>
           <nav className="flex items-center gap-3">
+            {/* API Status */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono">
+              {apiChecking ? (
+                <>
+                  <Loader2 size={12} className="text-passport-muted animate-spin" />
+                  <span className="text-passport-dim">Checking...</span>
+                </>
+              ) : apiOnline === true ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-passport-green" />
+                  <span className="text-passport-green/70">API Connected</span>
+                </>
+              ) : apiOnline === false ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-passport-coral" />
+                  <span className="text-passport-coral/70">API Offline — using simulation</span>
+                </>
+              ) : null}
+            </div>
             {started && (
               <>
                 <button
@@ -710,9 +1128,18 @@ export default function DemoPage() {
             </div>
           ) : (
             <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/20 bg-passport-green/5 text-passport-green text-xs font-mono">
-                <span className="w-1.5 h-1.5 rounded-full bg-passport-green animate-live-pulse" />
-                Live Simulation Running
+              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border font-mono text-xs ${
+                mode === 'live'
+                  ? apiOnline ? 'border-passport-azure/30 bg-passport-azure/5 text-passport-azure' : 'border-passport-coral/30 bg-passport-coral/5 text-passport-coral'
+                  : 'border-passport-green/20 bg-passport-green/5 text-passport-green'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-live-pulse ${
+                  mode === 'live' ? (apiOnline ? 'bg-passport-azure' : 'bg-passport-coral') : 'bg-passport-green'
+                }`} />
+                {mode === 'live' && tokenLoading && <Loader2 size={12} className="animate-spin" />}
+                {mode === 'live'
+                  ? (apiOnline ? 'Live API Running' : 'Live API — Offline Fallback')
+                  : 'Live Simulation Running'}
               </div>
             </div>
           )}
@@ -723,8 +1150,34 @@ export default function DemoPage() {
       {started && (
         <section className="px-4 sm:px-6 lg:px-8 pb-12">
           <div className="max-w-7xl mx-auto">
-            {/* Scenario Selector */}
+            {/* Top Bar: Mode Toggle + Scenario Selector */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
+              {/* Mode Toggle */}
+              <div className="flex items-center rounded border border-passport-border overflow-hidden mr-3">
+                <button
+                  onClick={() => handleModeToggle('simulation')}
+                  className={`px-3 py-1.5 text-xs font-mono font-medium transition-all duration-150 border-r border-passport-border ${
+                    mode === 'simulation'
+                      ? 'bg-passport-green/10 text-passport-green'
+                      : 'text-passport-muted hover:text-passport-text bg-passport-surface/30'
+                  }`}
+                >
+                  <WifiOff size={11} className="inline mr-1.5 -mt-0.5" />
+                  Simulation
+                </button>
+                <button
+                  onClick={() => handleModeToggle('live')}
+                  className={`px-3 py-1.5 text-xs font-mono font-medium transition-all duration-150 ${
+                    mode === 'live'
+                      ? 'bg-passport-azure/10 text-passport-azure'
+                      : 'text-passport-muted hover:text-passport-text bg-passport-surface/30'
+                  }`}
+                >
+                  <Wifi size={11} className="inline mr-1.5 -mt-0.5" />
+                  Live API
+                </button>
+              </div>
+
               <span className="text-[10px] font-mono uppercase tracking-widest text-passport-dim mr-2">Scenario</span>
               {SCENARIOS.map((s) => (
                 <button
@@ -741,6 +1194,20 @@ export default function DemoPage() {
               ))}
               <div className="ml-auto text-xs text-passport-muted font-mono hidden sm:block">{scenario.persona}</div>
             </div>
+
+            {/* Live API Error Banner */}
+            {liveApiError && (
+              <div className="mb-4 p-2.5 rounded border border-passport-coral/30 bg-passport-coral/5 flex items-center gap-2 animate-fade-in">
+                <AlertTriangle size={13} className="text-passport-coral shrink-0" />
+                <span className="text-[11px] font-mono text-passport-coral/80">{liveApiError}</span>
+                <button
+                  onClick={() => setLiveApiError(null)}
+                  className="ml-auto text-passport-dim hover:text-passport-text"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            )}
 
             {/* Three Column Layout */}
             <div className="flex flex-col lg:flex-row gap-4">
@@ -851,19 +1318,56 @@ export default function DemoPage() {
                         )
                       }
                       return (
-                        <div key={log.id} className="animate-slide-up relative z-10">
+                        <div key={log.id} className="animate-slide-up relative z-10 mb-3">
                           <div className="flex">
                             <span className="text-passport-dim mr-3 select-none w-6 text-right shrink-0 text-[11px]">{logIdx + 1}</span>
                             <div className="flex-1 min-w-0">
                               <div className="text-passport-muted mb-1">
                                 <span className="text-passport-azure">{'>'}</span> {log.action.raw}
                               </div>
-                              <div className="flex items-start gap-2">
+                              <div className="flex items-start gap-2 flex-wrap">
                                 <DecisionBadge decision={log.decision} />
                                 <span className="text-passport-muted text-[12px]">— {log.reason}</span>
+                                {log.latency !== undefined && (
+                                  <span className="text-passport-azure text-[10px] font-mono ml-1">
+                                    {log.latency}ms
+                                  </span>
+                                )}
                               </div>
                               {log.policyName && triggeredPolicyId === log.policyName && (
                                 <div className="text-[10px] text-passport-amber mt-1 font-mono">Policy triggered: {log.policyName}</div>
+                              )}
+                              {log.ticket && (
+                                <div className="text-[10px] text-passport-azure mt-1 font-mono">
+                                  <span className="text-passport-dim">ticket:</span> {log.ticket}
+                                </div>
+                              )}
+                              {/* Expand: Full Response (Live API only) */}
+                              {log.fullResponse && (
+                                <div className="mt-1.5">
+                                  <button
+                                    onClick={() => toggleResultExpand(log.id)}
+                                    className="text-[10px] font-mono text-passport-dim hover:text-passport-muted transition-colors flex items-center gap-1"
+                                  >
+                                    {expandedResultIds.has(log.id) ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                                    Full Response
+                                  </button>
+                                  {expandedResultIds.has(log.id) && (
+                                    <pre className="mt-1 p-2 rounded bg-passport-surface-2 border border-passport-border text-[10px] text-passport-muted overflow-x-auto max-h-32 animate-fade-in">
+                                      {JSON.stringify(log.fullResponse, null, 2)}
+                                    </pre>
+                                  )}
+                                </div>
+                              )}
+                              {/* Copy cURL (Live API only) */}
+                              {log.fullResponse && (
+                                <button
+                                  onClick={() => copyCurl(log.action)}
+                                  className="mt-1 text-[10px] font-mono text-passport-dim hover:text-passport-azure transition-colors flex items-center gap-1"
+                                >
+                                  <Copy size={10} />
+                                  Copy cURL
+                                </button>
                               )}
                             </div>
                           </div>
@@ -909,7 +1413,9 @@ export default function DemoPage() {
                           latency: {enforcementLatency}ms
                         </span>
                       )}
-                      <span className="text-passport-green">{scenario.id}.agent.sim</span>
+                      <span className={mode === 'live' ? 'text-passport-azure' : 'text-passport-green'}>
+                        {mode === 'live' ? 'agent_demo.api' : `${scenario.id}.agent.sim`}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -922,6 +1428,7 @@ export default function DemoPage() {
                     <div className="flex items-center gap-2">
                       <Shield size={14} className="text-passport-azure" />
                       <span className="font-mono text-xs font-semibold text-passport-text">Policy Board</span>
+                      {policiesLoading && <Loader2 size={12} className="text-passport-muted animate-spin" />}
                     </div>
                     <button onClick={resetPolicies} className="text-[10px] font-mono text-passport-muted hover:text-passport-text transition-colors flex items-center gap-1">
                       <RotateCcw size={10} />
@@ -929,103 +1436,110 @@ export default function DemoPage() {
                     </button>
                   </div>
 
-                  <div className="space-y-3">
-                    {policies.map((policy) => {
-                      const isTriggered = triggeredPolicyId === policy.id
-                      return (
-                        <div
-                          key={policy.id}
-                          className={`rounded border transition-all duration-300 ${
-                            isTriggered
-                              ? 'border-passport-amber/40 bg-passport-amber/[0.04] shadow-[0_0_12px_rgba(210,153,29,0.12)]'
-                              : policy.active
-                              ? 'border-passport-green/20 bg-passport-green/[0.03]'
-                              : 'border-passport-border bg-passport-surface/30 opacity-70'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between p-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                                    isTriggered ? 'bg-passport-amber animate-pulse' : policy.active ? 'bg-passport-green' : 'bg-passport-dim'
+                  {policiesLoading && policies.length === 0 ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={20} className="text-passport-muted animate-spin" />
+                      <span className="text-[11px] font-mono text-passport-dim ml-2">Fetching policies...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {policies.map((policy) => {
+                        const isTriggered = triggeredPolicyId === policy.id
+                        return (
+                          <div
+                            key={policy.id}
+                            className={`rounded border transition-all duration-300 ${
+                              isTriggered
+                                ? 'border-passport-amber/40 bg-passport-amber/[0.04] shadow-[0_0_12px_rgba(210,153,29,0.12)]'
+                                : policy.active
+                                ? 'border-passport-green/20 bg-passport-green/[0.03]'
+                                : 'border-passport-border bg-passport-surface/30 opacity-70'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between p-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                                      isTriggered ? 'bg-passport-amber animate-pulse' : policy.active ? 'bg-passport-green' : 'bg-passport-dim'
+                                    }`}
+                                  />
+                                  <span className="font-mono text-xs font-semibold text-passport-text">{policy.name}</span>
+                                  {isTriggered && (
+                                    <span className="text-[9px] font-mono text-passport-amber animate-fade-in">TRIGGERED</span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-passport-muted mt-1 leading-relaxed">{policy.description}</p>
+                              </div>
+                              <div className="flex items-center gap-2 ml-3">
+                                <button
+                                  onClick={() => toggleExpand(policy.id)}
+                                  className="text-passport-dim hover:text-passport-text transition-colors"
+                                  aria-label={expandedPolicies.has(policy.id) ? 'Collapse' : 'Expand'}
+                                >
+                                  {expandedPolicies.has(policy.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                                <button
+                                  onClick={() => togglePolicy(policy.id)}
+                                  className={`relative w-9 h-5 rounded-full transition-all duration-300 ${
+                                    policy.active ? 'bg-passport-green shadow-[0_0_6px_rgba(46,160,67,0.3)]' : 'bg-passport-surface-2'
                                   }`}
-                                />
-                                <span className="font-mono text-xs font-semibold text-passport-text">{policy.name}</span>
-                                {isTriggered && (
-                                  <span className="text-[9px] font-mono text-passport-amber animate-fade-in">TRIGGERED</span>
+                                  aria-label={policy.active ? 'Disable policy' : 'Enable policy'}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ease-out ${
+                                      policy.active ? 'left-[calc(100%-18px)] scale-100' : 'left-0.5 scale-90'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            </div>
+
+                            {expandedPolicies.has(policy.id) && (
+                              <div className="px-3 pb-3 border-t border-passport-border/50 pt-2 animate-fade-in">
+                                {policy.rules.allowedTools && policy.rules.allowedTools.length > 0 && (
+                                  <div className="mb-2">
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-passport-green block mb-1">Allowed Tools</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {policy.rules.allowedTools.map((t) => (
+                                        <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-green/10 text-passport-green border border-passport-green/20">
+                                          {t}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {policy.rules.blockedTools && policy.rules.blockedTools.length > 0 && (
+                                  <div className="mb-2">
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-passport-coral block mb-1">Blocked Tools</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {policy.rules.blockedTools.map((t) => (
+                                        <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-coral/10 text-passport-coral border border-passport-coral/20">
+                                          {t}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {policy.rules.blockedPatterns && policy.rules.blockedPatterns.length > 0 && (
+                                  <div>
+                                    <span className="text-[10px] font-mono uppercase tracking-wider text-passport-coral block mb-1">Blocked Patterns</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {policy.rules.blockedPatterns.map((p) => (
+                                        <span key={p.label} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-coral/10 text-passport-coral border border-passport-coral/20">
+                                          {p.label}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                              <p className="text-[11px] text-passport-muted mt-1 leading-relaxed">{policy.description}</p>
-                            </div>
-                            <div className="flex items-center gap-2 ml-3">
-                              <button
-                                onClick={() => toggleExpand(policy.id)}
-                                className="text-passport-dim hover:text-passport-text transition-colors"
-                                aria-label={expandedPolicies.has(policy.id) ? 'Collapse' : 'Expand'}
-                              >
-                                {expandedPolicies.has(policy.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                              </button>
-                              <button
-                                onClick={() => togglePolicy(policy.id)}
-                                className={`relative w-9 h-5 rounded-full transition-all duration-300 ${
-                                  policy.active ? 'bg-passport-green shadow-[0_0_6px_rgba(46,160,67,0.3)]' : 'bg-passport-surface-2'
-                                }`}
-                                aria-label={policy.active ? 'Disable policy' : 'Enable policy'}
-                              >
-                                <span
-                                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ease-out ${
-                                    policy.active ? 'left-[calc(100%-18px)] scale-100' : 'left-0.5 scale-90'
-                                  }`}
-                                />
-                              </button>
-                            </div>
+                            )}
                           </div>
-
-                          {expandedPolicies.has(policy.id) && (
-                            <div className="px-3 pb-3 border-t border-passport-border/50 pt-2 animate-fade-in">
-                              {policy.rules.allowedTools && (
-                                <div className="mb-2">
-                                  <span className="text-[10px] font-mono uppercase tracking-wider text-passport-green block mb-1">Allowed Tools</span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {policy.rules.allowedTools.map((t) => (
-                                      <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-green/10 text-passport-green border border-passport-green/20">
-                                        {t}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {policy.rules.blockedTools && (
-                                <div className="mb-2">
-                                  <span className="text-[10px] font-mono uppercase tracking-wider text-passport-coral block mb-1">Blocked Tools</span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {policy.rules.blockedTools.map((t) => (
-                                      <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-coral/10 text-passport-coral border border-passport-coral/20">
-                                        {t}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {policy.rules.blockedPatterns && (
-                                <div>
-                                  <span className="text-[10px] font-mono uppercase tracking-wider text-passport-coral block mb-1">Blocked Patterns</span>
-                                  <div className="flex flex-wrap gap-1">
-                                    {policy.rules.blockedPatterns.map((p) => (
-                                      <span key={p.label} className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-passport-coral/10 text-passport-coral border border-passport-coral/20">
-                                        {p.label}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
                   <div className="mt-4 p-3 rounded border border-passport-border/50 bg-passport-surface/20">
                     <div className="flex items-start gap-2">
@@ -1234,7 +1748,8 @@ export default function DemoPage() {
       {/* Footer */}
       <footer className="py-6 px-4 text-center border-t border-passport-border">
         <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.1 &middot; Interactive Demo &middot; No data is sent to any server
+          Passport Agent v2.1 &middot; Interactive Demo &middot;
+          {mode === 'live' ? ' Real API enforcement via ' + API_BASE : ' No data is sent to any server'}
         </p>
       </footer>
     </div>

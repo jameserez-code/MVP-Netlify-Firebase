@@ -60,6 +60,20 @@ export async function retryDeadLetter(docId: string): Promise<void> {
   log.success('dead letter retried', { queue: dl.queue, jobId: dl.jobId })
 }
 
+export async function purgeDeadLetters(queueName?: string): Promise<void> {
+  if (queueName) {
+    const snap = await db.collection('deadLetters').where('queue', '==', queueName).get()
+    const batch = db.batch()
+    snap.docs.forEach((doc: any) => batch.delete(doc.ref))
+    await batch.commit()
+  } else {
+    const snap = await db.collection('deadLetters').get()
+    const batch = db.batch()
+    snap.docs.forEach((doc: any) => batch.delete(doc.ref))
+    await batch.commit()
+  }
+}
+
 export async function alertIfGrowing(queueName: string): Promise<void> {
   const snap = await db.collection('deadLetters').where('queue', '==', queueName).get()
   const count = snap.size

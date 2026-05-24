@@ -63,11 +63,13 @@ export class LocalDocSnapshot {
   id: string
   _data: Record<string, unknown> | null
   exists: boolean
+  ref: LocalDocRef
 
-  constructor(id: string, _data: Record<string, unknown> | null) {
+  constructor(id: string, _data: Record<string, unknown> | null, collName?: string) {
     this.id = id
     this._data = _data
     this.exists = _data !== null
+    this.ref = new LocalDocRef(collName || '', id)
   }
 
   data(): Record<string, unknown> | undefined {
@@ -93,7 +95,7 @@ export class LocalDocRef {
   async get(): Promise<LocalDocSnapshot> {
     const data = loadCollection(this.coll)
     const doc = data[this.id] || null
-    return new LocalDocSnapshot(this.id, doc)
+    return new LocalDocSnapshot(this.id, doc, this.coll)
   }
 
   async update(updates: Record<string, unknown>) {
@@ -210,7 +212,7 @@ export class LocalQuery {
 
     return new LocalQuerySnapshot(docs.map(d => {
       const { id: docId, ...rest } = d as Record<string, unknown> & { id: string }
-      return new LocalDocSnapshot(docId, rest)
+      return new LocalDocSnapshot(docId, rest, this.collection)
     }))
   }
 }
