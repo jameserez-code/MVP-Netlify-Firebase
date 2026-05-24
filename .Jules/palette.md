@@ -1,1 +1,1 @@
-# Palette Journal - UX & Accessibility Learnings
+# Palette Journal
