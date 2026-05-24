@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
 import { listApiKeys, createApiKey, deleteApiKey, rotateApiKey } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
 import ConfirmDialog from '@/components/confirm-dialog'
@@ -62,7 +63,7 @@ export default function ApiKeysPage() {
     mutate: mutateKeys,
   } = useSWR('/api-keys', listApiKeys, swrDashboardConfig)
 
-  const keys: ApiKey[] = Array.isArray(keysData) ? keysData : keysData?.data || []
+  const keys: ApiKey[] = unwrapApiResponse<ApiKey>(keysData)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [keyForm, setKeyForm] = useState({ name: '', scopes: ['read', 'write'] as string[] })

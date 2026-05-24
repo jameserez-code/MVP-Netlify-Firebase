@@ -12,6 +12,8 @@ import {
 } from '@/lib/api'
 import { swrDashboardConfig } from '@/lib/swr-config'
 import GlassCard from '@/components/glass-card'
+import ConfirmDialog from '@/components/confirm-dialog'
+import { SkeletonCard } from '@/components/loading'
 import { useToast } from '@/components/toast'
 import {
   CreditCard,
@@ -35,6 +37,7 @@ export default function BillingPage() {
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [loadingCancel, setLoadingCancel] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   const plan = (sub?.plan as string) || 'free'
   const percent = usage ? Math.min(100, Math.round((usage.count / usage.limit) * 100)) : 0
@@ -66,12 +69,7 @@ export default function BillingPage() {
   }
 
   async function handleCancel() {
-    if (
-      !confirm(
-        'Are you sure you want to cancel? You will keep Pro access until the end of your billing period.'
-      )
-    )
-      return
+    setShowCancelConfirm(false)
     setLoadingCancel(true)
     try {
       await cancelSubscription()
@@ -99,6 +97,9 @@ export default function BillingPage() {
       )}
 
       {/* Current Plan */}
+      {subLoading && !sub ? (
+        <SkeletonCard />
+      ) : (
       <GlassCard>
         <div className="flex items-center gap-2 mb-4">
           <CreditCard size={18} className="text-passport-green" />
@@ -158,6 +159,7 @@ export default function BillingPage() {
           </div>
         )}
       </GlassCard>
+      )}
 
       {/* Upgrade */}
       {plan === 'free' && (
@@ -221,7 +223,7 @@ export default function BillingPage() {
               )}
             </button>
             <button
-              onClick={handleCancel}
+              onClick={() => setShowCancelConfirm(true)}
               disabled={loadingCancel}
               className="btn-danger w-full"
             >
@@ -279,6 +281,15 @@ export default function BillingPage() {
           </div>
         </GlassCard>
       )}
+
+      <ConfirmDialog
+        open={showCancelConfirm}
+        onClose={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancel}
+        title="Cancel Subscription"
+        description="Are you sure you want to cancel? You will keep Pro access until the end of your billing period."
+        confirmLabel="Cancel Subscription"
+      />
     </div>
   )
 }

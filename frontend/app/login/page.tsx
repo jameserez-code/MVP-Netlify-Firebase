@@ -5,35 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { login, setToken } from '@/lib/api'
 import { useToast } from '@/components/toast'
+import PasswordStrength from '@/components/password-strength'
 import { Terminal, Shield, AlertCircle, Eye, EyeOff, Info, CheckCircle, ArrowLeft } from 'lucide-react'
-
-function PasswordStrengthBar({ password }: { password: string }) {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/\d/.test(password)) score++
-  if (/[^a-zA-Z0-9]/.test(password)) score++
-  if (password.length >= 12) score++
-
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong']
-  const barColors = (i: number) => {
-    if (i >= score) return 'bg-passport-border'
-    if (score <= 2) return 'bg-passport-red'
-    if (score === 3) return 'bg-passport-amber'
-    return 'bg-passport-green'
-  }
-
-  if (!password) return null
-  return (
-    <div className="mt-2">
-      <div className="flex gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full ${barColors(i)}`} />
-        ))}
-      </div>
-      <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 4)]}</p>
-    </div>
-  )
-}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -96,7 +69,7 @@ export default function LoginPage() {
     }
   }
 
-  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD || 'demo123'
+  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
 
   return (
     <div className="min-h-screen bg-passport-bg flex items-center justify-center px-4 py-12 relative">
@@ -132,6 +105,7 @@ export default function LoginPage() {
         </div>
 
         {/* Demo banner */}
+        {demoPassword && (
         <div className="mb-4 p-3 rounded-passport border border-passport-azure/20 bg-passport-azure/5 flex items-start gap-2">
           <Info size={16} className="text-passport-azure mt-0.5 shrink-0" />
           <div className="text-xs text-passport-azure">
@@ -142,6 +116,7 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
+        )}
 
         {/* Card */}
         <div className={`glass-panel p-6 sm:p-8 ${shakeCard ? 'animate-shake' : ''}`}>
@@ -202,7 +177,7 @@ export default function LoginPage() {
               {fieldErrors.password && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
               )}
-              <PasswordStrengthBar password={password} />
+              <PasswordStrength password={password} />
             </div>
 
             <div className="flex items-center justify-between">

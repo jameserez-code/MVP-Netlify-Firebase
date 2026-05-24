@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
+import { useDebounce } from '@/lib/use-debounce'
 import dynamic from 'next/dynamic'
 import { listAgents, registerAgent, revokeAgent, suspendAgent } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import ConfirmDialog from '@/components/confirm-dialog'
 import { NoAgents } from '@/components/empty-states/no-agents'
 import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
@@ -49,7 +52,7 @@ const PROVIDERS = ['OpenAI', 'Anthropic', 'Google', 'Cohere', 'Mistral', 'Local'
 export default function AgentsPage() {
   const { addToast } = useToast()
   const { data, error, isLoading, mutate } = useSWR('/agents', listAgents, swrDashboardConfig)
-  const agents: Agent[] = Array.isArray(data) ? data : data?.data || []
+  const agents: Agent[] = unwrapApiResponse<Agent>(data)
   const loading = isLoading
 
   const [showForm, setShowForm] = useState(false)
@@ -64,9 +67,12 @@ export default function AgentsPage() {
   const [newAgent, setNewAgent] = useState<any>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const searchQuery = useDebounce(searchInput, 150)
   const [showSecret, setShowSecret] = useState(false)
   const [formStep, setFormStep] = useState(0)
+  const [revokeTarget, setRevokeTarget] = useState<Agent | null>(null)
+  const [suspendTarget, setSuspendTarget] = useState<Agent | null>(null)
 
   useEffect(() => {
     if (newAgent) {
@@ -104,8 +110,10 @@ export default function AgentsPage() {
     }
   }
 
-  async function handleRevoke(id: string) {
-    if (!confirm('Are you sure you want to revoke this agent? This cannot be undone.')) return
+  async function handleRevoke() {
+    if (!revokeTarget) return
+    const id = revokeTarget.id
+    setRevokeTarget(null)
     try {
       await revokeAgent(id)
       addToast('Agent revoked', 'success')
@@ -115,8 +123,10 @@ export default function AgentsPage() {
     }
   }
 
-  async function handleSuspend(id: string) {
-    if (!confirm('Suspend this agent? It can be reactivated later.')) return
+  async function handleSuspend() {
+    if (!suspendTarget) return
+    const id = suspendTarget.id
+    setSuspendTarget(null)
     try {
       await suspendAgent(id)
       addToast('Agent suspended', 'warning')
@@ -136,8 +146,8 @@ export default function AgentsPage() {
   }
 
   const filtered = agents.filter((a) =>
-    a.name?.toLowerCase().includes(search.toLowerCase()) ||
-    a.id?.toLowerCase().includes(search.toLowerCase())
+    a.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.id?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const statusBadge = (status?: string) => {
@@ -372,8 +382,8 @@ export default function AgentsPage() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-passport-dim" />
         <input
           type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search agents by name or ID..."
           className="input-field pl-9"
         />
@@ -386,8 +396,8 @@ export default function AgentsPage() {
             <SkeletonRow key={i} />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        search ? (
+        ) : filtered.length === 0 ? (
+        searchQuery ? (
           <EmptyState
             icon={Bot}
             title="No agents match your search"
@@ -454,7 +464,7 @@ export default function AgentsPage() {
                       <div className="flex items-center justify-end gap-1">
                         {agent.status === 'active' && (
                           <button
-                            onClick={() => handleSuspend(agent.id)}
+                            onClick={() => setSuspendTarget(agent)}
                             className="p-1.5 rounded-passport text-passport-dim hover:text-passport-amber hover:bg-passport-amber/5 transition-all min-touch-target"
                             aria-label={`Suspend agent ${agent.name}`}
                           >
@@ -463,7 +473,7 @@ export default function AgentsPage() {
                         )}
                         {agent.status !== 'revoked' && (
                           <button
-                            onClick={() => handleRevoke(agent.id)}
+                            onClick={() => setRevokeTarget(agent)}
                             className="p-1.5 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all min-touch-target"
                             aria-label={`Revoke agent ${agent.name}`}
                           >
@@ -479,6 +489,25 @@ export default function AgentsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!revokeTarget}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={handleRevoke}
+        title="Revoke Agent"
+        description="This agent will no longer be able to make any tool calls. This action cannot be undone."
+        confirmLabel="Revoke"
+      />
+
+      <ConfirmDialog
+        open={!!suspendTarget}
+        onClose={() => setSuspendTarget(null)}
+        onConfirm={handleSuspend}
+        title="Suspend Agent"
+        description="This agent will be temporarily suspended. It can be reactivated later."
+        confirmLabel="Suspend"
+        variant="primary"
+      />
 
       {showSuccess && (
         <SuccessAnimation

@@ -67,7 +67,17 @@ function StatCard({ label, value, icon, color = 'text-passport-green', accentCol
 function UsageWidget() {
   const { data: usage, isLoading } = useSWR('/billing/usage', getUsage, swrDashboardConfig)
 
-  if (isLoading || !usage) return null
+  if (isLoading) {
+    return (
+      <GlassCard>
+        <SkeletonCard className="h-6 w-32 mb-3" />
+        <SkeletonCard className="h-4 w-full mb-2" />
+        <SkeletonCard className="h-2 w-full rounded-full" />
+      </GlassCard>
+    )
+  }
+
+  if (!usage) return null
 
   const dailyPercent = Math.min(100, Math.round((usage.count / usage.limit) * 100))
   const weeklyCount = usage.weeklyCount ?? Math.round(usage.count * 5.7)
@@ -138,7 +148,7 @@ function UsageWidget() {
 export default function DashboardPage() {
   const { addToast } = useToast()
   const [secondsSinceUpdate, setSecondsSinceUpdate] = useState(0)
-  const [lastUpdated] = useState(() => new Date())
+  const [lastUpdated, setLastUpdated] = useState(() => new Date())
 
   const {
     data: metrics,
@@ -168,8 +178,13 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [lastUpdated])
 
+  useEffect(() => {
+    if (metrics) setLastUpdated(new Date())
+  }, [metrics])
+
   function loadData() {
     mutateMetrics()
+    setLastUpdated(new Date())
   }
 
   const healthy = diagnostics?.overall === 'healthy'

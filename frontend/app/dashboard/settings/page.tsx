@@ -19,9 +19,13 @@ import {
   deleteMyAccount,
   exportReportHtml,
   recordExport,
+  listAgents,
+  revokeAgent,
 } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import ConfirmDialog from '@/components/confirm-dialog'
 import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
 import { useToast } from '@/components/toast'
@@ -86,7 +90,7 @@ interface ApiKey {
 const SCOPES = [
   { value: 'read', label: 'Read' },
   { value: 'write', label: 'Write' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'enforce', label: 'Enforce' },
 ]
 
 export default function SettingsPage() {
@@ -126,8 +130,7 @@ export default function SettingsPage() {
       mutateNotif()
     } catch (err: any) {
       addToast(err.message, 'error')
-      // Revert
-      setSettings(settings)
+      setSettings((prev) => ({ ...prev, email: { ...prev.email, [key]: !prev.email[key] } }))
     } finally {
       setSavingNotif(false)
     }
@@ -143,7 +146,7 @@ export default function SettingsPage() {
       mutateNotif()
     } catch (err: any) {
       addToast(err.message, 'error')
-      setSettings(settings)
+      setSettings((prev) => ({ ...prev, webhookEnabled: !prev.webhookEnabled }))
     } finally {
       setSavingNotif(false)
     }
@@ -169,7 +172,7 @@ export default function SettingsPage() {
     mutate: mutateKeys,
   } = useSWR('/api-keys', listApiKeys, swrDashboardConfig)
 
-  const keys: ApiKey[] = Array.isArray(keysData) ? keysData : keysData?.data || []
+  const keys: ApiKey[] = unwrapApiResponse<ApiKey>(keysData)
 
   const [showKeyForm, setShowKeyForm] = useState(false)
   const [keyForm, setKeyForm] = useState({ name: '', scopes: ['read', 'write'] as string[] })
@@ -179,12 +182,15 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null)
+  const [rotateConfirmId, setRotateConfirmId] = useState<string | null>(null)
 
   const [exportingData, setExportingData] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [downloadingReport, setDownloadingReport] = useState(false)
+  const [revokeAllConfirm, setRevokeAllConfirm] = useState(false)
+  const [revokingAll, setRevokingAll] = useState(false)
 
   const [auditRetention, setAuditRetention] = useState('90')
   const [demoRetention, setDemoRetention] = useState('24')
@@ -253,6 +259,37 @@ export default function SettingsPage() {
       addToast(err.message || 'Report generation failed', 'error')
     } finally {
       setDownloadingReport(false)
+    }
+  }
+
+  async function handleRevokeAllAgents() {
+    setRevokingAll(true)
+    try {
+      const agentsData = await listAgents()
+      const agents: any[] = Array.isArray(agentsData) ? agentsData : agentsData?.data || []
+      let revoked = 0
+      let failed = 0
+      for (const agent of agents) {
+        if (agent.status === 'revoked') continue
+        try {
+          await revokeAgent(agent.id)
+          revoked++
+        } catch {
+          failed++
+        }
+      }
+      setRevokeAllConfirm(false)
+      if (failed > 0) {
+        addToast(`Revoked ${revoked} agent(s), ${failed} failed`, 'warning')
+      } else if (revoked === 0) {
+        addToast('No active agents to revoke', 'info')
+      } else {
+        addToast(`Successfully revoked ${revoked} agent(s)`, 'success')
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Failed to revoke agents', 'error')
+    } finally {
+      setRevokingAll(false)
     }
   }
 
@@ -372,8 +409,10 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleRotateKey(id: string) {
-    if (!confirm('Rotate this key? The old key will be revoked immediately.')) return
+  async function handleRotateKey() {
+    if (!rotateConfirmId) return
+    const id = rotateConfirmId
+    setRotateConfirmId(null)
     try {
       const data = await rotateApiKey(id)
       setNewKey(data)
@@ -742,7 +781,7 @@ export default function SettingsPage() {
                           {key.status !== 'revoked' && (
                             <>
                               <button
-                                onClick={() => handleRotateKey(key.id)}
+                                onClick={() => setRotateConfirmId(key.id)}
                                 className="p-1.5 rounded-passport text-passport-dim hover:text-passport-azure hover:bg-passport-azure/5 transition-all min-touch-target"
                                 aria-label={`Rotate API key ${key.name}`}
                               >
@@ -1043,11 +1082,7 @@ export default function SettingsPage() {
               <div className="text-xs text-passport-muted">Immediately revoke access for all agents in this organization.</div>
             </div>
             <button
-              onClick={() => {
-                if (confirm('Are you sure? This will revoke ALL agents immediately.')) {
-                  addToast('This action is not yet implemented.', 'warning')
-                }
-              }}
+              onClick={() => setRevokeAllConfirm(true)}
               className="btn-primary bg-passport-red hover:bg-passport-red/80 border-passport-red shrink-0"
             >
               <Shield size={14} />
@@ -1060,11 +1095,7 @@ export default function SettingsPage() {
               <div className="text-xs text-passport-muted">Permanently delete this organization and all associated data.</div>
             </div>
             <button
-              onClick={() => {
-                if (confirm('This will permanently delete your organization. This cannot be undone.')) {
-                  addToast('This action is not yet implemented.', 'warning')
-                }
-              }}
+              onClick={() => setShowDeleteConfirm(true)}
               className="btn-primary bg-passport-red hover:bg-passport-red/80 border-passport-red shrink-0"
             >
               <Trash2 size={14} />
@@ -1073,6 +1104,47 @@ export default function SettingsPage() {
           </div>
         </div>
       </GlassCard>
+
+      {/* Revoke all agents confirmation dialog */}
+      {revokeAllConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+          <GlassCard className="max-w-sm w-full" hover={false}>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle size={18} className="text-passport-red" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-passport-text">Revoke All Agents</h3>
+            </div>
+            <p className="text-sm text-passport-muted mb-4">
+              This will immediately revoke access for all agents in your organization. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setRevokeAllConfirm(false)} className="btn-secondary" disabled={revokingAll}>
+                Cancel
+              </button>
+              <button
+                onClick={handleRevokeAllAgents}
+                disabled={revokingAll}
+                className="btn-primary bg-passport-red hover:bg-passport-red/80 border-passport-red disabled:opacity-50"
+              >
+                {revokingAll ? (
+                  <span className="w-4 h-4 border-2 border-passport-red/30 border-t-passport-red rounded-full animate-spin" />
+                ) : (
+                  <Shield size={14} />
+                )}
+                {revokingAll ? 'Revoking...' : 'Revoke All Agents'}
+              </button>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!rotateConfirmId}
+        onClose={() => setRotateConfirmId(null)}
+        onConfirm={handleRotateKey}
+        title="Rotate API Key"
+        description="Rotate this key? The old key will be revoked immediately."
+        confirmLabel="Rotate"
+      />
 
       {/* Revoke confirmation dialog */}
       {revokeConfirmId && (

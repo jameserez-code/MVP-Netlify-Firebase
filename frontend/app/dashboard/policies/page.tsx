@@ -4,8 +4,10 @@ import { useEffect, useState, useMemo } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
 import { listPolicies, createPolicy, deletePolicy, exportPoliciesJson, recordExport } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
+import ConfirmDialog from '@/components/confirm-dialog'
 import { NoPolicies } from '@/components/empty-states/no-policies'
 import { SuccessAnimation } from '@/components/success-animation'
 import { SkeletonRow, PageLoader } from '@/components/loading'
@@ -135,7 +137,7 @@ function buildRules(form: FormState): Record<string, any> {
 export default function PoliciesPage() {
   const { addToast } = useToast()
   const { data, error, isLoading, mutate } = useSWR('/policies', listPolicies, swrDashboardConfig)
-  const policies: Policy[] = Array.isArray(data) ? data : data?.data || []
+  const policies: Policy[] = unwrapApiResponse<Policy>(data)
   const loading = isLoading
 
   const [showForm, setShowForm] = useState(false)
@@ -144,6 +146,8 @@ export default function PoliciesPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showSuccess, setShowSuccess] = useState(false)
   const [wizardStep, setWizardStep] = useState(0)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const wizardSteps = [
     { label: 'Tools & Domains', description: 'Select allowed/denied tools and domains' },
@@ -207,14 +211,19 @@ export default function PoliciesPage() {
     }
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete policy "${name}"?`)) return
+  async function handleDelete() {
+    if (!deleteTarget) return
+    const { id, name } = deleteTarget
+    setDeleteTarget(null)
+    setDeleting(true)
     try {
       await deletePolicy(id)
       addToast('Policy deleted', 'success')
       loadPolicies()
     } catch (err: any) {
       addToast(err.message, 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -621,23 +630,23 @@ export default function PoliciesPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 self-end sm:self-start shrink-0">
-                  {Array.isArray(policy.rules?.tools?.allow) && policy.rules!.tools!.allow!.length > 0 && (
+                  {(policy.rules?.tools?.allow?.length || 0) > 0 && (
                     <span className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-1 rounded bg-passport-green/10 text-passport-green">
                       <CheckCircle size={10} />
-                      {policy.rules!.tools!.allow!.length} allow
+                      {policy.rules?.tools?.allow?.length || 0} allow
                     </span>
                   )}
-                  {Array.isArray(policy.rules?.tools?.deny) && policy.rules!.tools!.deny!.length > 0 && (
+                  {(policy.rules?.tools?.deny?.length || 0) > 0 && (
                     <span className="inline-flex items-center gap-1 font-mono text-[10px] px-2 py-1 rounded bg-passport-red/10 text-passport-red">
                       <XCircle size={10} />
-                      {policy.rules!.tools!.deny!.length} deny
+                      {policy.rules?.tools?.deny?.length || 0} deny
                     </span>
                   )}
                   <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-passport-green/10 text-passport-green">
                     Active
                   </span>
                   <button
-                    onClick={() => handleDelete(policy.id, policy.name)}
+                    onClick={() => setDeleteTarget({ id: policy.id, name: policy.name })}
                     className="p-2 rounded-passport text-passport-dim hover:text-passport-red hover:bg-passport-red/5 transition-all min-touch-target"
                     aria-label={`Delete policy ${policy.name}`}
                   >
@@ -649,6 +658,16 @@ export default function PoliciesPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="Delete Policy"
+        description={deleteTarget ? `Are you sure you want to delete "${deleteTarget.name}"? This action cannot be undone.` : ''}
+        confirmLabel="Delete"
+        loading={deleting}
+      />
 
       {showSuccess && (
         <SuccessAnimation

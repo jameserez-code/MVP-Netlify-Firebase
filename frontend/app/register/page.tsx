@@ -5,36 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { register, resendVerification, seedOrg, setToken, login } from '@/lib/api'
 import { useToast } from '@/components/toast'
+import PasswordStrength from '@/components/password-strength'
 import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw, User, Building2, ArrowLeft } from 'lucide-react'
-
-function PasswordStrengthBar({ password }: { password: string }) {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/\d/.test(password)) score++
-  if (/[^a-zA-Z0-9]/.test(password)) score++
-  if (password.length >= 12) score++
-
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong']
-  const barColors = (i: number) => {
-    if (i >= score) return 'bg-passport-border'
-    if (score <= 2) return 'bg-passport-red'
-    if (score === 3) return 'bg-passport-amber'
-    return 'bg-passport-green'
-  }
-
-  if (!password) return null
-  return (
-    <div>
-      <div className="mt-2 flex gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full ${barColors(i)}`} />
-        ))}
-      </div>
-      <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 4)]}</p>
-      <PasswordRequirements password={password} />
-    </div>
-  )
-}
 
 function PasswordRequirements({ password }: { password: string }) {
   if (password.length >= 8 && /\d/.test(password) && /[^a-zA-Z0-9]/.test(password)) return null
@@ -274,7 +246,8 @@ export default function RegisterPage() {
               {fieldErrors.password && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
               )}
-              <PasswordStrengthBar password={password} />
+              <PasswordStrength password={password} />
+              <PasswordRequirements password={password} />
             </div>
 
             <div>

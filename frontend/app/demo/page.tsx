@@ -475,14 +475,21 @@ export default function DemoPage() {
   }, [API_BASE])
 
   // ── Auto-login for live mode ──
+  const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL
+  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
   useEffect(() => {
     if (mode !== 'live' || apiOnline === false) return
+    if (!demoEmail || !demoPassword) {
+      setLiveApiError('Live API mode requires demo credentials to be configured. Set NEXT_PUBLIC_DEMO_EMAIL and NEXT_PUBLIC_DEMO_PASSWORD.')
+      setMode('simulation')
+      return
+    }
     setTokenLoading(true)
     setLiveApiError(null)
     fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@demo.com', password: 'demo123' }),
+      body: JSON.stringify({ email: demoEmail, password: demoPassword }),
       signal: AbortSignal.timeout(10000),
     })
       .then((r) => r.json())
@@ -747,10 +754,15 @@ export default function DemoPage() {
 
             // If 401, try to refresh token
             if (err.message?.includes('401') || err.message?.includes('token')) {
+              if (!demoEmail || !demoPassword) {
+                setLiveApiError('Token expired — demo credentials not configured')
+                setMode('simulation')
+                return
+              }
               fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: 'admin@demo.com', password: 'demo123' }),
+                body: JSON.stringify({ email: demoEmail, password: demoPassword }),
                 signal: AbortSignal.timeout(10000),
               })
                 .then((r) => r.json())

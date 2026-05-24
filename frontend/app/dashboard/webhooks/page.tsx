@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
 import { listWebhooks, createWebhook, deleteWebhook, testWebhook, rotateWebhook, getWebhook } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
 import ConfirmDialog from '@/components/confirm-dialog'
@@ -105,9 +106,7 @@ export default function WebhooksPage() {
     mutate: mutateWebhooks,
   } = useSWR('/webhooks', listWebhooks, swrDashboardConfig)
 
-  const webhooks: WebhookItem[] = Array.isArray(webhooksData)
-    ? webhooksData
-    : webhooksData?.data || []
+  const webhooks: WebhookItem[] = unwrapApiResponse<WebhookItem>(webhooksData)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [form, setForm] = useState({
@@ -140,12 +139,10 @@ export default function WebhooksPage() {
   }, [])
 
   function generateSecret() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = 'whsec_'
-    for (let i = 0; i < 32; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    setForm((prev) => ({ ...prev, secret: result }))
+    const array = new Uint8Array(16)
+    crypto.getRandomValues(array)
+    const secret = 'whsec_' + Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
+    setForm((prev) => ({ ...prev, secret: secret }))
   }
 
   function validateForm() {

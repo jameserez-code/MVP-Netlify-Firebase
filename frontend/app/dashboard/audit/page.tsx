@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
+import { useDebounce } from '@/lib/use-debounce'
 import { getAudit, exportAuditCsv, recordExport } from '@/lib/api'
+import { unwrapApiResponse } from '@/lib/data-utils'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
 import { NoAudit } from '@/components/empty-states/no-audit'
@@ -40,24 +42,49 @@ interface AuditEntry {
 
 const PAGE_SIZE = 20
 
-function SimpleBarChart({ data }: { data: { label: string; value: number; color: string }[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1)
+function SimpleBarChart({ data, dataKeys }: { data: { label: string; allow: number; deny: number; modify: number }[]; dataKeys: ('allow' | 'deny' | 'modify')[] }) {
+  const max = Math.max(...data.map((d) => Math.max(d.allow, d.deny, d.modify)), 1)
+  const colorMap: Record<string, string> = { allow: '#2ea043', deny: '#f85149', modify: '#58a6ff' }
   return (
-    <div className="flex items-end gap-3 h-32">
-      {data.map((d, i) => (
-        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-          <div
-            className="w-full rounded-t-passport transition-all duration-500"
-            style={{
-              height: `${(d.value / max) * 100}%`,
-              backgroundColor: d.color,
-              opacity: 0.8,
-            }}
-          />
-          <span className="font-mono text-[9px] text-passport-dim uppercase">{d.label}</span>
-          <span className="font-mono text-[10px] text-passport-muted">{d.value}</span>
+    <div className="space-y-1">
+      <div className="flex items-end gap-2 h-32">
+        {data.map((d, i) => (
+          <div key={i} className="flex-1 flex items-end gap-0.5">
+            {dataKeys.map((key) => (
+              <div
+                key={key}
+                className="flex-1 rounded-t-passport transition-all duration-500"
+                style={{
+                  height: `${(d[key] / max) * 100}%`,
+                  backgroundColor: colorMap[key],
+                  opacity: 0.75,
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        {data.map((d, i) => (
+          <div key={i} className="flex-1 text-center">
+            <span className="font-mono text-[9px] text-passport-dim uppercase">{d.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-center gap-4 mt-2">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#2ea043' }} />
+          <span className="text-[10px] font-mono text-passport-dim">Allow</span>
         </div>
-      ))}
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#f85149' }} />
+          <span className="text-[10px] font-mono text-passport-dim">Deny</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: '#58a6ff' }} />
+          <span className="text-[10px] font-mono text-passport-dim">Modify</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -65,6 +92,7 @@ function SimpleBarChart({ data }: { data: { label: string; value: number; color:
 export default function AuditPage() {
   const { addToast } = useToast()
   const [filter, setFilter] = useState('')
+  const searchQuery = useDebounce(filter, 150)
   const [decisionFilter, setDecisionFilter] = useState('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -99,11 +127,17 @@ export default function AuditPage() {
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    ['/audit', decisionFilter],
-    () => getAudit({ decision: decisionFilter || undefined, limit: 500 }),
+    ['/audit', decisionFilter, searchQuery, page],
+    () => getAudit({
+      decision: decisionFilter || undefined,
+      limit: PAGE_SIZE,
+      page: page + 1,
+      search: searchQuery || undefined,
+    }),
     swrDashboardConfig
   )
-  const entries: AuditEntry[] = Array.isArray(data) ? data : data?.data || []
+  const entries: AuditEntry[] = unwrapApiResponse<AuditEntry>(data)
+  const serverTotal: number | undefined = (data as any)?.total
   const loading = isLoading
 
   function loadAudit() {
@@ -112,15 +146,6 @@ export default function AuditPage() {
 
   const filtered = useMemo(() => {
     return entries.filter((e) => {
-      if (!filter) return true
-      const f = filter.toLowerCase()
-      return (
-        e.id?.toLowerCase().includes(f) ||
-        e.agentId?.toLowerCase().includes(f) ||
-        e.tool?.toLowerCase().includes(f) ||
-        e.reason?.toLowerCase().includes(f)
-      )
-    }).filter((e) => {
       if (!dateFrom && !dateTo) return true
       const ts = e.timestamp || e.createdAt
       if (!ts) return true
@@ -133,14 +158,11 @@ export default function AuditPage() {
       }
       return true
     })
-  }, [entries, filter, dateFrom, dateTo])
+  }, [entries, dateFrom, dateTo])
 
-  const paginated = useMemo(() => {
-    const start = page * PAGE_SIZE
-    return filtered.slice(start, start + PAGE_SIZE)
-  }, [filtered, page])
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const totalPages = serverTotal
+    ? Math.ceil(serverTotal / PAGE_SIZE)
+    : (filtered.length < PAGE_SIZE ? page + 1 : page + 2)
 
   const chartData = useMemo(() => {
     const days: Record<string, { allow: number; deny: number; modify: number }> = {}
@@ -152,23 +174,12 @@ export default function AuditPage() {
       if (e.decision) days[day][e.decision]++
     })
     const labels = Object.keys(days).slice(-7)
-    return [
-      ...labels.map((label) => ({
-        label,
-        value: days[label].allow,
-        color: '#2ea043',
-      })),
-      ...labels.map((label) => ({
-        label,
-        value: days[label].deny,
-        color: '#f85149',
-      })),
-      ...labels.map((label) => ({
-        label,
-        value: days[label].modify,
-        color: '#58a6ff',
-      })),
-    ].filter((d) => d.value > 0)
+    return labels.map((label) => ({
+      label,
+      allow: days[label].allow,
+      deny: days[label].deny,
+      modify: days[label].modify,
+    }))
   }, [filtered])
 
   const decisionCounts = useMemo(() => {
@@ -303,7 +314,7 @@ export default function AuditPage() {
             <BarChart3 size={16} className="text-passport-azure" />
             <h2 className="text-sm font-semibold text-passport-text">Decision Trend</h2>
           </div>
-          <SimpleBarChart data={chartData} />
+          <SimpleBarChart data={chartData} dataKeys={['allow', 'deny', 'modify']} />
         </GlassCard>
       )}
 
@@ -314,7 +325,7 @@ export default function AuditPage() {
             <SkeletonRow key={i} />
           ))}
         </div>
-      ) : paginated.length === 0 ? (
+      ) : filtered.length === 0 ? (
         !filter && !decisionFilter && !dateFrom && !dateTo ? (
           <NoAudit />
         ) : (
@@ -349,7 +360,7 @@ export default function AuditPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginated.map((entry) => (
+                  {filtered.map((entry) => (
                     <tr
                       key={entry.id}
                       className="border-b border-passport-border/50 hover:bg-passport-surface/50 transition-colors group cursor-pointer"
@@ -409,7 +420,7 @@ export default function AuditPage() {
                       <td colSpan={5} className="px-4 py-3">
                         <div className="text-xs text-passport-muted">
                           {(() => {
-                            const entry = paginated.find((e) => e.id === expandedRow)
+                            const entry = filtered.find((e) => e.id === expandedRow)
                             if (!entry) return null
                             return (
                               <div className="grid grid-cols-2 gap-3">

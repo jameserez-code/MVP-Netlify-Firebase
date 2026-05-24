@@ -67,7 +67,7 @@
     background: linear-gradient(to bottom, transparent 50%, rgba(46, 160, 67, 0.008) 50%);
     background-size: 100% 4px;
     pointer-events: none;
-    z-index: 9999;
+    z-index: 50;
   }
 
   /* Focus visible rings for keyboard navigation */

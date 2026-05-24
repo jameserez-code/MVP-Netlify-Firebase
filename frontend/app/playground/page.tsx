@@ -45,7 +45,7 @@ const STATUS_COLORS = (code: number): string => {
   return 'text-passport-red'
 }
 
-function JSONSyntaxHighlight({ json }: { json: string }) {
+function highlightJson(json: string): React.ReactNode[] {
   const formatted = (() => {
     try {
       return JSON.stringify(JSON.parse(json), null, 2)
@@ -54,15 +54,59 @@ function JSONSyntaxHighlight({ json }: { json: string }) {
     }
   })()
 
-  const highlighted = formatted
-    .replace(/("(?:[^"\\]|\\.)*")\s*:/g, '<span class="text-passport-azure">$1</span>:')
-    .replace(/: (".*?")/g, ': <span class="text-passport-green">$1</span>')
-    .replace(/: (\d+\.?\d*)/g, ': <span class="text-passport-amber">$1</span>')
-    .replace(/: (true|false|null)/g, ': <span class="text-passport-coral">$1</span>')
+  const lines = formatted.split('\n')
+  return lines.map((line, i) => {
+    const keyMatch = line.match(/^(\s*)("[^"]*")\s*:/)
+    if (keyMatch) {
+      const [, indent, key] = keyMatch
+      const rest = line.slice(keyMatch[0].length)
+      return (
+        <div key={i}>
+          <span className="text-passport-dim">{indent}</span>
+          <span className="text-passport-azure">{key}</span>
+          <span className="text-passport-dim">: </span>
+          <HighlightValue text={rest} />
+        </div>
+      )
+    }
+    return (
+      <div key={i}>
+        <HighlightValue text={line} />
+      </div>
+    )
+  })
+}
 
+const VALUE_PATTERNS: [RegExp, string][] = [
+  [/^".*?"/, 'text-passport-green'],
+  [/^\d+\.?\d*/, 'text-passport-amber'],
+  [/^(true|false|null)/, 'text-passport-coral'],
+]
+
+function HighlightValue({ text }: { text: string }) {
+  for (const [pattern, cls] of VALUE_PATTERNS) {
+    const match = text.match(pattern)
+    if (match) {
+      const idx = match.index!
+      const prefix = text.slice(0, idx)
+      const value = match[0]
+      const suffix = text.slice(idx + value.length)
+      return (
+        <>
+          {prefix ? <span>{prefix}</span> : null}
+          <span className={cls}>{value}</span>
+          {suffix ? <HighlightValue text={suffix} /> : null}
+        </>
+      )
+    }
+  }
+  return <span>{text}</span>
+}
+
+function JSONSyntaxHighlight({ json }: { json: string }) {
   return (
     <pre className="text-xs font-mono text-passport-text whitespace-pre-wrap overflow-auto max-h-80 p-2">
-      <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+      <code>{highlightJson(json)}</code>
     </pre>
   )
 }

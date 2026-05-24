@@ -294,10 +294,12 @@ export async function savePolicyTemplate(data: { name: string; description?: str
 }
 
 // Audit
-export async function getAudit(params?: { decision?: string; limit?: number }) {
+export async function getAudit(params?: { decision?: string; limit?: number; page?: number; search?: string }) {
   const search = new URLSearchParams()
   if (params?.decision) search.set('decision', params.decision)
   if (params?.limit) search.set('limit', String(params.limit))
+  if (params?.page) search.set('page', String(params.page))
+  if (params?.search) search.set('search', params.search)
   return fetchJson(`/audit?${search.toString()}`)
 }
 

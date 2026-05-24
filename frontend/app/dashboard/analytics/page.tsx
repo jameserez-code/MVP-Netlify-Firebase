@@ -299,7 +299,6 @@ export default function AnalyticsPage() {
                   value={overview?.totalEnforcements ?? '—'}
                   icon={<BarChart3 size={18} />}
                   delay={0.05}
-                  trend={12}
                 />
                 <StatCard
                   label="Allowed Rate"
@@ -307,7 +306,6 @@ export default function AnalyticsPage() {
                   icon={<CheckCircle size={18} />}
                   color="text-passport-green"
                   delay={0.1}
-                  trend={5}
                 />
                 <StatCard
                   label="Denied Count"
@@ -315,8 +313,6 @@ export default function AnalyticsPage() {
                   icon={<XCircle size={18} />}
                   color="text-passport-coral"
                   delay={0.15}
-                  trend={-3}
-                  trendInverse
                 />
                 <StatCard
                   label="Avg Response Time"
@@ -324,8 +320,6 @@ export default function AnalyticsPage() {
                   icon={<Clock size={18} />}
                   color="text-passport-azure"
                   delay={0.2}
-                  trend={-8}
-                  trendInverse
                 />
               </>
             )}

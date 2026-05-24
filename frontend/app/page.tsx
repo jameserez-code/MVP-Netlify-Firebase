@@ -229,34 +229,6 @@ function BackToTop() {
   )
 }
 
-function PasswordStrengthBar({ password }: { password: string }) {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/\d/.test(password)) score++
-  if (/[^a-zA-Z0-9]/.test(password)) score++
-  if (password.length >= 12) score++
-
-  const colors = ['strength-bg', 'strength-bg', 'strength-bg', 'strength-bg']
-  const labels = ['', 'Weak', 'Fair', 'Strong']
-  if (score >= 1) colors[0] = score <= 2 ? 'strength-weak' : score === 3 ? 'strength-fair' : 'strength-strong'
-  if (score >= 2) colors[1] = score <= 2 ? 'strength-weak' : score === 3 ? 'strength-fair' : 'strength-strong'
-  if (score >= 3) colors[2] = score === 3 ? 'strength-fair' : 'strength-strong'
-  if (score >= 4) colors[3] = 'strength-strong'
-
-  return (
-    <div className="mt-2">
-      <div className="flex gap-1">
-        {colors.map((c, i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full ${c}`} />
-        ))}
-      </div>
-      {password && (
-        <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 3)]}</p>
-      )}
-    </div>
-  )
-}
-
 export default function LandingPage() {
   const [metrics, setMetrics] = useState<any>(null)
   const [codeTab, setCodeTab] = useState<'sdk' | 'curl'>('sdk')

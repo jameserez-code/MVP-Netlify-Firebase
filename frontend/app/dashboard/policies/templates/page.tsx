@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { swrDashboardConfig } from '@/lib/swr-config'
+import { useDebounce } from '@/lib/use-debounce'
 import { listPolicyTemplates, createPolicyFromTemplate } from '@/lib/api'
 import GlassCard from '@/components/glass-card'
 import EmptyState from '@/components/empty-state'
@@ -89,7 +90,8 @@ export default function TemplatesPage() {
   const router = useRouter()
   const { addToast } = useToast()
   const [activeCategory, setActiveCategory] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const searchQuery = useDebounce(searchInput, 150)
   const [previewTemplate, setPreviewTemplate] = useState<PolicyTemplate | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
 
@@ -176,8 +178,8 @@ export default function TemplatesPage() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-passport-dim" />
         <input
           type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           placeholder="Search templates..."
           className="input-field pl-9"
         />
@@ -219,7 +221,7 @@ export default function TemplatesPage() {
         <EmptyState
           icon={Search}
           title="No templates found"
-          description={searchQuery ? 'Try adjusting your search or category filter.' : 'No templates available.'}
+          description={searchInput ? 'Try adjusting your search or category filter.' : 'No templates available.'}
         />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

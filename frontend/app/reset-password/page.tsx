@@ -5,35 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { resetPassword } from '@/lib/api'
 import { useToast } from '@/components/toast'
+import PasswordStrength from '@/components/password-strength'
 import { Shield, AlertCircle, CheckCircle, Eye, EyeOff, KeyRound, ArrowLeft } from 'lucide-react'
-
-function PasswordStrengthBar({ password }: { password: string }) {
-  let score = 0
-  if (password.length >= 8) score++
-  if (/\d/.test(password)) score++
-  if (/[^a-zA-Z0-9]/.test(password)) score++
-  if (password.length >= 12) score++
-
-  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong']
-  const barColors = (i: number) => {
-    if (i >= score) return 'bg-passport-border'
-    if (score <= 2) return 'bg-passport-red'
-    if (score === 3) return 'bg-passport-amber'
-    return 'bg-passport-green'
-  }
-
-  if (!password) return null
-  return (
-    <div>
-      <div className="mt-2 flex gap-1">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={`h-1 flex-1 rounded-full ${barColors(i)}`} />
-        ))}
-      </div>
-      <p className="text-[10px] text-passport-muted mt-1">{labels[Math.min(score, 4)]}</p>
-    </div>
-  )
-}
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams()
@@ -236,7 +209,7 @@ function ResetPasswordContent() {
               {fieldErrors.newPassword && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.newPassword}</p>
               )}
-              <PasswordStrengthBar password={newPassword} />
+              <PasswordStrength password={newPassword} />
             </div>
 
             <div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
 import GlobalSearch from '@/components/global-search'
@@ -15,25 +15,27 @@ function Breadcrumbs() {
   const labels: Record<string, string> = {
     dashboard: 'Dashboard',
     agents: 'Agents',
-    analytics: 'Analytics',
     policies: 'Policies',
-    audit: 'Audit',
+    templates: 'Policy Templates',
+    audit: 'Audit Log',
     'api-keys': 'API Keys',
-    webhooks: 'Webhooks',
     billing: 'Billing',
     exports: 'Exports',
     settings: 'Settings',
+    webhooks: 'Webhooks',
+    analytics: 'Analytics',
   }
 
   return (
     <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-passport-dim">
-      <span className="font-mono uppercase tracking-wider">{labels[segments[0]] || segments[0]}</span>
-      {segments.length > 1 && (
-        <>
-          <ChevronRight size={12} />
-          <span className="text-passport-muted capitalize">{labels[segments[1]] || segments[1]}</span>
-        </>
-      )}
+      {segments.map((seg, i) => (
+        <React.Fragment key={seg}>
+          {i > 0 && <ChevronRight size={12} />}
+          <span className={i === segments.length - 1 ? 'text-passport-muted' : 'text-passport-dim'}>
+            {labels[seg] || seg}
+          </span>
+        </React.Fragment>
+      ))}
     </nav>
   )
 }
