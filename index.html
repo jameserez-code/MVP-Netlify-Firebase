@@ -376,6 +376,7 @@
         <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Passport Agent</h1>
         <p class="text-xs mb-8" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">SECURE ACCESS PORTAL V.0492</p>
         <div class="w-full space-y-4">
+          <label for="gateInput" class="sr-only">Access Code</label>
           <input id="gateInput" type="password" placeholder="Access Code" class="input" />
           <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
           <p id="gateError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
@@ -403,9 +404,9 @@
           <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
           <h2 id="authTitle" class="section-title">Sign In</h2>
           <div id="authFields">
-            <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
+            <label for="authEmail" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
             <input id="authEmail" type="email" class="input mb-3" placeholder="you@example.com" required />
-            <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
+            <label for="authPassword" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
             <input id="authPassword" type="password" class="input mb-4" placeholder="••••••••" required />
             <button id="authSubmitBtn" class="btn btn-primary w-full mb-2">Sign In</button>
             <p id="authError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
@@ -429,19 +430,19 @@
             <div id="passportForm">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Full Legal Name</label>
+                  <label for="fullNameInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Full Legal Name</label>
                   <input id="fullNameInput" class="input" placeholder="Full name as on ID" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Nationality</label>
+                  <label for="nationalityInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Nationality</label>
                   <input id="nationalityInput" class="input" placeholder="e.g. United States" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Date of Birth</label>
+                  <label for="dobInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Date of Birth</label>
                   <input id="dobInput" type="date" class="input" />
                 </div>
                 <div>
-                  <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passport Number</label>
+                  <label for="passportNumInput" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passport Number</label>
                   <input id="passportNumInput" class="input" placeholder="PP-7A3F-2B1C (auto-generated)" />
                 </div>
               </div>
@@ -513,11 +514,11 @@
               <p>No passport found. Issue a passport credential first.</p>
             </div>
             <div id="visaForm" class="hidden">
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
+              <label for="passportSelect" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
               <select id="passportSelect" class="input mb-3"></select>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
-              <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
+              <label id="scopeChipsLabel" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
+              <div id="scopeChips" role="group" aria-labelledby="scopeChipsLabel" class="flex flex-wrap gap-2 mb-4"></div>
+              <label for="visaExpiry" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
               <select id="visaExpiry" class="input mb-4">
                 <option value="24h">24 hours</option>
                 <option value="7d" selected>7 days</option>
@@ -924,15 +925,28 @@
       chip.textContent = s.label;
       chip.dataset.value = s.value;
       chip.tabIndex = 0;
-      chip.addEventListener("click", () => {
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", "false");
+
+      const toggleChip = () => {
         if (selectedScopes.has(s.value)) {
           selectedScopes.delete(s.value);
           chip.classList.remove("selected");
+          chip.setAttribute("aria-checked", "false");
         } else {
           selectedScopes.add(s.value);
           chip.classList.add("selected");
+          chip.setAttribute("aria-checked", "true");
         }
         document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      };
+
+      chip.addEventListener("click", toggleChip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleChip();
+        }
       });
       scopeContainer.appendChild(chip);
     });
