@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/toast'
 import { NetworkErrorProvider } from '@/components/network-error'
+import { CommandPaletteProvider } from '@/components/command-palette-provider'
 import SentryInit from '@/components/sentry-init'
 import OfflineBanner from '@/components/offline-banner'
 import ApiHealthCheck from '@/components/api-health-check'
@@ -67,13 +68,15 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${jetbrains.variable} antialiased`}>
         <SentryInit />
-        <NetworkErrorProvider>
-          <ToastProvider>
-            <OfflineBanner />
-            <ApiHealthCheck />
-            {children}
-          </ToastProvider>
-        </NetworkErrorProvider>
+        <CommandPaletteProvider>
+          <NetworkErrorProvider>
+            <ToastProvider>
+              <OfflineBanner />
+              <ApiHealthCheck />
+              {children}
+            </ToastProvider>
+          </NetworkErrorProvider>
+        </CommandPaletteProvider>
       </body>
     </html>
   )

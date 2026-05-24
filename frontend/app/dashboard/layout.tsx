@@ -3,7 +3,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
-import ActivityFeed from '@/components/activity-feed'
+import GlobalSearch from '@/components/global-search'
+import NotificationCenter from '@/components/notification-center'
 import { isLoggedIn } from '@/lib/api'
 import { ChevronRight } from 'lucide-react'
 
@@ -14,6 +15,7 @@ function Breadcrumbs() {
   const labels: Record<string, string> = {
     dashboard: 'Dashboard',
     agents: 'Agents',
+    analytics: 'Analytics',
     policies: 'Policies',
     audit: 'Audit',
     'api-keys': 'API Keys',
@@ -90,9 +92,12 @@ export default function DashboardLayout({
           }`}
         >
           <div className="sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 -mt-6 mb-2 bg-passport-bg/80 backdrop-blur-md border-b border-passport-border/50">
-            <div className="flex items-center justify-between">
-              <Breadcrumbs />
-              <ActivityFeed />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <Breadcrumbs />
+                <GlobalSearch />
+              </div>
+              <NotificationCenter />
             </div>
           </div>
           {children}

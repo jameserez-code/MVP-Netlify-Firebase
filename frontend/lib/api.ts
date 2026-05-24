@@ -615,7 +615,7 @@ export async function exportReportHtml(params?: { period?: string }): Promise<Bl
   return res.blob()
 }
 
-export async function getExportHistory(): Promise<any[]> {
+export async function getExportHistory(): Promise<unknown[]> {
   const STORAGE_KEY = 'passport_export_history'
   if (typeof window === 'undefined') return []
   try {
@@ -642,7 +642,7 @@ export async function recordExport(entry: { type: string; format: string; status
 }
 
 // Health check helper
-export async function checkHealth(): Promise<{ ok: boolean; data?: any }> {
+export async function checkHealth(): Promise<{ ok: boolean; data?: unknown }> {
   try {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 5000)

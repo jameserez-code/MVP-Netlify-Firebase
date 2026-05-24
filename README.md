@@ -10,6 +10,18 @@
 
 ---
 
+## Project Stats
+
+| Metric | Value |
+|--------|-------|
+| Test Count | 557 |
+| Frontend Routes | 27 |
+| Version | 2.1.0 |
+| API Endpoints | 18 |
+| Collections | 8 |
+
+---
+
 ## Quick Start
 
 ```bash
