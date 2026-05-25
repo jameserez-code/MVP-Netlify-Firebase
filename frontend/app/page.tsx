@@ -1222,31 +1222,43 @@ const result = await agent.run({
               <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Product</h4>
               <ul className="space-y-2">
                 <li><Link href="#features" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Features</Link></li>
+                <li><Link href="/demo" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Demo</Link></li>
                 <li><Link href="#pricing" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Pricing</Link></li>
-                <li><Link href="#demo" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Demo</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Resources</h4>
-              <ul className="space-y-2">
-                <li><a href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Documentation</a></li>
-                <li><a href="/playground" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Playground</a></li>
-                <li><a href="#faq" className="text-xs text-passport-muted hover:text-passport-text transition-colors">FAQ</a></li>
+                <li><Link href="/enterprise" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Enterprise</Link></li>
+                <li><Link href="/roi" className="text-xs text-passport-muted hover:text-passport-text transition-colors">ROI Calculator</Link></li>
+                <li><Link href="/compare" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Comparison</Link></li>
+                <li><Link href="/changelog" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Changelog</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Developers</h4>
               <ul className="space-y-2">
-                <li><a href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">API Reference</a></li>
+                <li><Link href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Documentation</Link></li>
+                <li><Link href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">API Reference</Link></li>
+                <li><a href="https://www.npmjs.com/package/@passport-agent/sdk" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">SDK (npm)</a></li>
+                <li><Link href="/playground" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Playground</Link></li>
                 <li><a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">GitHub</a></li>
-                <li><a href="/login" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Status</a></li>
+                <li><Link href="/status" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Status</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Legal</h4>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Company</h4>
               <ul className="space-y-2">
-                <li><a href="/privacy" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Privacy</a></li>
-                <li><a href="/terms" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Terms</a></li>
+                <li><Link href="/blog" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Blog</Link></li>
+                <li><Link href="/case-studies" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Case Studies</Link></li>
+                <li><Link href="/security" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Security</Link></li>
+                <li><Link href="/privacy" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Privacy</Link></li>
+                <li><Link href="/terms" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Terms</Link></li>
+                <li><a href="mailto:hello@passport-agent.com" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Contact</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li><Link href="/blog/why-every-ai-agent-needs-a-passport" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Getting Started</Link></li>
+                <li><Link href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Integrations</Link></li>
+                <li><Link href="/dashboard/policies/templates" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Policy Templates</Link></li>
+                <li><a href="https://discord.gg/passport-agent" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Community</a></li>
               </ul>
             </div>
           </div>

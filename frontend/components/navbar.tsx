@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Shield, Github, Terminal } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { Shield, Terminal, BookOpen, Play, Building2, CreditCard, Newspaper } from 'lucide-react'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     function handleScroll() {
@@ -14,6 +16,10 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const isLanding = pathname === '/'
+  const pricingHref = isLanding ? '#pricing' : '/#pricing'
+  const featuresHref = isLanding ? '#features' : '/#features'
 
   return (
     <header
@@ -33,7 +39,7 @@ export default function Navbar() {
         }}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group" prefetch>
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0" prefetch>
           <Shield
             size={20}
             className="text-passport-green group-hover:drop-shadow-[0_0_8px_rgba(46,160,67,0.4)] group-hover:scale-110 transition-all duration-200"
@@ -46,18 +52,39 @@ export default function Navbar() {
 
         <nav className="hidden sm:flex items-center gap-1" aria-label="Main navigation">
           <Link
-            href="/"
+            href="/demo"
             className="nav-link-underline px-3 py-1.5 text-sm text-passport-muted hover:text-passport-text rounded-passport hover:bg-passport-surface transition-colors duration-150 min-touch-target"
             prefetch
           >
-            Home
+            Demo
           </Link>
           <Link
-            href="/login"
+            href="/docs"
             className="nav-link-underline px-3 py-1.5 text-sm text-passport-muted hover:text-passport-text rounded-passport hover:bg-passport-surface transition-colors duration-150 min-touch-target"
             prefetch
           >
-            Sign In
+            Docs
+          </Link>
+          <Link
+            href="/enterprise"
+            className="nav-link-underline px-3 py-1.5 text-sm text-passport-muted hover:text-passport-text rounded-passport hover:bg-passport-surface transition-colors duration-150 min-touch-target"
+            prefetch
+          >
+            Enterprise
+          </Link>
+          <Link
+            href={pricingHref}
+            className="nav-link-underline px-3 py-1.5 text-sm text-passport-muted hover:text-passport-text rounded-passport hover:bg-passport-surface transition-colors duration-150 min-touch-target"
+            prefetch={isLanding}
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/blog"
+            className="nav-link-underline px-3 py-1.5 text-sm text-passport-muted hover:text-passport-text rounded-passport hover:bg-passport-surface transition-colors duration-150 min-touch-target"
+            prefetch
+          >
+            Blog
           </Link>
           <Link href="/register" className="btn-primary ml-2 min-touch-target glow-on-hover" prefetch>
             <Terminal size={14} aria-hidden="true" />
