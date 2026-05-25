@@ -18,7 +18,6 @@ export async function GET(request: Request) {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0d1117',
           fontFamily: 'monospace',
           padding: 80,
           position: 'relative',
@@ -28,8 +27,6 @@ export async function GET(request: Request) {
           style={{
             position: 'absolute',
             inset: 0,
-            background:
-              'linear-gradient(rgba(46,160,67,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(46,160,67,0.03) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
           }}
         />
@@ -42,7 +39,7 @@ export async function GET(request: Request) {
             marginBottom: 32,
           }}
         >
-          <span style={{ color: '#2ea043', fontSize: 48 }}>&#9672;</span>
+          <span style={{ color: '#2ea043', fontSize: 48 }}>◇</span>
           <span
             style={{
               color: '#c9d1d9',
@@ -68,7 +65,6 @@ export async function GET(request: Request) {
             alignItems: 'center',
             gap: 8,
             padding: '6px 16px',
-            background: 'rgba(46,160,67,0.1)',
             border: '1px solid rgba(46,160,67,0.2)',
             borderRadius: 6,
           }}
