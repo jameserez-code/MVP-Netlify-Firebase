@@ -301,7 +301,11 @@ async function requireAuth(request: any, reply: any): Promise<Claims | null> {
     }
 
     if (!matchedDoc) {
-      const keySnap = await db.collection('apiKeys').where('status', '==', 'active').get()
+      const prefix = apiKey.substring(0, 8)
+      const keySnap = await db.collection('apiKeys')
+        .where('status', '==', 'active')
+        .where('keyPrefix', '==', prefix)
+        .get()
       for (const doc of keySnap.docs) {
         const data = doc.data() as any
         const { verifyKey } = await import('./lib/crypto.js')
