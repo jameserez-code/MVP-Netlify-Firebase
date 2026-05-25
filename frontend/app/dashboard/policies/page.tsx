@@ -261,7 +261,7 @@ export default function PoliciesPage() {
         <div>
           <h1 className="text-2xl font-bold text-passport-text">Policies</h1>
           <p className="text-sm text-passport-muted mt-0.5">
-            Define permission scopes and enforcement rules
+            {policies.length > 0 ? `${policies.length} Polic${policies.length !== 1 ? 'ies' : 'y'}` : 'Define permission scopes and enforcement rules'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

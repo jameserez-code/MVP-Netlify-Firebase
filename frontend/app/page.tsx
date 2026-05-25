@@ -25,15 +25,14 @@ import {
   Copy,
   CheckCircle2,
   Star,
-  ChevronDown,
-  ChevronUp,
-  Github,
-  Headphones,
-  HeartPulse,
-  ExternalLink,
   Play,
   Radio,
   ArrowUp,
+  Plus,
+  Minus,
+  ExternalLink,
+  HeartPulse,
+  Headphones,
 } from 'lucide-react'
 
 function CountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
@@ -55,6 +54,43 @@ function CountUp({ target, duration = 1200 }: { target: number; duration?: numbe
   }, [target, duration])
 
   return <span>{value.toLocaleString()}</span>
+}
+
+function ScrollCountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
+  const [value, setValue] = useState(0)
+  const [triggered, setTriggered] = useState(false)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setTriggered(true)
+      },
+      { threshold: 0.3 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!triggered) return
+    let start = 0
+    const step = Math.max(1, Math.ceil(target / (duration / 16)))
+    const timer = setInterval(() => {
+      start += step
+      if (start >= target) {
+        setValue(target)
+        clearInterval(timer)
+      } else {
+        setValue(start)
+      }
+    }, 16)
+    return () => clearInterval(timer)
+  }, [triggered, target, duration])
+
+  return <span ref={ref}>{value.toLocaleString()}</span>
 }
 
 function useScrollAnimation(threshold = 0.15) {
@@ -131,13 +167,25 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 
   return (
     <div className="relative rounded-md overflow-hidden bg-[#0d1117] border border-passport-border">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-passport-border bg-passport-surface">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-passport-dim">{lang}</span>
+      {/* Terminal window chrome */}
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-passport-border bg-passport-surface">
+        <span className="w-2.5 h-2.5 rounded-full bg-[#f85149]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-[#d2991d]" />
+        <span className="w-2.5 h-2.5 rounded-full bg-[#2ea043]" />
+        <span className="ml-3 font-mono text-[10px] uppercase tracking-wider text-passport-dim">
+          {lang === 'bash' ? 'terminal' : lang}
+        </span>
+        <div className="flex-1" />
         <button
           onClick={handleCopy}
           className="flex items-center gap-1.5 text-[10px] font-mono text-passport-muted hover:text-passport-text transition-colors"
+          aria-label="Copy code"
         >
-          {copied ? <CheckCircle2 size={12} className="text-passport-green" /> : <Copy size={12} />}
+          {copied ? (
+            <CheckCircle2 size={13} className="text-passport-green animate-bounce-check" />
+          ) : (
+            <Copy size={12} />
+          )}
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
@@ -175,7 +223,7 @@ function highlightCode(code: string, lang: string) {
   return parts.map((part, i) => {
     if (part.match(/^['"`].*['"`]$/)) return <span key={i} className="text-passport-green">{part}</span>
     if (keywords.includes(part)) return <span key={i} className="text-passport-azure">{part}</span>
-    if (part.startsWith('//')) return <span key={i} className="text-passport-coral">{part}</span>
+    if (part.startsWith('//')) return <span key={i} className="text-passport-coral italic">{part}</span>
     if (part === '{' || part === '}' || part === '(' || part === ')' || part === '[' || part === ']' || part === '=>')
       return <span key={i} className="text-passport-dim">{part}</span>
     return <span key={i}>{part}</span>
@@ -184,25 +232,64 @@ function highlightCode(code: string, lang: string) {
 
 /* ─── FAQ Accordion ─── */
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false)
+function FaqItem({
+  question,
+  answer,
+  defaultOpen = false,
+  id,
+}: {
+  question: string
+  answer: string
+  defaultOpen?: boolean
+  id: string
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="border border-passport-border rounded-md overflow-hidden">
+    <div id={id} className="border border-passport-border rounded-md overflow-hidden scroll-mt-24">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-passport-surface/50 transition-colors min-h-[44px]"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-passport-surface/50 transition-colors min-h-[44px] gap-4"
+        aria-expanded={open}
       >
         <span className="text-sm font-medium text-passport-text">{question}</span>
-        {open ? <ChevronUp size={16} className="text-passport-muted shrink-0" /> : <ChevronDown size={16} className="text-passport-muted shrink-0" />}
+        <span
+          className={`shrink-0 text-passport-muted transition-transform duration-300 ease-in-out ${open ? 'rotate-180' : 'rotate-0'}`}
+        >
+          {open ? <Minus size={16} /> : <Plus size={16} />}
+        </span>
       </button>
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ maxHeight: open ? '300px' : '0px' }}
+        style={{ maxHeight: open ? '400px' : '0px' }}
       >
         <div className="px-5 pb-4 text-sm text-passport-muted leading-relaxed">
           {answer}
         </div>
       </div>
+    </div>
+  )
+}
+
+function StepCard({ step, index }: { step: { stepNum: string; icon: React.ReactNode; title: string; desc: string }; index: number }) {
+  const { ref, visible } = useScrollAnimation(0.2)
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      }`}
+    >
+      <GlassCard className="text-center relative z-10 h-full" delay={0}>
+        <div className="absolute top-3 right-4 font-mono text-5xl font-bold text-passport-dim/15 pointer-events-none select-none">
+          {step.stepNum}
+        </div>
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-passport-surface border border-passport-border mb-4 relative z-10">
+          {step.icon}
+        </div>
+        <div className="label-text mb-1">Step {index + 1}</div>
+        <h3 className="text-lg font-semibold text-passport-text mb-2 relative z-10">{step.title}</h3>
+        <p className="text-sm text-passport-muted leading-relaxed">{step.desc}</p>
+      </GlassCard>
     </div>
   )
 }
@@ -229,11 +316,50 @@ function BackToTop() {
   )
 }
 
+/* ─── Subtle Code Rain ─── */
+function CodeRain() {
+  const chars = '{ } [ ] ( ) = > < / ; : * & | ! ? . , + - _ # @ $ % ^'
+  const columns = 40
+  const drops = useMemo(
+    () =>
+      Array.from({ length: columns }).map(() => ({
+        top: Math.random() * 100,
+        left: (Math.random() * 100),
+        char: chars[Math.floor(Math.random() * chars.length)],
+        opacity: 0.02 + Math.random() * 0.05,
+        fontSize: 10 + Math.random() * 8,
+        animDelay: Math.random() * 8,
+      })),
+    []
+  )
+
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {drops.map((d, i) => (
+        <span
+          key={i}
+          className="absolute font-mono text-passport-green animate-code-rain-fade"
+          style={{
+            top: `${d.top}%`,
+            left: `${d.left}%`,
+            opacity: d.opacity,
+            fontSize: d.fontSize,
+            animationDelay: `${d.animDelay}s`,
+          }}
+        >
+          {d.char}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const [metrics, setMetrics] = useState<any>(null)
   const [codeTab, setCodeTab] = useState<'sdk' | 'curl'>('sdk')
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -282,14 +408,16 @@ const result = await agent.run({
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `radial-gradient(600px at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(46,160,67,0.06) 0%, transparent 70%)`,
+            background: `radial-gradient(600px at ${mousePos.x * 100}% ${mousePos.y * 100}%, rgba(46,160,67,0.07) 0%, transparent 70%)`,
           }}
         />
         {/* Grid pattern overlay */}
-        <div className="absolute inset-0 hero-grid-bg opacity-30 pointer-events-none" />
+        <div className="absolute inset-0 hero-grid-bg opacity-25 pointer-events-none" />
+        {/* Subtle code rain */}
+        <CodeRain />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/20 bg-passport-green/5 text-passport-green text-xs font-mono mb-8 animate-border-glow">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-passport-green/15 bg-passport-green/5 text-passport-green text-xs font-mono mb-8 animate-pulse-soft">
             <span className="w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" />
             v2.1 — Now with Policy Enforcement
           </div>
@@ -305,6 +433,25 @@ const result = await agent.run({
             Set policies. Register agents. Enforce automatically. Like OAuth, but built for autonomous AI.
           </p>
 
+          {/* Trusted by counters */}
+          <div className="flex flex-wrap items-center justify-center gap-8 mb-10">
+            {[
+              { value: 574, label: 'Tests Passing' },
+              { value: 28, label: 'Routes' },
+              { value: 45, label: 'Endpoints' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="font-mono text-2xl font-bold text-passport-green">
+                  <ScrollCountUp target={stat.value} />
+                  <span className="text-passport-green/60">+</span>
+                </div>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-passport-dim mt-1">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/register" className="btn-primary text-base px-8 py-3.5 w-full sm:w-auto btn-glow-hover">
               <Terminal size={16} />
@@ -314,6 +461,13 @@ const result = await agent.run({
             <Link href="/login" className="btn-secondary text-base px-8 py-3.5 w-full sm:w-auto">
               Sign In to Console
             </Link>
+            <button
+              onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
+              className="btn-secondary text-base px-6 py-3.5 w-full sm:w-auto flex items-center gap-2"
+            >
+              <Play size={14} fill="currentColor" />
+              Watch Demo
+            </button>
           </div>
         </div>
       </section>
@@ -369,6 +523,7 @@ const result = await agent.run({
 
       {/* ─── Trusted By ─── */}
       <section id="trusted" className="py-12 border-b border-passport-border">
+        <div className="section-divider max-w-5xl mx-auto mb-12" />
         <div className="max-w-5xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <p className="text-passport-muted text-sm mb-6">Trusted by AI engineering teams at</p>
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 opacity-50">
@@ -384,51 +539,68 @@ const result = await agent.run({
       {/* ─── Problem / Solution ─── */}
       <section id="problem-solution" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="section-divider mb-24" />
-        <div className="max-w-5xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8">
+        <div className="max-w-6xl mx-auto">
+          <ScrollFadeHeading>
+            <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4 text-center">
+              The Problem &amp; The Solution
+            </h2>
+            <p className="text-passport-muted text-center max-w-xl mx-auto mb-14">
+              Every AI agent deployment faces the same risks. Here's how Passport solves them.
+            </p>
+          </ScrollFadeHeading>
+
+          <div className="grid md:grid-cols-2 gap-0 relative">
+            {/* Animated divider */}
+            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px z-10" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(247,129,102,0.25) 20%, rgba(46,160,67,0.25) 50%, rgba(46,160,67,0.25) 80%, transparent 100%)' }} />
+            <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-passport-green/30 blur-sm animate-pulse-soft z-20" />
+
             {/* Problem */}
-            <GlassCard hover={false} className="border-passport-red/20">
+            <div className="rounded-md p-6 md:p-8 relative" style={{ background: 'radial-gradient(ellipse at top right, rgba(248,81,73,0.06) 0%, transparent 60%)' }}>
               <h3 className="text-xl font-bold text-passport-text mb-2">
                 Your AI Agents Are Unsupervised
               </h3>
               <p className="text-sm text-passport-muted mb-6 leading-relaxed">
-                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won't know until it's too late.
+                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won&apos;t know until it&apos;s too late.
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {[
                   'Agents with API keys have unrestricted access',
                   'No audit trail of what agents actually did',
                   'Policy changes require code deployments',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-passport-muted">
-                    <X size={16} className="text-passport-coral shrink-0 mt-0.5" />
+                    <span className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 rounded-full bg-passport-red/10">
+                      <X size={14} className="text-passport-coral" />
+                    </span>
                     {item}
                   </li>
                 ))}
               </ul>
-            </GlassCard>
+            </div>
 
             {/* Solution */}
-            <GlassCard hover={false} className="border-passport-green/20">
+            <div className="rounded-md p-6 md:p-8 relative" style={{ background: 'radial-gradient(ellipse at top left, rgba(46,160,67,0.06) 0%, transparent 60%)' }}>
               <h3 className="text-xl font-bold text-passport-text mb-2">
                 Intercept. Verify. Log. BEFORE Execution.
               </h3>
               <p className="text-sm text-passport-muted mb-6 leading-relaxed">
                 Passport Agent sits between your agent and its tools. Every tool call is intercepted, verified, and logged BEFORE execution.
               </p>
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {[
-                  'Pre-execution policy enforcement in < 50ms',
+                  'Pre-execution policy enforcement in &lt; 50ms',
                   'Immutable audit log with cryptographic signatures',
                   'Update policies without touching agent code',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-passport-muted">
-                    <Check size={16} className="text-passport-green shrink-0 mt-0.5" />
+                    <span className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 rounded-full bg-passport-green/10">
+                      <Check size={14} className="text-passport-green" />
+                    </span>
                     {item}
                   </li>
                 ))}
               </ul>
-            </GlassCard>
+            </div>
           </div>
         </div>
       </section>
@@ -436,7 +608,7 @@ const result = await agent.run({
       {/* Features */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="section-divider mb-24" />
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <ScrollFadeHeading>
               <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -449,27 +621,34 @@ const result = await agent.run({
             </ScrollFadeHeading>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { icon: <Shield size={24} className="text-passport-green mb-4" />, title: 'Agent Passports', desc: 'Cryptographically signed credentials that prove agent identity across any system.', delay: 0 },
-              { icon: <Lock size={24} className="text-passport-azure mb-4" />, title: 'Policy Enforcement', desc: 'Real-time intent evaluation with gateway tickets. Deny dangerous actions before they execute.', delay: 0.08 },
-              { icon: <Eye size={24} className="text-passport-coral mb-4" />, title: 'Full Audit Trail', desc: 'Every action logged with cryptographic integrity. Timeline views and run traces included.', delay: 0.16 },
-              { icon: <Zap size={24} className="text-passport-amber mb-4" />, title: 'Stateless Scaling', desc: 'No session state. JWT auth, horizontal scaling, and sub-50ms enforcement latency.', delay: 0.24 },
-              { icon: <Key size={24} className="text-passport-green mb-4" />, title: 'Secret Rotation', desc: 'Automatic key rotation with zero-downtime revocation. Agents re-authenticate seamlessly.', delay: 0.32 },
-              { icon: <FileCheck size={24} className="text-passport-azure mb-4" />, title: 'Compliance Ready', desc: 'Built-in GDPR/CCPA data handling, audit exports, and policy versioning for regulated industries.', delay: 0.4 },
+              { icon: <Shield size={20} className="text-passport-green" />, title: 'Agent Passports', desc: 'Cryptographically signed credentials that prove agent identity across any system.', borderClass: 'hover:border-passport-green/40', bgClass: 'bg-passport-green/10 border-passport-green/20' },
+              { icon: <Lock size={20} className="text-passport-azure" />, title: 'Policy Enforcement', desc: 'Real-time intent evaluation with gateway tickets. Deny dangerous actions before they execute.', borderClass: 'hover:border-passport-azure/40', bgClass: 'bg-passport-azure/10 border-passport-azure/20' },
+              { icon: <Eye size={20} className="text-passport-coral" />, title: 'Full Audit Trail', desc: 'Every action logged with cryptographic integrity. Timeline views and run traces included.', borderClass: 'hover:border-passport-coral/40', bgClass: 'bg-passport-coral/10 border-passport-coral/20' },
+              { icon: <Zap size={20} className="text-passport-amber" />, title: 'Stateless Scaling', desc: 'No session state. JWT auth, horizontal scaling, and sub-50ms enforcement latency.', borderClass: 'hover:border-passport-amber/40', bgClass: 'bg-passport-amber/10 border-passport-amber/20' },
+              { icon: <Key size={20} className="text-passport-green" />, title: 'Secret Rotation', desc: 'Automatic key rotation with zero-downtime revocation. Agents re-authenticate seamlessly.', borderClass: 'hover:border-passport-green/40', bgClass: 'bg-passport-green/10 border-passport-green/20' },
+              { icon: <FileCheck size={20} className="text-passport-azure" />, title: 'Compliance Ready', desc: 'Built-in GDPR/CCPA data handling, audit exports, and policy versioning for regulated industries.', borderClass: 'hover:border-passport-azure/40', bgClass: 'bg-passport-azure/10 border-passport-azure/20' },
             ].map((feature, i) => (
               <GlassCard
                 key={feature.title}
                 delay={0.05 * (i + 1)}
-                className="h-full hover:scale-[1.02] hover:border-passport-green/30 transition-all duration-300"
+                className={`h-full flex flex-col hover:scale-[1.02] transition-all duration-300 ${feature.borderClass}`}
               >
-                {feature.icon}
+                <div className={`w-10 h-10 rounded-full ${feature.bgClass} flex items-center justify-center mb-4 shrink-0`}>
+                  {feature.icon}
+                </div>
                 <h3 className="text-lg font-semibold text-passport-text mb-2">
                   {feature.title}
                 </h3>
-                <p className="text-sm text-passport-muted leading-relaxed">
+                <p className="text-sm text-passport-muted leading-relaxed line-clamp-3 mb-3">
                   {feature.desc}
                 </p>
+                <div className="mt-auto pt-2">
+                  <span className="text-xs font-mono text-passport-green hover:text-passport-text transition-colors cursor-pointer inline-flex items-center gap-1">
+                    Learn more <ChevronRight size={10} />
+                  </span>
+                </div>
               </GlassCard>
             ))}
           </div>
@@ -479,7 +658,7 @@ const result = await agent.run({
       {/* ─── Who Uses Passport Agent ─── */}
       <section id="use-cases" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="section-divider mb-24" />
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <ScrollFadeHeading>
               <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -491,10 +670,13 @@ const result = await agent.run({
             </ScrollFadeHeading>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-5">
-            <GlassCard delay={0.05} className="h-full flex flex-col">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Card 1 */}
+            <GlassCard delay={0.05} className="h-full flex flex-col hover:border-passport-green/40 transition-colors">
               <div className="flex items-center gap-3 mb-4">
-                <Headphones size={24} className="text-passport-green shrink-0" />
+                <div className="w-9 h-9 rounded-full bg-passport-green/10 border border-passport-green/20 flex items-center justify-center shrink-0">
+                  <Headphones size={18} className="text-passport-green" />
+                </div>
                 <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-green">
                   ENTERPRISE SUPPORT
                 </span>
@@ -513,16 +695,21 @@ const result = await agent.run({
                 {' '}— blocks everything else.
               </p>
               <div className="pt-4 border-t border-passport-border">
-                <div className="font-mono text-2xl font-bold text-passport-green">Zero</div>
+                <div className="font-mono text-2xl font-bold text-passport-green">
+                  <ScrollCountUp target={0} />
+                </div>
                 <div className="text-xs text-passport-muted mt-0.5">
                   unauthorized actions across 10K+ interactions/day
                 </div>
               </div>
             </GlassCard>
 
-            <GlassCard delay={0.1} className="h-full flex flex-col">
+            {/* Card 2 */}
+            <GlassCard delay={0.1} className="h-full flex flex-col hover:border-passport-azure/40 transition-colors">
               <div className="flex items-center gap-3 mb-4">
-                <TrendingUp size={24} className="text-passport-azure shrink-0" />
+                <div className="w-9 h-9 rounded-full bg-passport-azure/10 border border-passport-azure/20 flex items-center justify-center shrink-0">
+                  <TrendingUp size={18} className="text-passport-azure" />
+                </div>
                 <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-azure">
                   FINTECH
                 </span>
@@ -544,9 +731,12 @@ const result = await agent.run({
               </div>
             </GlassCard>
 
-            <GlassCard delay={0.15} className="h-full flex flex-col">
+            {/* Card 3 */}
+            <GlassCard delay={0.15} className="h-full flex flex-col hover:border-passport-coral/40 transition-colors">
               <div className="flex items-center gap-3 mb-4">
-                <Server size={24} className="text-passport-coral shrink-0" />
+                <div className="w-9 h-9 rounded-full bg-passport-coral/10 border border-passport-coral/20 flex items-center justify-center shrink-0">
+                  <Server size={18} className="text-passport-coral" />
+                </div>
                 <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-coral">
                   CLOUD INFRASTRUCTURE
                 </span>
@@ -561,16 +751,21 @@ const result = await agent.run({
                 Passport blocks destructive operations while allowing safe monitoring and scaling.
               </p>
               <div className="pt-4 border-t border-passport-border">
-                <div className="font-mono text-2xl font-bold text-passport-green">Zero</div>
+                <div className="font-mono text-2xl font-bold text-passport-green">
+                  <ScrollCountUp target={0} />
+                </div>
                 <div className="text-xs text-passport-muted mt-0.5">
                   production incidents in 6 months
                 </div>
               </div>
             </GlassCard>
 
-            <GlassCard delay={0.2} className="h-full flex flex-col">
+            {/* Card 4 */}
+            <GlassCard delay={0.2} className="h-full flex flex-col hover:border-passport-amber/40 transition-colors">
               <div className="flex items-center gap-3 mb-4">
-                <HeartPulse size={24} className="text-passport-amber shrink-0" />
+                <div className="w-9 h-9 rounded-full bg-passport-amber/10 border border-passport-amber/20 flex items-center justify-center shrink-0">
+                  <HeartPulse size={18} className="text-passport-amber" />
+                </div>
                 <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-amber">
                   HEALTHCARE
                 </span>
@@ -592,9 +787,12 @@ const result = await agent.run({
               </div>
             </GlassCard>
 
-            <GlassCard delay={0.25} className="h-full flex flex-col">
+            {/* Card 5 */}
+            <GlassCard delay={0.25} className="h-full flex flex-col hover:border-passport-green/40 transition-colors">
               <div className="flex items-center gap-3 mb-4">
-                <ShoppingCart size={24} className="text-passport-green shrink-0" />
+                <div className="w-9 h-9 rounded-full bg-passport-green/10 border border-passport-green/20 flex items-center justify-center shrink-0">
+                  <ShoppingCart size={18} className="text-passport-green" />
+                </div>
                 <span className="text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-passport-surface-2 text-passport-green">
                   E-COMMERCE
                 </span>
@@ -609,7 +807,9 @@ const result = await agent.run({
                 Passport restricts agents to recommendation and coupon actions — nothing else.
               </p>
               <div className="pt-4 border-t border-passport-border">
-                <div className="font-mono text-2xl font-bold text-passport-green">50% Increase</div>
+                <div className="font-mono text-2xl font-bold text-passport-green">
+                  <span>50</span><span className="text-passport-green/60">%</span> <span className="text-passport-text">Increase</span>
+                </div>
                 <div className="text-xs text-passport-muted mt-0.5">
                   conversion. Zero payment incidents
                 </div>
@@ -622,7 +822,7 @@ const result = await agent.run({
       {/* ─── How It Works ─── */}
       <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
         <div className="section-divider mb-24" />
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <ScrollFadeHeading>
               <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">
@@ -636,34 +836,30 @@ const result = await agent.run({
 
           <div className="grid md:grid-cols-3 gap-6 relative">
             {/* Connector line (desktop only) */}
-            <div className="hidden md:block absolute top-12 left-[16.67%] right-[16.67%] h-px" style={{ background: 'linear-gradient(90deg, rgba(46,160,67,0.3), rgba(46,160,67,0.15), rgba(46,160,67,0.3))' }} />
-            <div className="hidden md:block absolute top-12 left-[50%] w-2 h-2 rounded-full bg-passport-green connect-line-pulse -translate-x-1/2 -translate-y-1/2" />
+            <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5" style={{ background: 'linear-gradient(90deg, rgba(46,160,67,0.4), rgba(46,160,67,0.2), rgba(46,160,67,0.4))' }} />
+            <div className="hidden md:block absolute top-12 left-[50%] w-3 h-3 rounded-full bg-passport-green animate-connect-line -translate-x-1/2 -translate-y-1/2" />
 
             {[
               {
+                stepNum: '01',
                 icon: <ShieldCheck size={28} className="text-passport-green" />,
                 title: 'Create Policies',
-                desc: 'Define allowed tools, domains, cost limits, and PII rules',
+                desc: 'Define allowed tools, domains, cost limits, and PII rules in the dashboard or via the SDK.',
               },
               {
+                stepNum: '02',
                 icon: <UserPlus size={28} className="text-passport-azure" />,
                 title: 'Register Agents',
-                desc: 'Issue scoped credentials with automatic secret rotation',
+                desc: 'Issue scoped credentials with automatic secret rotation and expiration.',
               },
               {
+                stepNum: '03',
                 icon: <Zap size={28} className="text-passport-amber" />,
                 title: 'Enforce Automatically',
-                desc: 'Every tool call is intercepted and evaluated in real-time',
+                desc: 'Every tool call is intercepted and evaluated in real-time with zero config.',
               },
             ].map((step, idx) => (
-              <GlassCard key={step.title} delay={0.05 * (idx + 1)} className="text-center relative z-10 h-full">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-passport-surface border border-passport-border mb-4">
-                  {step.icon}
-                </div>
-                <div className="label-text mb-2">Step {idx + 1}</div>
-                <h3 className="text-lg font-semibold text-passport-text mb-2">{step.title}</h3>
-                <p className="text-sm text-passport-muted leading-relaxed">{step.desc}</p>
-              </GlassCard>
+              <StepCard key={step.title} step={step} index={idx} />
             ))}
           </div>
         </div>
@@ -703,11 +899,11 @@ const result = await agent.run({
               </button>
             </div>
             <Link
-              href="#demo"
+              href="/playground"
               className="flex items-center gap-1.5 text-xs font-mono text-passport-green hover:text-passport-text transition-colors"
             >
               <Play size={12} />
-              Try it
+              Try it in Playground
             </Link>
           </div>
 
@@ -779,30 +975,36 @@ const result = await agent.run({
               Trusted by Engineering Teams
             </h2>
           </ScrollFadeHeading>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-5">
             {[
               {
                 quote: 'We caught an agent trying to delete a production database before it happened.',
                 name: 'Sarah Chen',
                 title: 'Engineering Lead, SaaS Co',
+                company: 'Acme AI',
               },
               {
                 quote: 'Set up enforcement in 10 minutes. Sleep better at night.',
                 name: 'Marcus Johnson',
                 title: 'CTO, Fintech Startup',
+                company: 'DataVault',
               },
               {
                 quote: 'The audit trail alone saved us during our SOC 2 review.',
                 name: 'Aisha Patel',
                 title: 'Security Engineer',
+                company: 'ByteForge',
               },
             ].map((t, i) => (
-              <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col h-full">
-                <div className="text-passport-green text-lg font-serif mb-4">"</div>
+              <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col h-full hover:border-passport-green/20 hover:shadow-[0_0_24px_rgba(46,160,67,0.06)] transition-all duration-300">
+                <div className="text-passport-green text-4xl font-serif leading-none mb-2 select-none">&ldquo;</div>
                 <p className="text-sm text-passport-text leading-relaxed mb-6 flex-1">{t.quote}</p>
                 <AnimatedStars count={5} delay={i * 200} />
                 <div className="font-semibold text-passport-text text-sm">{t.name}</div>
                 <div className="text-xs text-passport-muted">{t.title}</div>
+                <div className="mt-2 pt-2 border-t border-passport-border/50">
+                  <span className="font-mono text-[10px] text-passport-dim uppercase tracking-widest">{t.company}</span>
+                </div>
               </GlassCard>
             ))}
           </div>
@@ -817,19 +1019,27 @@ const result = await agent.run({
             <ScrollFadeHeading>
               <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4">Simple Pricing</h2>
             </ScrollFadeHeading>
-            <div className="inline-flex items-center gap-2 bg-passport-surface border border-passport-border rounded-md p-1">
+            <p className="text-passport-muted text-sm mb-6">No credit card required. Cancel anytime.</p>
+            <div className="inline-flex items-center gap-0 bg-passport-surface border border-passport-border rounded-md p-0.5 relative">
+              <div
+                className="absolute top-0.5 bottom-0.5 rounded bg-passport-green/15 transition-all duration-300 ease-in-out"
+                style={{
+                  left: billingCycle === 'monthly' ? '2px' : 'calc(50% + 1px)',
+                  width: 'calc(50% - 3px)',
+                }}
+              />
               <button
                 onClick={() => setBillingCycle('monthly')}
-                className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  billingCycle === 'monthly' ? 'bg-passport-green/15 text-passport-green' : 'text-passport-muted hover:text-passport-text'
+                className={`relative z-10 px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+                  billingCycle === 'monthly' ? 'text-passport-green' : 'text-passport-muted hover:text-passport-text'
                 }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBillingCycle('annual')}
-                className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  billingCycle === 'annual' ? 'bg-passport-green/15 text-passport-green' : 'text-passport-muted hover:text-passport-text'
+                className={`relative z-10 px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
+                  billingCycle === 'annual' ? 'text-passport-green' : 'text-passport-muted hover:text-passport-text'
                 }`}
               >
                 Annual
@@ -840,9 +1050,9 @@ const result = await agent.run({
             )}
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-6">
             {/* Free */}
-            <GlassCard hover={false} className="flex flex-col h-full transition-transform duration-300 hover:scale-[1.02]">
+            <GlassCard hover={false} className="flex flex-col h-full transition-transform duration-300 hover:scale-[1.01]">
               <div className="label-text mb-2">Free</div>
               <div className="text-3xl font-bold text-passport-text mb-6">$0<span className="text-base font-normal text-passport-muted">/month</span></div>
               <ul className="space-y-3 mb-8 flex-1">
@@ -854,11 +1064,12 @@ const result = await agent.run({
                 ))}
               </ul>
               <Link href="/register" className="btn-secondary w-full text-center">Get Started</Link>
+              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">No credit card required</p>
             </GlassCard>
 
             {/* Pro */}
-            <GlassCard hover={false} className="flex flex-col relative border-passport-green/30 pro-card-glow h-full">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-passport-green text-[10px] font-mono font-bold text-white tracking-wider uppercase animate-counter-pulse">
+            <GlassCard hover={false} className="flex flex-col relative border-passport-green/30 pro-card-glow h-full scale-[1.02]">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-passport-green text-[10px] font-mono font-bold text-white tracking-wider uppercase animate-badge-glow">
                 Most Popular
               </div>
               <div className="label-text mb-2">Pro</div>
@@ -891,10 +1102,11 @@ const result = await agent.run({
               >
                 Start Pro Trial
               </button>
+              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">30-day money-back guarantee</p>
             </GlassCard>
 
             {/* Enterprise */}
-            <GlassCard hover={false} className="flex flex-col h-full transition-transform duration-300 hover:scale-[1.02]">
+            <GlassCard hover={false} className="flex flex-col h-full transition-transform duration-300 hover:scale-[1.01]">
               <div className="label-text mb-2">Enterprise</div>
               <div className="text-3xl font-bold text-passport-text mb-6">Custom</div>
               <ul className="space-y-3 mb-8 flex-1">
@@ -906,6 +1118,7 @@ const result = await agent.run({
                 ))}
               </ul>
               <Link href="/register" className="btn-secondary w-full text-center">Contact Sales</Link>
+              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">Custom pricing &amp; SLAs</p>
             </GlassCard>
           </div>
         </div>
@@ -922,22 +1135,28 @@ const result = await agent.run({
           </ScrollFadeHeading>
           <div className="space-y-3">
             <FaqItem
+              id="faq-1"
+              defaultOpen
               question="What is AI Agent Passport?"
               answer="It's like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
             />
             <FaqItem
+              id="faq-2"
               question="How is this different from API keys?"
               answer="API keys grant all-or-nothing access. Passport Agent enforces fine-grained policies in real-time — allowing, denying, or modifying every tool call before it executes."
             />
             <FaqItem
+              id="faq-3"
               question="Can I use this with OpenAI, Anthropic, or custom agents?"
               answer="Yes, the SDK works with any agent framework. Whether you're using LangChain, CrewAI, or a custom Python agent, you wrap tool calls with our enforcement layer."
             />
             <FaqItem
+              id="faq-4"
               question="Is my data secure?"
               answer="All audit logs are stored in your own Firebase project. We never see your data. Enterprise plans support on-premise deployment for full data sovereignty."
             />
             <FaqItem
+              id="faq-5"
               question="Do you support on-premise deployment?"
               answer="Yes, the entire system can run in your infrastructure. Contact sales for custom contracts and dedicated support."
             />
@@ -945,10 +1164,12 @@ const result = await agent.run({
         </div>
       </section>
 
-      {/* CTA */}
-      <section id="cta" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20">
+      {/* ─── Final CTA ─── */}
+      <section id="cta" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20 relative">
         <div className="section-divider mb-24" />
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(46,160,67,0.06) 0%, transparent 70%)' }} />
+        <div className="absolute inset-0 pointer-events-none animate-cta-glow opacity-50" />
+        <div className="max-w-3xl mx-auto text-center relative z-10">
           <GlassCard className="p-10 sm:p-14" hover={false}>
             <Server size={32} className="text-passport-green mx-auto mb-6" />
             <h2 className="text-2xl sm:text-3xl font-bold text-passport-text mb-4">
@@ -960,12 +1181,15 @@ const result = await agent.run({
             </p>
             <p className="text-sm text-passport-green font-mono mb-8">Join 200+ developers building safer AI agents</p>
             <div className="mb-8 px-4 py-3 rounded-md border border-passport-border/50 bg-passport-surface/30 max-w-md mx-auto">
-              <p className="text-sm text-passport-text italic">"Set up enforcement in 10 minutes. Best investment we made for our agent fleet."</p>
-              <p className="text-xs text-passport-muted mt-2">— Marcus Johnson, CTO at Fintech Startup</p>
+              <p className="text-sm text-passport-text italic">&ldquo;Set up enforcement in 10 minutes. Best investment we made for our agent fleet.&rdquo;</p>
+              <p className="text-xs text-passport-muted mt-2">— Marcus Johnson, CTO at DataVault</p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register" className="btn-primary text-base px-8 py-3.5 w-full sm:w-auto btn-glow-pulse">
-                <Terminal size={16} />
+              <Link
+                href="/register"
+                className="btn-primary text-base px-10 py-4 w-full sm:w-auto btn-glow-pulse font-mono font-bold"
+              >
+                <Terminal size={18} />
                 Create Organization
               </Link>
               <Link href="/login" className="btn-secondary text-base px-8 py-3.5 w-full sm:w-auto">
@@ -978,19 +1202,21 @@ const result = await agent.run({
 
       {/* ─── GitHub Star ─── */}
       <section className="py-16 border-t border-passport-border">
-        <div className="max-w-3xl mx-auto text-center px-4">
+        <div className="section-divider max-w-3xl mx-auto" />
+        <div className="max-w-3xl mx-auto text-center px-4 mt-8">
           <h3 className="text-2xl font-bold text-passport-text mb-4">Open Source</h3>
           <p className="text-passport-muted mb-6">Passport Agent is MIT licensed. Star us on GitHub.</p>
           <a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" target="_blank" rel="noopener noreferrer" className="btn-primary px-6 py-3 text-base">
-            <Github size={18} />
+            <Star size={18} />
             Star on GitHub
           </a>
         </div>
       </section>
 
       {/* Footer */}
-      <footer id="footer" className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
-        <div className="max-w-5xl mx-auto">
+      <footer id="footer" className="py-12 px-4 sm:px-6 lg:px-8 relative">
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(46,160,67,0.15), transparent)' }} />
+        <div className="max-w-5xl mx-auto pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div>
               <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Product</h4>
@@ -1012,7 +1238,7 @@ const result = await agent.run({
               <h4 className="font-mono text-xs text-passport-text font-semibold tracking-wider mb-4">Developers</h4>
               <ul className="space-y-2">
                 <li><a href="/docs" className="text-xs text-passport-muted hover:text-passport-text transition-colors">API Reference</a></li>
-                <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">GitHub</a></li>
+                <li><a href="https://github.com/jameserez-code/MVP-Netlify-Firebase" target="_blank" rel="noopener noreferrer" className="text-xs text-passport-muted hover:text-passport-text transition-colors">GitHub</a></li>
                 <li><a href="/login" className="text-xs text-passport-muted hover:text-passport-text transition-colors">Status</a></li>
               </ul>
             </div>
@@ -1024,9 +1250,12 @@ const result = await agent.run({
               </ul>
             </div>
           </div>
-          <div className="text-center">
-            <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-              Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
+          <div className="text-center border-t border-passport-border/50 pt-6">
+            <p className="font-mono text-[10px] text-passport-dim tracking-wider mb-2">
+              &copy; {currentYear} Passport Agent &middot; Built by J. Rabinowitz
+            </p>
+            <p className="font-mono text-[9px] text-passport-dim/60 tracking-wider">
+              v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
             </p>
           </div>
         </div>

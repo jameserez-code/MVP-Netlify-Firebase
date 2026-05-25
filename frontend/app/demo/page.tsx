@@ -648,8 +648,8 @@ export default function DemoPage() {
     const action = actions[actionIndex]
     const shouldAnimateTyping = actionIndex < 3 && logs.length < 3
 
-    // ── LIVE API MODE ──
-    if (modeRef.current === 'live' && tokenRef.current) {
+      // ── LIVE API MODE ──
+      if (modeRef.current === 'live' && tokenRef.current) {
       let cancelled = false
       cancelledRef.current = false
 
@@ -668,7 +668,7 @@ export default function DemoPage() {
             typeIntervalRef.current = null
             if (!cancelled) setPhase('evaluating')
           }
-        }, 14)
+        }, 60 / speedRef.current)
       } else {
         setTypedText(action.raw)
         const t = setTimeout(() => {
@@ -846,7 +846,7 @@ export default function DemoPage() {
       simTimersRef.current.push(t)
     }
 
-    const baseMin = shouldAnimateTyping ? 800 : 1000
+    const baseMin = shouldAnimateTyping ? 800 : 800
     const baseMax = shouldAnimateTyping ? 1200 : 1500
     const evalDelay = (baseMin + Math.random() * (baseMax - baseMin)) / speedRef.current
 
@@ -1195,13 +1195,22 @@ export default function DemoPage() {
                 <button
                   key={s.id}
                   onClick={() => handleScenarioChange(s.id)}
-                  className={`px-3 py-1.5 rounded text-xs font-mono font-medium transition-all duration-150 ${
+                  className={`relative px-3 py-1.5 rounded text-xs font-mono font-medium transition-all duration-150 ${
                     scenarioId === s.id
-                      ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
-                      : 'text-passport-muted hover:text-passport-text border border-passport-border hover:border-passport-border-2'
+                      ? 'text-passport-green'
+                      : 'text-passport-muted hover:text-passport-text'
                   }`}
                 >
                   {s.label}
+                  {scenarioId === s.id && (
+                    <span
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-passport-green rounded-full transition-all duration-250"
+                      style={{
+                        width: '60%',
+                        animation: 'underlineExpand 0.25s ease both',
+                      }}
+                    />
+                  )}
                 </button>
               ))}
               <div className="ml-auto text-xs text-passport-muted font-mono hidden sm:block">{scenario.persona}</div>
@@ -1270,22 +1279,33 @@ export default function DemoPage() {
                     </div>
                   </div>
 
-                  {/* History Panel (slide-down) */}
+                  {/* History Panel (slide-in from right) */}
                   <div
-                    className={`overflow-hidden transition-all duration-300 ${
-                      showHistory ? 'max-h-64 border-b border-passport-border' : 'max-h-0'
+                    className={`fixed inset-y-0 right-0 w-80 max-w-[85vw] z-30 glass-panel border-l border-passport-border transition-transform duration-300 ease-out ${
+                      showHistory ? 'translate-x-0' : 'translate-x-full'
                     }`}
+                    style={{ top: '56px' }}
                   >
-                    <div className="px-4 py-3 bg-passport-surface/30">
-                      <div className="flex items-center gap-2 mb-2">
-                        <History size={12} className="text-passport-muted" />
-                        <span className="text-[10px] font-mono uppercase tracking-wider text-passport-dim">Command History</span>
-                        <span className="text-[10px] text-passport-dim ml-auto">{historyLogs.length} entries</span>
+                    <div className="p-4 h-full overflow-y-auto bg-passport-bg/95">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <History size={12} className="text-passport-muted" />
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-passport-dim">Command History</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-passport-dim">{historyLogs.length} entries</span>
+                          <button
+                            onClick={() => setShowHistory(false)}
+                            className="text-passport-dim hover:text-passport-text p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
                       {historyLogs.length === 0 ? (
                         <p className="text-[10px] text-passport-dim italic">No commands yet</p>
                       ) : (
-                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                        <div className="space-y-1.5">
                           {historyLogs.map((log) => (
                             <div
                               key={log.id}
@@ -1318,6 +1338,12 @@ export default function DemoPage() {
                     {logs.length === 0 && phase === 'idle' && (
                       <div className="text-passport-dim italic relative z-10">
                         <span className="text-passport-green animate-cursor-blink">█</span> Awaiting agent actions...
+                      </div>
+                    )}
+
+                    {!isPlaying && logs.length > 0 && phase === 'idle' && (
+                      <div className="text-passport-dim italic relative z-10 mt-2">
+                        <span className="text-passport-amber animate-cursor-blink">█</span> Paused — press play to continue
                       </div>
                     )}
 

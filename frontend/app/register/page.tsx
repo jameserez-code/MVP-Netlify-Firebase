@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { register, resendVerification, seedOrg, setToken, login } from '@/lib/api'
 import { useToast } from '@/components/toast'
 import PasswordStrength from '@/components/password-strength'
-import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw, User, Building2, ArrowLeft } from 'lucide-react'
+import { Terminal, Shield, AlertCircle, CheckCircle, Mail, RefreshCw, User, Building2, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 
 function PasswordRequirements({ password }: { password: string }) {
   if (password.length >= 8 && /\d/.test(password) && /[^a-zA-Z0-9]/.test(password)) return null
@@ -44,6 +44,7 @@ export default function RegisterPage() {
   const [resending, setResending] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [shakeCard, setShakeCard] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -235,14 +236,23 @@ export default function RegisterPage() {
 
             <div>
               <label className="label-text">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })) }}
-                className={`input-field ${fieldErrors.password ? 'border-passport-red' : ''}`}
-                placeholder="Min. 8 characters"
-                autoComplete="new-password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, password: '' })) }}
+                  className={`input-field pr-10 ${fieldErrors.password ? 'border-passport-red' : ''}`}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-passport-dim hover:text-passport-text transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
               {fieldErrors.password && (
                 <p className="text-xs text-passport-red mt-1">{fieldErrors.password}</p>
               )}
@@ -254,7 +264,7 @@ export default function RegisterPage() {
               <label className="label-text">Confirm Password</label>
               <div className="relative">
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((prev) => ({ ...prev, confirmPassword: '' })) }}
                   className={`input-field pr-10 ${fieldErrors.confirmPassword ? 'border-passport-red' : passwordsMatch ? 'border-passport-green/50' : ''}`}

@@ -12,12 +12,16 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-geist',
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'sans-serif'],
 })
 
 const jetbrains = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains',
   display: 'swap',
+  preload: true,
+  fallback: ['ui-monospace', 'monospace'],
 })
 
 export const metadata: Metadata = {
@@ -25,14 +29,22 @@ export const metadata: Metadata = {
   title: 'AI Agent Passport — OAuth for AI Agents',
   description: 'Control what your AI agents can do. Pre-execution policy enforcement for autonomous AI agents.',
   applicationName: 'AI Agent Passport',
+  robots: {
+    index: true,
+    follow: true,
+  },
   openGraph: {
     title: 'AI Agent Passport — OAuth for AI Agents',
     description: 'Control what your AI agents can do with pre-execution policy enforcement.',
     type: 'website',
+    locale: 'en_US',
+    siteName: 'AI Agent Passport',
     url: 'https://passport-agent-demo.netlify.app',
   },
   twitter: {
     card: 'summary_large_image',
+    title: 'AI Agent Passport — OAuth for AI Agents',
+    description: 'Control what your AI agents can do with pre-execution policy enforcement.',
   },
   manifest: '/manifest.json',
   alternates: {
@@ -64,6 +76,25 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preload" href="/manifest.json" as="fetch" crossOrigin="anonymous" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'AI Agent Passport',
+              applicationCategory: 'DeveloperApplication',
+              operatingSystem: 'Web',
+              description:
+                'OAuth for AI Agents. Pre-execution policy enforcement for autonomous AI agents.',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD',
+              },
+            }),
+          }}
+        />
       </head>
       <body className={`${inter.variable} ${jetbrains.variable} antialiased`}>
         <SentryInit />

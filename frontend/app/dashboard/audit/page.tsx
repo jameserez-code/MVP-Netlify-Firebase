@@ -47,29 +47,38 @@ function SimpleBarChart({ data, dataKeys }: { data: { label: string; allow: numb
   const colorMap: Record<string, string> = { allow: '#2ea043', deny: '#f85149', modify: '#58a6ff' }
   return (
     <div className="space-y-1">
-      <div className="flex items-end gap-2 h-32">
-        {data.map((d, i) => (
-          <div key={i} className="flex-1 flex items-end gap-0.5">
-            {dataKeys.map((key) => (
-              <div
-                key={key}
-                className="flex-1 rounded-t-passport transition-all duration-500"
-                style={{
-                  height: `${(d[key] / max) * 100}%`,
-                  backgroundColor: colorMap[key],
-                  opacity: 0.75,
-                }}
-              />
+      <div className="flex">
+        <div className="w-8 shrink-0 pt-0.5">
+          <span className="text-[9px] font-mono text-passport-dim rotate-[-90deg] block origin-center whitespace-nowrap">Count</span>
+        </div>
+        <div className="flex-1">
+          <div className="flex items-end gap-2 h-32">
+            {data.map((d, i) => (
+              <div key={i} className="flex-1 flex items-end gap-0.5">
+                {dataKeys.map((key) => (
+                  <div
+                    key={key}
+                    className="flex-1 rounded-t-passport transition-all duration-500"
+                    style={{
+                      height: `${(d[key] / max) * 100}%`,
+                      backgroundColor: colorMap[key],
+                      opacity: 0.75,
+                    }}
+                  />
+                ))}
+              </div>
             ))}
           </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        {data.map((d, i) => (
-          <div key={i} className="flex-1 text-center">
-            <span className="font-mono text-[9px] text-passport-dim uppercase">{d.label}</span>
+          <div className="flex gap-2">
+            {data.map((d, i) => (
+              <div key={i} className="flex-1 text-center">
+                <span className="font-mono text-[9px] text-passport-dim uppercase">Date</span>
+                <br />
+                <span className="font-mono text-[9px] text-passport-dim">{d.label}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
       <div className="flex items-center justify-center gap-4 mt-2">
         <div className="flex items-center gap-1.5">
@@ -99,6 +108,7 @@ export default function AuditPage() {
   const [page, setPage] = useState(0)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   function copyEventId(id: string) {
     navigator.clipboard.writeText(id)
@@ -107,6 +117,7 @@ export default function AuditPage() {
   }
 
   async function exportToCSV() {
+    setExportingCsv(true)
     try {
       const blob = await exportAuditCsv({
         startDate: dateFrom || undefined,
@@ -123,6 +134,8 @@ export default function AuditPage() {
       addToast('Audit log exported successfully', 'success')
     } catch (err: any) {
       addToast(err.message || 'Export failed', 'error')
+    } finally {
+      setExportingCsv(false)
     }
   }
 
@@ -230,10 +243,14 @@ export default function AuditPage() {
           <button
             onClick={() => exportToCSV()}
             className="btn-secondary"
-            disabled={filtered.length === 0}
+            disabled={filtered.length === 0 || exportingCsv}
           >
-            <Download size={14} aria-hidden="true" />
-            Export CSV
+            {exportingCsv ? (
+              <span className="w-4 h-4 border-2 border-passport-green/30 border-t-passport-green rounded-full animate-spin" />
+            ) : (
+              <Download size={14} aria-hidden="true" />
+            )}
+            {exportingCsv ? 'Exporting...' : 'Export CSV'}
           </button>
           <button onClick={loadAudit} className="btn-secondary" disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} aria-hidden="true" />
@@ -264,16 +281,34 @@ export default function AuditPage() {
             className="input-field pl-9"
           />
         </div>
-        <select
-          value={decisionFilter}
-          onChange={(e) => { setDecisionFilter(e.target.value); setPage(0) }}
-          className="input-field w-full sm:w-40 font-mono text-xs"
-        >
-          <option value="">All decisions</option>
-          <option value="allow">Allow</option>
-          <option value="deny">Deny</option>
-          <option value="modify">Modify</option>
-        </select>
+        <div className="flex items-center gap-1.5">
+          <Filter size={12} className="text-passport-dim" />
+          {([
+            { value: '', label: 'All' },
+            { value: 'allow', label: 'Allow' },
+            { value: 'deny', label: 'Deny' },
+            { value: 'modify', label: 'Modify' },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => { setDecisionFilter(opt.value); setPage(0) }}
+              aria-pressed={decisionFilter === opt.value}
+              className={`px-2.5 py-1 rounded-passport text-xs font-mono transition-all border ${
+                decisionFilter === opt.value
+                  ? opt.value === 'allow'
+                    ? 'bg-passport-green/10 text-passport-green border-passport-green/30'
+                    : opt.value === 'deny'
+                    ? 'bg-passport-red/10 text-passport-red border-passport-red/30'
+                    : opt.value === 'modify'
+                    ? 'bg-passport-azure/10 text-passport-azure border-passport-azure/30'
+                    : 'bg-passport-surface-2 text-passport-text border-passport-border-2'
+                  : 'bg-passport-bg text-passport-muted border-passport-border hover:border-passport-border-2'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
         <input
           type="date"
           value={dateFrom}
@@ -416,8 +451,8 @@ export default function AuditPage() {
                     </tr>
                   ))}
                   {expandedRow && (
-                    <tr key={`expanded-${expandedRow}`} className="border-b border-passport-border/50 bg-passport-surface/30">
-                      <td colSpan={5} className="px-4 py-3">
+                    <tr key={`expanded-${expandedRow}`} className="border-b border-passport-border/50 bg-passport-surface/30 animate-fade-in-up">
+                      <td colSpan={5} className="px-4 py-3 overflow-hidden">
                         <div className="text-xs text-passport-muted">
                           {(() => {
                             const entry = filtered.find((e) => e.id === expandedRow)
@@ -452,7 +487,7 @@ export default function AuditPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] text-passport-dim">
-                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+                Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {serverTotal ?? filtered.length} entries
               </span>
               <div className="flex items-center gap-2">
                 <button

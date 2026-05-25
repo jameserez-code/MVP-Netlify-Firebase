@@ -6,6 +6,12 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   generateEtags: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts'],
+  },
   ...(process.env.NODE_ENV === 'development' && {
     async rewrites() {
       return [
@@ -21,6 +27,7 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },

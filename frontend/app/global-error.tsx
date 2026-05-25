@@ -10,7 +10,9 @@ interface GlobalErrorProps {
 
 export default function GlobalErrorPage({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    console.error('Global error:', error)
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Global error:', error)
+    }
   }, [error])
 
   return (

@@ -224,10 +224,10 @@
 
   .input-field {
     width: 100%;
-    padding: 8px 12px;
+    padding: 10px 12px;
     background: #0d1117;
     border: 1px solid #30363d;
-    border-radius: 4px;
+    border-radius: 6px;
     color: #c9d1d9;
     font-family: var(--font-geist), system-ui, sans-serif;
     font-size: 14px;
@@ -671,5 +671,39 @@
 
   .animate-cursor-blink {
     animation: cursorBlink 1s step-end infinite;
+  }
+
+  /* ─── Code rain backdrop ─── */
+  @keyframes codeRainFade {
+    0%, 100% { opacity: 0; }
+    10% { opacity: 0.06; }
+    90% { opacity: 0.02; }
+  }
+
+  .animate-code-rain-fade {
+    animation: codeRainFade 8s ease-in-out infinite;
+  }
+
+  /* ─── Bounce check for copy button ─── */
+  @keyframes bounceCheck {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .animate-bounce-check {
+    animation: bounceCheck 0.4s ease-out;
+  }
+
+  /* ─── CTA background glow pulse ─── */
+  @keyframes ctaGlowPulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+  }
+
+  .animate-cta-glow {
+    animation: ctaGlowPulse 4s ease-in-out infinite;
+    background: radial-gradient(ellipse at center, rgba(46,160,67,0.08) 0%, transparent 70%);
   }
 }

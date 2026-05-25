@@ -179,7 +179,7 @@ export default function AgentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-passport-text">Agents</h1>
           <p className="text-sm text-passport-muted mt-0.5">
-            Manage and monitor your agent fleet
+            {agents.length > 0 ? `${agents.length} Agent${agents.length !== 1 ? 's' : ''}` : 'Manage and monitor your agent fleet'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -451,7 +451,7 @@ export default function AgentsPage() {
                     </td>
                     <td className="px-4 py-3 hidden sm:table-cell">
                       <span className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${statusBadge(agent.status)}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusDot(agent.status)}`} />
+                        <span className={`w-2 h-2 rounded-full ${statusDot(agent.status)} ${agent.status === 'active' ? 'animate-pulse-soft' : ''}`} />
                         {agent.status || 'active'}
                       </span>
                     </td>
