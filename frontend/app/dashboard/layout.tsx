@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
 import GlobalSearch from '@/components/global-search'
 import NotificationCenter from '@/components/notification-center'
+import FeedbackWidget from '@/components/feedback-widget'
 import { isLoggedIn } from '@/lib/api'
 import { ChevronRight } from 'lucide-react'
 
@@ -104,6 +105,7 @@ export default function DashboardLayout({
           </div>
           {children}
         </div>
+        <FeedbackWidget />
       </main>
     </div>
   )

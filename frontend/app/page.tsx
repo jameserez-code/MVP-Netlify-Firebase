@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import GlassCard from '@/components/glass-card'
 import TerminalCursor from '@/components/terminal-cursor'
+import FeedbackWidget from '@/components/feedback-widget'
 import { isLoggedIn, createCheckoutSession } from '@/lib/api'
 import {
   Shield,
@@ -1274,6 +1275,7 @@ const result = await agent.run({
       </footer>
 
       <BackToTop />
+      <FeedbackWidget />
     </div>
   )
 }
