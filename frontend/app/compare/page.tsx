@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import GlassCard from '@/components/glass-card'
@@ -300,6 +301,7 @@ const colorMap = {
 } as const
 
 export default function ComparePage() {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   return (
     <div className="min-h-screen bg-passport-bg">
       <Navbar />
@@ -617,7 +619,7 @@ export default function ComparePage() {
           </div>
           <div className="text-center border-t border-passport-border/50 pt-6">
             <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-              &copy; {new Date().getFullYear()} Passport Agent &middot; Built by J.
+              {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J.
               Rabinowitz
             </p>
           </div>

@@ -542,7 +542,7 @@ const result = await agent.run({
         <div className="max-w-6xl mx-auto">
           <ScrollFadeHeading>
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4 text-center">
-              The Problem &amp; The Solution
+              The Problem {'\u0026'} The Solution
             </h2>
             <p className="text-passport-muted text-center max-w-xl mx-auto mb-14">
               Every AI agent deployment faces the same risks. Here's how Passport solves them.
@@ -997,7 +997,7 @@ const result = await agent.run({
               },
             ].map((t, i) => (
               <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col h-full hover:border-passport-green/20 hover:shadow-[0_0_24px_rgba(46,160,67,0.06)] transition-all duration-300">
-                <div className="text-passport-green text-4xl font-serif leading-none mb-2 select-none">&ldquo;</div>
+                <div className="text-passport-green text-4xl font-serif leading-none mb-2 select-none">{"\u201C"}</div>
                 <p className="text-sm text-passport-text leading-relaxed mb-6 flex-1">{t.quote}</p>
                 <AnimatedStars count={5} delay={i * 200} />
                 <div className="font-semibold text-passport-text text-sm">{t.name}</div>
@@ -1118,7 +1118,7 @@ const result = await agent.run({
                 ))}
               </ul>
               <Link href="/register" className="btn-secondary w-full text-center">Contact Sales</Link>
-              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">Custom pricing &amp; SLAs</p>
+              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">Custom pricing {'\u0026'} SLAs</p>
             </GlassCard>
           </div>
         </div>
@@ -1181,7 +1181,7 @@ const result = await agent.run({
             </p>
             <p className="text-sm text-passport-green font-mono mb-8">Join 200+ developers building safer AI agents</p>
             <div className="mb-8 px-4 py-3 rounded-md border border-passport-border/50 bg-passport-surface/30 max-w-md mx-auto">
-              <p className="text-sm text-passport-text italic">&ldquo;Set up enforcement in 10 minutes. Best investment we made for our agent fleet.&rdquo;</p>
+              <p className="text-sm text-passport-text italic">{"\u201C"}Set up enforcement in 10 minutes. Best investment we made for our agent fleet.{"\u201D"}</p>
               <p className="text-xs text-passport-muted mt-2">— Marcus Johnson, CTO at DataVault</p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -1264,10 +1264,10 @@ const result = await agent.run({
           </div>
           <div className="text-center border-t border-passport-border/50 pt-6">
             <p className="font-mono text-[10px] text-passport-dim tracking-wider mb-2">
-              &copy; {currentYear} Passport Agent &middot; Built by J. Rabinowitz
+              {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
             </p>
             <p className="font-mono text-[9px] text-passport-dim/60 tracking-wider">
-              v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks
+              v2.1 {'\u00B7'} 2 runtime deps {'\u00B7'} 18 endpoints {'\u00B7'} Zero frameworks
             </p>
           </div>
         </div>

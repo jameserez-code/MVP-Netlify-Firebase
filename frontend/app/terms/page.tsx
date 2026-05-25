@@ -1,10 +1,12 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import { Shield, ArrowLeft } from 'lucide-react'
 
 export default function TermsPage() {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   return (
     <div className="min-h-screen bg-passport-bg">
       <Navbar />
@@ -32,8 +34,8 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg font-semibold text-passport-text mb-3">1. Acceptance of Terms</h2>
               <p className="text-sm text-passport-muted leading-relaxed">
-                By accessing or using the Passport Agent platform (&ldquo;Service&rdquo;), you agree to be bound by these
-                Terms of Service (&ldquo;Terms&rdquo;). If you are using the Service on behalf of an organization, you represent
+                By accessing or using the Passport Agent platform ({'\u201C'}Service{'\u201D'}), you agree to be bound by these
+                Terms of Service ({'\u201C'}Terms{'\u201D'}). If you are using the Service on behalf of an organization, you represent
                 that you have the authority to bind that organization to these Terms. If you do not agree to these
                 Terms, you may not access or use the Service.
               </p>
@@ -106,7 +108,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-lg font-semibold text-passport-text mb-3">7. Disclaimers and Limitation of Liability</h2>
               <p className="text-sm text-passport-muted leading-relaxed mb-3">
-                THE SERVICE IS PROVIDED ON AN &ldquo;AS IS&rdquo; AND &ldquo;AS AVAILABLE&rdquo; BASIS. PASSPORT AGENT EXPRESSLY
+                THE SERVICE IS PROVIDED ON AN {'\u201C'}AS IS{'\u201D'} AND {'\u201C'}AS AVAILABLE{'\u201D'} BASIS. PASSPORT AGENT EXPRESSLY
                 DISCLAIMS ALL WARRANTIES OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
                 IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
               </p>
@@ -160,7 +162,7 @@ export default function TermsPage() {
 
         <div className="text-center mt-8 pb-8">
           <p className="text-xs text-passport-dim">
-            &copy; {new Date().getFullYear()} Passport Agent. All rights reserved.
+            {'\u00A9'} {currentYear} Passport Agent. All rights reserved.
           </p>
         </div>
       </div>

@@ -1132,9 +1132,9 @@ export default function DemoPage() {
               <div className="flex items-center gap-1.5 text-xs text-passport-muted font-mono">
                 <Timer size={12} className="text-passport-amber" />
                 <span>Takes 30 seconds</span>
-                <span className="text-passport-dim mx-1">&middot;</span>
+                <span className="text-passport-dim mx-1">{'\u00B7'}</span>
                 <span>No credit card</span>
-                <span className="text-passport-dim mx-1">&middot;</span>
+                <span className="text-passport-dim mx-1">{'\u00B7'}</span>
                 <span>No account</span>
               </div>
             </div>
@@ -1786,7 +1786,7 @@ export default function DemoPage() {
       {/* Footer */}
       <footer className="py-6 px-4 text-center border-t border-passport-border">
         <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.1 &middot; Interactive Demo &middot;
+          Passport Agent v2.1 {'\u00B7'} Interactive Demo {'\u00B7'}
           {mode === 'live' ? ' Real API enforcement via ' + API_BASE : ' No data is sent to any server'}
         </p>
       </footer>

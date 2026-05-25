@@ -964,7 +964,7 @@ export default function OnboardingPage() {
       {/* Footer */}
       <footer className="py-6 text-center border-t border-passport-border">
         <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.1 &middot; Step {state.step} of 5
+          Passport Agent v2.1 {'\u00B7'} Step {state.step} of 5
         </p>
       </footer>
     </div>

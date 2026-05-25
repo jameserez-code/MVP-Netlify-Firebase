@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import { ArrowLeft, Clock } from 'lucide-react'
@@ -49,17 +50,17 @@ function BlogPostContent() {
       <section className="mb-10">
         <h2 className="text-xl font-bold text-passport-text mb-4">Why API Keys Aren&apos;t Enough</h2>
         <p className="text-passport-muted leading-relaxed">
-          API keys are the standard way to authenticate requests. They answer the question: <em>&ldquo;Who is making this request?&rdquo;</em> They do not answer: <em>&ldquo;Should this request be allowed?&rdquo;</em>
+          API keys are the standard way to authenticate requests. They answer the question: <em>{'\u201C'}Who is making this request?{'\u201D'}</em> They do not answer: <em>{'\u201C'}Should this request be allowed?{'\u201D'}</em>
         </p>
         <p className="text-passport-muted leading-relaxed mt-4">
           For a human developer, this distinction matters less. A human writes code, reviews it, and deploys it through a CI/CD pipeline. There are guardrails: code review, staging environments, monitoring. An AI agent, by contrast, generates and executes tool calls in real-time, with no human in the loop. The guardrails that protect human-written code simply do not exist for agent-generated actions.
         </p>
         <p className="text-passport-muted leading-relaxed mt-4">
-          Consider a typical API key permission model: it is usually all-or-nothing. Either the agent can query the database, or it cannot. There is no concept of &ldquo;you can query, but only read-only&rdquo;, or &ldquo;you can query, but not the users table&rdquo;, or &ldquo;you can query, but only 100 rows per session.&rdquo;
+          Consider a typical API key permission model: it is usually all-or-nothing. Either the agent can query the database, or it cannot. There is no concept of {'\u201C'}you can query, but only read-only{'\u201D'}, or {'\u201C'}you can query, but not the users table{'\u201D'}, or {'\u201C'}you can query, but only 100 rows per session.{'\u201D'}
         </p>
         <blockquote className="border-l-3 border-passport-green pl-5 py-1 my-6">
           <p className="text-sm text-passport-text leading-relaxed italic">
-            &ldquo;API keys grant all-or-nothing access. For AI agents that can take hundreds of actions per session, this is terrifying.&rdquo;
+            {'\u201C'}API keys grant all-or-nothing access. For AI agents that can take hundreds of actions per session, this is terrifying.{'\u201D'}
           </p>
         </blockquote>
       </section>
@@ -180,7 +181,7 @@ const agent = new AgentControlPlane({
         </p>
         <blockquote className="border-l-3 border-passport-green pl-5 py-1 my-6">
           <p className="text-sm text-passport-text leading-relaxed italic">
-            &ldquo;The web got HTTPS. APIs got OAuth. AI agents get Passport.&rdquo;
+            {'\u201C'}The web got HTTPS. APIs got OAuth. AI agents get Passport.{'\u201D'}
           </p>
         </blockquote>
       </section>
@@ -221,6 +222,7 @@ const posts: Record<string, {
 }
 
 export default function BlogPostClient({ slug }: { slug: string }) {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   const post = posts[slug]
 
   if (!post) {
@@ -289,7 +291,7 @@ export default function BlogPostClient({ slug }: { slug: string }) {
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
         <div className="max-w-5xl mx-auto text-center">
           <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-            &copy; {new Date().getFullYear()} Passport Agent &middot; Built by J. Rabinowitz
+            {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
           </p>
         </div>
       </footer>

@@ -209,8 +209,8 @@ function CaseStudyCard({ data, index }: { data: CaseStudyData; index: number }) 
             {/* Quote */}
             <div className="mt-auto pt-5 border-t border-passport-border">
               <Quote size={20} className="text-passport-green mb-2" />
-              <p className="text-sm text-passport-text italic leading-relaxed mb-2">&ldquo;{data.quote}&rdquo;</p>
-              <p className="text-xs text-passport-muted font-mono">&mdash; {data.quotee}</p>
+              <p className="text-sm text-passport-text italic leading-relaxed mb-2">{'\u201C'}{data.quote}{'\u201D'}</p>
+              <p className="text-xs text-passport-muted font-mono">{'\u2014'} {data.quotee}</p>
             </div>
           </div>
 
@@ -389,7 +389,7 @@ export default function CaseStudiesPage() {
           </div>
           <div className="text-center border-t border-passport-border/50 pt-6">
             <p className="font-mono text-[10px] text-passport-dim tracking-wider mb-2">
-              &copy; {currentYear} Passport Agent &middot; Built by J. Rabinowitz
+              {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
             </p>
             <p className="font-mono text-[9px] text-passport-dim/60 tracking-wider">
               Trusted by security teams at leading enterprises worldwide

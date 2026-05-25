@@ -1365,7 +1365,7 @@ const result = await agent.run({
       {/* Footer */}
       <footer className="py-8 px-4 text-center border-t border-passport-border">
         <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-          Passport Agent v2.1 &middot; RESTful API &middot; OpenAPI 3.0
+          Passport Agent v2.1 {'\u00B7'} RESTful API {'\u00B7'} OpenAPI 3.0
         </p>
       </footer>
     </div>

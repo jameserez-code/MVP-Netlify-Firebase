@@ -1,9 +1,11 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { Wrench, Shield, Mail, Activity } from 'lucide-react'
 
 export default function MaintenancePage() {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   const eta = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('eta')
     : null
@@ -63,7 +65,7 @@ export default function MaintenancePage() {
         </div>
 
         <p className="text-xs text-passport-dim mt-6">
-          &copy; {new Date().getFullYear()} Passport Agent. All rights reserved.
+          {'\u00A9'} {currentYear} Passport Agent. All rights reserved.
         </p>
       </div>
     </div>

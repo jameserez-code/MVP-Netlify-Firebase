@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import { ChevronRight, ArrowRight } from 'lucide-react'
@@ -53,6 +54,7 @@ const posts = [
 ]
 
 export default function BlogIndexPage() {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   return (
     <div className="min-h-screen bg-passport-bg">
       <Navbar />
@@ -116,7 +118,7 @@ export default function BlogIndexPage() {
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-passport-border">
         <div className="max-w-5xl mx-auto text-center">
           <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-            &copy; {new Date().getFullYear()} Passport Agent &middot; Built by J. Rabinowitz
+            {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
           </p>
         </div>
       </footer>

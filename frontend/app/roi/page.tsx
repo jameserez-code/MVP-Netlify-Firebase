@@ -119,6 +119,7 @@ export default function ROIPage() {
   const [devRate, setDevRate] = useState(150)
   const [costPerIncident, setCostPerIncident] = useState(47000)
   const [methodologyOpen, setMethodologyOpen] = useState(false)
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
 
   const ingWeeks = useMemo(() => {
     if (numAgents <= 3) return 4
@@ -569,7 +570,7 @@ export default function ROIPage() {
         />
         <div className="max-w-5xl mx-auto pt-4 text-center">
           <p className="font-mono text-[10px] text-passport-dim tracking-wider">
-            &copy; {new Date().getFullYear()} Passport Agent &middot; ROI estimates are
+            {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} ROI estimates are
             indicative based on industry averages
           </p>
         </div>

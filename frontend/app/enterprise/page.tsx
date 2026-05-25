@@ -457,10 +457,10 @@ export default function EnterprisePage() {
           </div>
           <div className="text-center border-t border-passport-border/50 pt-6">
             <p className="font-mono text-[10px] text-passport-dim tracking-wider mb-2">
-              &copy; {currentYear} Passport Agent &middot; Built by J. Rabinowitz
+              {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
             </p>
             <p className="font-mono text-[9px] text-passport-dim/60 tracking-wider">
-              SOC 2 Type II &middot; HIPAA Ready &middot; GDPR Compliant
+              SOC 2 Type II {'\u00B7'} HIPAA Ready {'\u00B7'} GDPR Compliant
             </p>
           </div>
         </div>

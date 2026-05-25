@@ -1,10 +1,12 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/navbar'
 import { Shield, ArrowLeft } from 'lucide-react'
 
 export default function PrivacyPage() {
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
   return (
     <div className="min-h-screen bg-passport-bg">
       <Navbar />
@@ -153,7 +155,7 @@ export default function PrivacyPage() {
 
         <div className="text-center mt-8 pb-8">
           <p className="text-xs text-passport-dim">
-            &copy; {new Date().getFullYear()} Passport Agent. All rights reserved.
+            {'\u00A9'} {currentYear} Passport Agent. All rights reserved.
           </p>
         </div>
       </div>

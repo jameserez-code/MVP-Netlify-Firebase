@@ -194,7 +194,7 @@ export default function ExportsPage() {
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-passport border border-passport-border bg-passport-surface/50">
             <div>
-              <div className="text-sm font-medium text-passport-text">GDPR Data &amp; Report</div>
+              <div className="text-sm font-medium text-passport-text">GDPR Data {'\u0026'} Report</div>
               <div className="text-xs text-passport-muted">Export all your data or generate a security report.</div>
             </div>
             <a href="/dashboard/settings" className="btn-secondary shrink-0">
