@@ -121,8 +121,12 @@ export function generateGatewayTicket(intentId: string, agentId: string, tool: s
 
 export function verifyGatewayTicket(token: string): { iid: string; aid: string; tool: string; params: Record<string, unknown> } {
   const payload = verifyJWT(token, getEngineSecret())
-  payload.params = JSON.parse(payload.params as string)
-  return payload as any
+  return {
+    iid: payload.iid as string,
+    aid: payload.aid as string,
+    tool: payload.tool as string,
+    params: JSON.parse(payload.params as string),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +160,9 @@ function verifyJWT(token: string, secret: string): Record<string, unknown> {
       throw new Error('invalid_signature')
     }
     return payload
-  } catch (e: any) {
-    if (e.message === 'token_expired' || e.message === 'invalid_signature' || e.message === 'invalid_token_format') {
+  } catch (e: unknown) {
+    const err = e as Error
+    if (err.message === 'token_expired' || err.message === 'invalid_signature' || err.message === 'invalid_token_format') {
       throw e
     }
     throw new Error('invalid_token_format')

@@ -14,10 +14,10 @@
 
 | Metric | Value |
 |--------|-------|
-| Test Count | 557 |
-| Frontend Routes | 27 |
-| Version | 2.1.0 |
-| API Endpoints | 18 |
+| Test Count | 708 |
+| Frontend Routes | 33 |
+| Version | 3.0.0 |
+| API Endpoints | 41 |
 | Collections | 8 |
 
 ---
@@ -345,10 +345,35 @@ npx tsx scripts/retention-cleanup.ts
 | `/` | Landing page (hero, features, CTA) | No |
 | `/login` | Admin/org login | No |
 | `/register` | Organization registration | No |
+| `/verify` | Email verification | No |
+| `/forgot-password` | Password reset request | No |
+| `/reset-password` | Password reset (token-based) | No |
 | `/dashboard` | Stats, diagnostics, health | Yes |
 | `/dashboard/agents` | Agent management, registration | Yes |
 | `/dashboard/policies` | Policy builder, JSON editor | Yes |
+| `/dashboard/policies/templates` | Pre-built policy templates | Yes |
 | `/dashboard/audit` | Audit log with filters | Yes |
+| `/dashboard/api-keys` | API key management | Yes |
+| `/dashboard/webhooks` | Webhook configuration | Yes |
+| `/dashboard/billing` | Billing and subscription | Yes |
+| `/dashboard/analytics` | Enforcement analytics | Yes |
+| `/dashboard/exports` | Data exports (CSV, JSON, PDF) | Yes |
+| `/dashboard/settings` | Account settings | Yes |
+| `/playground` | API testing console | No |
+| `/demo` | Interactive demo | No |
+| `/roi` | ROI Calculator | No |
+| `/compare` | Plan comparison | No |
+| `/enterprise` | Enterprise features | No |
+| `/case-studies` | Customer case studies | No |
+| `/blog` | Blog and articles | No |
+| `/docs` | Documentation | No |
+| `/security` | Security overview | No |
+| `/status` | System status | No |
+| `/changelog` | Release changelog | No |
+| `/privacy` | Privacy policy | No |
+| `/terms` | Terms of service | No |
+| `/onboarding` | New user onboarding | No |
+| `/maintenance` | Maintenance mode | No |
 
 ### Design System
 

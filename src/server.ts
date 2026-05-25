@@ -502,7 +502,7 @@ footer{text-align:center;padding:24px;font-family:"JetBrains Mono",monospace;fon
 </div>
 <div class="refresh">auto-refreshing every 10s</div>
 </main>
-<footer>Passport Agent v2.1 &middot; 2 runtime deps &middot; 18 endpoints &middot; Zero frameworks</footer>
+<footer>Passport Agent v3.0 &middot; 2 runtime deps &middot; 41 endpoints &middot; Zero frameworks</footer>
 <script>
 function countUp(el,target){if(!el)return;var cur=parseInt(el.textContent)||0;if(cur===target)return;var step=Math.ceil(Math.abs(target-cur)/20);if(step<1)step=1;var go=function(){cur+=step;if((step>0&&cur>=target)||(step<0&&cur<=target)){el.textContent=target;return}el.textContent=cur;requestAnimationFrame(go)};go()}
 async function refresh(){try{var r=await fetch("/metrics",{headers:{Accept:"application/json"}}),d=await r.json();if(!d.error){var t=d.tasks||{},ra=d.runs||{},ag=d.agents||{};

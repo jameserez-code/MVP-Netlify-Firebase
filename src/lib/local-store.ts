@@ -32,10 +32,10 @@ function matchesFilter(doc: Record<string, unknown>, field: string, op: string, 
       return docVal === value
     case '<=':
       if (docVal == null || value == null) return false
-      return (docVal as any) <= value
+      return Number(docVal) <= Number(value)
     case '>=':
       if (docVal == null || value == null) return false
-      return (docVal as any) >= value
+      return Number(docVal) >= Number(value)
     case 'in':
       return Array.isArray(value) && value.includes(docVal)
     default:
@@ -257,24 +257,22 @@ export class LocalCollection {
 }
 
 class LocalTransaction {
+  _writes: Array<() => Promise<void>> = []
+
   get(ref: LocalDocRef): Promise<LocalDocSnapshot> {
     return ref.get()
   }
 
   set(ref: LocalDocRef, data: Record<string, unknown>): void {
-    // Deferred writes are collected in the transaction
-    ;(this as any)._writes = (this as any)._writes || []
-    ;(this as any)._writes.push(() => ref.set(data))
+    this._writes.push(() => ref.set(data))
   }
 
   update(ref: LocalDocRef, data: Record<string, unknown>): void {
-    ;(this as any)._writes = (this as any)._writes || []
-    ;(this as any)._writes.push(() => ref.update(data))
+    this._writes.push(() => ref.update(data))
   }
 
   delete(ref: LocalDocRef): void {
-    ;(this as any)._writes = (this as any)._writes || []
-    ;(this as any)._writes.push(() => ref.delete())
+    this._writes.push(() => ref.delete())
   }
 }
 
@@ -309,8 +307,7 @@ export class LocalFirestore {
   async runTransaction(fn: (tx: LocalTransaction) => Promise<void>): Promise<void> {
     const tx = new LocalTransaction()
     await fn(tx)
-    const writes: Array<() => Promise<void>> = (tx as any)._writes || []
-    for (const w of writes) await w()
+    for (const w of tx._writes) await w()
   }
 
   batch(): LocalBatch {
