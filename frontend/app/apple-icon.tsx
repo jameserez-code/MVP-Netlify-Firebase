@@ -1,3 +1,4 @@
+export const dynamic = "force-static"
 import { ImageResponse } from 'next/og'
 
 export const size = { width: 180, height: 180 }
