@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: passport-agent-api
+    env: node
+    region: oregon
+    plan: standard
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - fromGroup: passport-agent-env
