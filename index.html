@@ -515,7 +515,7 @@
             <div id="visaForm" class="hidden">
               <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
               <select id="passportSelect" class="input mb-3"></select>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
+              <label id="scopeChipsLabel" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
               <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
               <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
               <select id="visaExpiry" class="input mb-4">
@@ -914,6 +914,8 @@
     ];
 
     const scopeContainer = document.getElementById("scopeChips");
+    scopeContainer.setAttribute("role", "group");
+    scopeContainer.setAttribute("aria-labelledby", "scopeChipsLabel");
     const selectedScopes = new Set();
     const noPassportMsg = document.getElementById("noPassportMsg");
     const visaForm = document.getElementById("visaForm");
@@ -924,15 +926,28 @@
       chip.textContent = s.label;
       chip.dataset.value = s.value;
       chip.tabIndex = 0;
-      chip.addEventListener("click", () => {
-        if (selectedScopes.has(s.value)) {
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", "false");
+
+      const toggleChip = () => {
+        const isSelected = selectedScopes.has(s.value);
+        if (isSelected) {
           selectedScopes.delete(s.value);
           chip.classList.remove("selected");
         } else {
           selectedScopes.add(s.value);
           chip.classList.add("selected");
         }
+        chip.setAttribute("aria-checked", !isSelected);
         document.getElementById("applyVisaBtn").disabled = selectedScopes.size === 0;
+      };
+
+      chip.addEventListener("click", toggleChip);
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleChip();
+        }
       });
       scopeContainer.appendChild(chip);
     });
@@ -1011,7 +1026,10 @@
         resultEl.classList.remove("hidden");
 
         selectedScopes.clear();
-        document.querySelectorAll(".chip.selected").forEach(c => c.classList.remove("selected"));
+        document.querySelectorAll(".chip.selected").forEach(c => {
+          c.classList.remove("selected");
+          c.setAttribute("aria-checked", "false");
+        });
         document.getElementById("applyVisaBtn").disabled = true;
 
         loadApplications();
