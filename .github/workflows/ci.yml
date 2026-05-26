@@ -26,7 +26,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
 
       - name: Run unit tests
         run: npm test
@@ -71,11 +74,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run lint check
         run: npm run lint
-        continue-on-error: true
 
       - name: Run type check
         run: npx tsc --noEmit
@@ -139,16 +141,16 @@ jobs:
 
       - name: Run npm audit
         run: npm audit --audit-level=moderate
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Run frontend npm audit
         working-directory: frontend
         run: npm audit --audit-level=moderate
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Run dependency audit script
         run: npx tsx scripts/audit-dependencies.ts
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Check for outdated dependencies
         run: npm outdated || true
@@ -159,7 +161,7 @@ jobs:
             echo "License compliance check failed — review non-whitelisted licenses above"
             exit 1
           }
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Snyk vulnerability scan
         env:
@@ -188,7 +190,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run backup
         env:
