@@ -12,18 +12,14 @@ import { checkLimit } from '../lib/usage.js'
 import { optimizeQuery, attachQueryMetrics } from '../lib/query-optimizer.js'
 import { buildListQuery } from '../lib/query-builder.js'
 import { withCache, cacheDeletePattern } from '../lib/cache.js'
+import { requireAdmin, requireMember, requireReadonly } from '../lib/rbac.js'
 
 export default async function agentsRoutes(app: FastifyInstance, db: Firestore) {
 
   // ---------------------------------------------------------------------------
   // POST /agents/register
   // ---------------------------------------------------------------------------
-  app.post('/agents/register', async (request, reply) => {
-    const claims = (request as any).claims
-    if (!claims) {
-      reply.code(401)
-      return { error: { code: 'unauthorized', message: 'Authentication required' } }
-    }
+  app.post('/agents/register', { preHandler: [requireMember] }, async (request, reply) => {
     const { name, model, provider, systemPrompt, environment, metadata } = (request.body || {}) as any
 
     if (!name || !model || !provider) {
@@ -38,10 +34,10 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
       const promptHash = hashSystemPrompt(systemPrompt || '')
       const agentId = generateId('agent_')
 
-      const orgId = process.env.DEFAULT_ORG_ID
+      const orgId = (request as any).orgId
       if (!orgId) {
-        reply.code(500)
-        return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+        reply.code(400)
+        return { error: { code: 'validation', message: 'organization context required' } }
       }
 
       const limitCheck = await checkLimit(db, orgId, 'agents')
@@ -115,12 +111,12 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // ---------------------------------------------------------------------------
   // GET /agents
   // ---------------------------------------------------------------------------
-  app.get('/agents', async (request, reply) => {
+  app.get('/agents', { preHandler: [requireReadonly] }, async (request, reply) => {
     const { status, limit } = (request.query || {}) as { status?: string; limit?: string }
-    const orgId = process.env.DEFAULT_ORG_ID
+    const orgId = (request as any).orgId
     if (!orgId) {
-      reply.code(500)
-      return { error: { code: 'config_error', message: 'DEFAULT_ORG_ID not configured' } }
+      reply.code(400)
+      return { error: { code: 'validation', message: 'organization context required' } }
     }
     try {
       const q = buildListQuery(db, 'agents', orgId, { status, limit: limit || '50' })
@@ -161,17 +157,24 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // ---------------------------------------------------------------------------
   // PATCH /agents/:id/revoke
   // ---------------------------------------------------------------------------
-  app.patch('/agents/:id/revoke', async (request, reply) => {
+  app.patch('/agents/:id/revoke', { preHandler: [requireAdmin] }, async (request, reply) => {
     try {
     const id = (request.params as any).id
     const { reason } = (request.body || {}) as { reason?: string }
     const snap = await db.collection('agents').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'agent not found' } } }
 
+    const agentData = snap.data() as any
+    const requestOrgId = (request as any).orgId
+
+    if (agentData.orgId !== requestOrgId) {
+      reply.code(403)
+      return { error: { code: 'forbidden', message: 'agent belongs to another organization' } }
+    }
+
     const claims = (request as any).claims
     const revokedBy = claims?.sub || claims?.orgId || 'system'
-    const agentData = snap.data() as any
-    const orgId = agentData?.orgId || process.env.DEFAULT_ORG_ID
+    const orgId = agentData?.orgId
 
     await db.collection('agents').doc(id).update({
       status: 'revoked',
@@ -224,11 +227,19 @@ export default async function agentsRoutes(app: FastifyInstance, db: Firestore) 
   // ---------------------------------------------------------------------------
   // POST /agents/:id/rotate-key
   // ---------------------------------------------------------------------------
-  app.post('/agents/:id/rotate-key', async (request, reply) => {
+  app.post('/agents/:id/rotate-key', { preHandler: [requireAdmin] }, async (request, reply) => {
     try {
     const id = (request.params as any).id
     const snap = await db.collection('agents').doc(id).get()
     if (!snap.exists) { reply.code(404); return { error: { code: 'not_found', message: 'agent not found' } } }
+
+    const agentData = snap.data() as any
+    const requestOrgId = (request as any).orgId
+
+    if (agentData.orgId !== requestOrgId) {
+      reply.code(403)
+      return { error: { code: 'forbidden', message: 'agent belongs to another organization' } }
+    }
 
     const newKey = generateAgentSecretKey()
     const { hash, salt } = hashKey(newKey)
