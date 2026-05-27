@@ -158,7 +158,7 @@ function BlogPostContent() {
             <code>{`import { AgentControlPlane } from '@passport-agent/sdk'
 
 const agent = new AgentControlPlane({
-  apiKey: 'passport_live_...',
+  apiKey: 'pa_live_...',
   policies: ['read-only-db', 'max-cost-50']
 })`}</code>
           </pre>

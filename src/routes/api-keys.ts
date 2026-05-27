@@ -50,7 +50,7 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
     }
 
     try {
-      const plaintextKey = `passport_${randomUUID().replace(/-/g, '')}`
+      const plaintextKey = `pa_${randomUUID().replace(/-/g, '')}`
       const { hash, salt } = hashKey(plaintextKey)
       const keyId = generateId('key_')
 
@@ -189,7 +189,7 @@ export default async function apiKeysRoutes(app: FastifyInstance, db: Firestore)
       })
 
       // Create new key with same name/scopes
-      const plaintextKey = `passport_${randomUUID().replace(/-/g, '')}`
+      const plaintextKey = `pa_${randomUUID().replace(/-/g, '')}`
       const { hash, salt } = hashKey(plaintextKey)
       const newKeyId = generateId('key_')
 

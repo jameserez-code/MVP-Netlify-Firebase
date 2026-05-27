@@ -380,7 +380,7 @@ export default function LandingPage() {
   const sdkCode = useMemo(() => `import { AgentControlPlane } from '@passport-agent/sdk'
 
 const agent = new AgentControlPlane({
-  apiKey: 'passport_live_...',
+  apiKey: 'pa_live_...',
   policies: ['safe-web-search', 'read-only-db']
 })
 
@@ -391,7 +391,7 @@ const result = await agent.run({
 // → { decision: 'allowed', ticket: 'gt_...' }`, [])
 
   const curlCode = useMemo(() => `curl -X POST https://api.passport.agent/enforce \\
-  -H "X-API-Key: passport_live_..." \\
+  -H "X-API-Key: pa_live_..." \\
   -d '{"tool":"web_search","parameters":{"query":"latest news"}}'
 # → {"decision":"allowed","reason":"Tool permitted by policy"}`, [])
 
@@ -561,7 +561,7 @@ const result = await agent.run({
                 Your AI Agents Are Unsupervised
               </h3>
               <p className="text-sm text-passport-muted mb-6 leading-relaxed">
-                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won&apos;t know until it&apos;s too late.
+                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won't know until it's too late.
               </p>
               <ul className="space-y-4">
                 {[

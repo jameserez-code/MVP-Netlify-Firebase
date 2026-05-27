@@ -301,10 +301,15 @@ async function requireAuth(request: any, reply: any): Promise<Claims | null> {
     }
 
     if (!matchedDoc) {
-      const keySnap = await db.collection('apiKeys').where('status', '==', 'active').get()
+      const { verifyKey } = await import('./lib/crypto.js')
+      const prefix = apiKey.substring(0, 8)
+      const keySnap = await db.collection('apiKeys')
+        .where('status', '==', 'active')
+        .where('keyPrefix', '==', prefix)
+        .get()
+
       for (const doc of keySnap.docs) {
         const data = doc.data() as any
-        const { verifyKey } = await import('./lib/crypto.js')
         if (verifyKey(apiKey, data.keyHash, data.keySalt, data.iterations || 50000)) {
           matchedDoc = { id: doc.id, orgId: data.orgId, scopes: data.scopes || ['read'] }
           // Cache validated key (5 min TTL)
@@ -538,6 +543,11 @@ app.post('/auth/login', async (request, reply) => {
       if (userData.passwordHash && userData.passwordSalt) {
         authenticated = verifyPassword(password, userData.passwordHash, userData.passwordSalt)
       }
+    } else {
+      // Dummy verification to prevent user enumeration via timing attacks
+      const dummyHash = '0'.repeat(128)
+      const dummySalt = '0'.repeat(64)
+      verifyPassword(password, dummyHash, dummySalt)
     }
 
     // Account lockout check

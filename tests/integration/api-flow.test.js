@@ -445,7 +445,7 @@ test('agent lifecycle — rotate key', async () => {
 test('API key lifecycle — create and list', async () => {
   try {
     for (let i = 1; i <= 3; i++) {
-      const plainKey = `passport_${randomUUID()}`
+      const plainKey = `pa_${randomUUID()}`
       const { hash, salt } = hashKey(plainKey)
       await db.collection('apiKeys').doc(`key_flow_${i}`).set({
         id: `key_flow_${i}`, orgId: TEST_ORG_ID,
@@ -468,7 +468,7 @@ test('API key lifecycle — create and list', async () => {
 
 test('API key lifecycle — rotate', async () => {
   try {
-    const plainKey = `passport_${randomUUID()}`
+    const plainKey = `pa_${randomUUID()}`
     const { hash, salt } = hashKey(plainKey)
     const keyId = generateId('key_')
 
@@ -483,7 +483,7 @@ test('API key lifecycle — rotate', async () => {
       status: 'revoked', revokedAt: new Date().toISOString(),
     })
 
-    const newKey = `passport_${randomUUID()}`
+    const newKey = `pa_${randomUUID()}`
     const { hash: nh, salt: ns } = hashKey(newKey)
     const newKeyId = generateId('key_')
 

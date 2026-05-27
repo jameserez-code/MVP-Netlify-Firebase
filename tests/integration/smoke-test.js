@@ -620,7 +620,7 @@ test('run lifecycle — create run, log actions, complete', async () => {
 // ============================================================================
 test('API key creation & rotation — create, verify, rotate', async () => {
   try {
-    const plaintextKey = `passport_${randomUUID()}`
+    const plaintextKey = `pa_${randomUUID()}`
     const { hash, salt } = hashKey(plaintextKey)
     const keyId = generateId('key_')
 
@@ -640,7 +640,7 @@ test('API key creation & rotation — create, verify, rotate', async () => {
       status: 'revoked', revokedAt: new Date().toISOString(),
     })
 
-    const newKey = `passport_${randomUUID()}`
+    const newKey = `pa_${randomUUID()}`
     const { hash: nh, salt: ns } = hashKey(newKey)
     const newKeyId = generateId('key_')
 
