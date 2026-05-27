@@ -1079,7 +1079,12 @@ app.get('/org/metrics', async (request, reply) => {
 })
 
   // Register sub-routes, security, observability
-  agentsRoutes(app, db)
+  app.register(async (instance) => {
+    instance.addHook('preHandler', async (request, reply) => {
+      await requireAuth(request, reply)
+    })
+    agentsRoutes(instance, db)
+  })
   policiesRoutes(app, db)
   enforceRoutes(app, db)
   healthRoutes(app, db)
