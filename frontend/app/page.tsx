@@ -1,12 +1,12 @@
-&apos;use client&apos;
+'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from &apos;react&apos;
-import Link from &apos;next/link&apos;
-import Navbar from &apos;@/components/navbar&apos;
-import GlassCard from &apos;@/components/glass-card&apos;
-import TerminalCursor from &apos;@/components/terminal-cursor&apos;
-import FeedbackWidget from &apos;@/components/feedback-widget&apos;
-import { isLoggedIn, createCheckoutSession } from &apos;@/lib/api&apos;
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import Navbar from '@/components/navbar'
+import GlassCard from '@/components/glass-card'
+import TerminalCursor from '@/components/terminal-cursor'
+import FeedbackWidget from '@/components/feedback-widget'
+import { isLoggedIn, createCheckoutSession } from '@/lib/api'
 import {
   Shield,
   Lock,
@@ -34,7 +34,7 @@ import {
   ExternalLink,
   HeartPulse,
   Headphones,
-} from &apos;lucide-react&apos;
+} from 'lucide-react'
 
 function CountUp({ target, duration = 1200 }: { target: number; duration?: number }) {
   const [value, setValue] = useState(0)
@@ -112,12 +112,12 @@ function useScrollAnimation(threshold = 0.15) {
   return { ref, visible }
 }
 
-function ScrollFadeHeading({ children, className = &apos;&apos; }: { children: React.ReactNode; className?: string }) {
+function ScrollFadeHeading({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const { ref, visible } = useScrollAnimation()
   return (
     <div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${visible ? &apos;opacity-100 translate-y-0&apos; : &apos;opacity-0 translate-y-6&apos;} ${className}`}
+      className={`transition-all duration-700 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'} ${className}`}
     >
       {children}
     </div>
@@ -148,7 +148,7 @@ function AnimatedStars({ count = 5, delay = 0 }: { count?: number; delay?: numbe
         <Star
           key={s}
           size={14}
-          className={`transition-all duration-300 ${s < displayCount ? &apos;text-passport-amber fill-passport-amber scale-110&apos; : &apos;text-passport-dim&apos;}`}
+          className={`transition-all duration-300 ${s < displayCount ? 'text-passport-amber fill-passport-amber scale-110' : 'text-passport-dim'}`}
         />
       ))}
     </div>
@@ -174,7 +174,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
         <span className="w-2.5 h-2.5 rounded-full bg-[#d2991d]" />
         <span className="w-2.5 h-2.5 rounded-full bg-[#2ea043]" />
         <span className="ml-3 font-mono text-[10px] uppercase tracking-wider text-passport-dim">
-          {lang === &apos;bash&apos; ? &apos;terminal&apos; : lang}
+          {lang === 'bash' ? 'terminal' : lang}
         </span>
         <div className="flex-1" />
         <button
@@ -187,7 +187,7 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
           ) : (
             <Copy size={12} />
           )}
-          {copied ? &apos;Copied&apos; : &apos;Copy&apos;}
+          {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
       <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed font-mono">
@@ -198,15 +198,15 @@ function CodeBlock({ code, lang }: { code: string; lang: string }) {
 }
 
 function highlightCode(code: string, lang: string) {
-  if (lang === &apos;bash&apos;) {
-    const lines = code.split(&apos;\n&apos;)
+  if (lang === 'bash') {
+    const lines = code.split('\n')
     return lines.map((line, i) => (
       <div key={i}>
-        {line.startsWith(&apos;#&apos;) ? (
+        {line.startsWith('#') ? (
           <span className="text-passport-coral">{line}</span>
         ) : (
-          line.split(/(&apos;[^&apos;]*&apos;)/g).map((part, j) =>
-            part.startsWith("&apos;") && part.endsWith("&apos;") ? (
+          line.split(/('[^']*')/g).map((part, j) =>
+            part.startsWith("'") && part.endsWith("'") ? (
               <span key={j} className="text-passport-green">{part}</span>
             ) : (
               <span key={j}>{part}</span>
@@ -218,14 +218,14 @@ function highlightCode(code: string, lang: string) {
   }
 
   // TypeScript
-  const keywords = [&apos;import&apos;, &apos;from&apos;, &apos;const&apos;, &apos;new&apos;, &apos;await&apos;, &apos;return&apos;, &apos;async&apos;, &apos;function&apos;, &apos;class&apos;, &apos;export&apos;, &apos;default&apos;]
-  const parts = code.split(/(&apos;[^&apos;]*&apos;|`[^`]*`|"[^"]*"|\b(?:import|from|const|new|await|return|async|function|class|export|default)\b|\/\/.*|\{|\}|\(|\)|\[|\]|=>|;|:|,)/g)
+  const keywords = ['import', 'from', 'const', 'new', 'await', 'return', 'async', 'function', 'class', 'export', 'default']
+  const parts = code.split(/('[^']*'|`[^`]*`|"[^"]*"|\b(?:import|from|const|new|await|return|async|function|class|export|default)\b|\/\/.*|\{|\}|\(|\)|\[|\]|=>|;|:|,)/g)
 
   return parts.map((part, i) => {
-    if (part.match(/^[&apos;"`].*[&apos;"`]$/)) return <span key={i} className="text-passport-green">{part}</span>
+    if (part.match(/^['"`].*['"`]$/)) return <span key={i} className="text-passport-green">{part}</span>
     if (keywords.includes(part)) return <span key={i} className="text-passport-azure">{part}</span>
-    if (part.startsWith(&apos;//&apos;)) return <span key={i} className="text-passport-coral italic">{part}</span>
-    if (part === &apos;{&apos; || part === &apos;}&apos; || part === &apos;(&apos; || part === &apos;)&apos; || part === &apos;[&apos; || part === &apos;]&apos; || part === &apos;=>&apos;)
+    if (part.startsWith('//')) return <span key={i} className="text-passport-coral italic">{part}</span>
+    if (part === '{' || part === '}' || part === '(' || part === ')' || part === '[' || part === ']' || part === '=>')
       return <span key={i} className="text-passport-dim">{part}</span>
     return <span key={i}>{part}</span>
   })
@@ -254,14 +254,14 @@ function FaqItem({
       >
         <span className="text-sm font-medium text-passport-text">{question}</span>
         <span
-          className={`shrink-0 text-passport-muted transition-transform duration-300 ease-in-out ${open ? &apos;rotate-180&apos; : &apos;rotate-0&apos;}`}
+          className={`shrink-0 text-passport-muted transition-transform duration-300 ease-in-out ${open ? 'rotate-180' : 'rotate-0'}`}
         >
           {open ? <Minus size={16} /> : <Plus size={16} />}
         </span>
       </button>
       <div
         className="overflow-hidden transition-all duration-300 ease-in-out"
-        style={{ maxHeight: open ? &apos;400px&apos; : &apos;0px&apos; }}
+        style={{ maxHeight: open ? '400px' : '0px' }}
       >
         <div className="px-5 pb-4 text-sm text-passport-muted leading-relaxed">
           {answer}
@@ -277,7 +277,7 @@ function StepCard({ step, index }: { step: { stepNum: string; icon: React.ReactN
     <div
       ref={ref}
       className={`transition-all duration-700 ease-out ${
-        visible ? &apos;opacity-100 translate-y-0&apos; : &apos;opacity-0 translate-y-8&apos;
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
     >
       <GlassCard className="text-center relative z-10 h-full" delay={0}>
@@ -300,15 +300,15 @@ function BackToTop() {
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 600)
-    window.addEventListener(&apos;scroll&apos;, onScroll, { passive: true })
-    return () => window.removeEventListener(&apos;scroll&apos;, onScroll)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   if (!visible) return null
 
   return (
     <button
-      onClick={() => window.scrollTo({ top: 0, behavior: &apos;smooth&apos; })}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       className="fixed bottom-8 right-8 z-40 w-11 h-11 rounded-full border border-passport-border bg-passport-surface/90 backdrop-blur-md text-passport-muted hover:text-passport-green hover:border-passport-green/50 transition-all duration-200 shadow-lg flex items-center justify-center back-to-top-visible"
       aria-label="Back to top"
     >
@@ -319,7 +319,7 @@ function BackToTop() {
 
 /* ─── Subtle Code Rain ─── */
 function CodeRain() {
-  const chars = &apos;{ } [ ] ( ) = > < / ; : * & | ! ? . , + - _ # @ $ % ^&apos;
+  const chars = '{ } [ ] ( ) = > < / ; : * & | ! ? . , + - _ # @ $ % ^'
   const columns = 40
   const drops = useMemo(
     () =>
@@ -357,8 +357,8 @@ function CodeRain() {
 
 export default function LandingPage() {
   const [metrics, setMetrics] = useState<any>(null)
-  const [codeTab, setCodeTab] = useState<&apos;sdk&apos; | &apos;curl&apos;>(&apos;sdk&apos;)
-  const [billingCycle, setBillingCycle] = useState<&apos;monthly&apos; | &apos;annual&apos;>(&apos;monthly&apos;)
+  const [codeTab, setCodeTab] = useState<'sdk' | 'curl'>('sdk')
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
   const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 })
   const currentYear = useMemo(() => new Date().getFullYear(), [])
 
@@ -371,28 +371,28 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
-    fetch(&apos;http://localhost:3000/metrics&apos;)
+    fetch('http://localhost:3000/metrics')
       .then((r) => r.json())
       .then((d) => setMetrics(d))
       .catch(() => {})
   }, [])
 
-  const sdkCode = useMemo(() => `import { AgentControlPlane } from &apos;@passport-agent/sdk&apos;
+  const sdkCode = useMemo(() => `import { AgentControlPlane } from '@passport-agent/sdk'
 
 const agent = new AgentControlPlane({
-  apiKey: &apos;pa_live_...&apos;,
-  policies: [&apos;safe-web-search&apos;, &apos;read-only-db&apos;]
+  apiKey: 'pa_live_...',
+  policies: ['safe-web-search', 'read-only-db']
 })
 
 const result = await agent.run({
-  tool: &apos;query_database&apos;,
-  parameters: { table: &apos;users&apos;, limit: 10 }
+  tool: 'query_database',
+  parameters: { table: 'users', limit: 10 }
 })
-// → { decision: &apos;allowed&apos;, ticket: &apos;gt_...&apos; }`, [])
+// → { decision: 'allowed', ticket: 'gt_...' }`, [])
 
   const curlCode = useMemo(() => `curl -X POST https://api.passport.agent/enforce \\
   -H "X-API-Key: pa_live_..." \\
-  -d &apos;{"tool":"web_search","parameters":{"query":"latest news"}}&apos;
+  -d '{"tool":"web_search","parameters":{"query":"latest news"}}'
 # → {"decision":"allowed","reason":"Tool permitted by policy"}`, [])
 
   return (
@@ -423,7 +423,7 @@ const result = await agent.run({
             v2.1 — Now with Policy Enforcement
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-passport-text tracking-tight leading-[1.1] mb-6" style={{ contain: &apos;layout paint&apos; }}>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-passport-text tracking-tight leading-[1.1] mb-6" style={{ contain: 'layout paint' }}>
             Stop AI Agents
             <br />
             From <span className="text-passport-green">Running Wild</span>
@@ -437,9 +437,9 @@ const result = await agent.run({
           {/* Trusted by counters */}
           <div className="flex flex-wrap items-center justify-center gap-8 mb-10">
             {[
-              { value: 574, label: &apos;Tests Passing&apos; },
-              { value: 28, label: &apos;Routes&apos; },
-              { value: 45, label: &apos;Endpoints&apos; },
+              { value: 574, label: 'Tests Passing' },
+              { value: 28, label: 'Routes' },
+              { value: 45, label: 'Endpoints' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="font-mono text-2xl font-bold text-passport-green">
@@ -463,7 +463,7 @@ const result = await agent.run({
               Sign In to Console
             </Link>
             <button
-              onClick={() => document.getElementById(&apos;demo&apos;)?.scrollIntoView({ behavior: &apos;smooth&apos; })}
+              onClick={() => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth' })}
               className="btn-secondary text-base px-6 py-3.5 w-full sm:w-auto flex items-center gap-2"
             >
               <Play size={14} fill="currentColor" />
@@ -543,31 +543,31 @@ const result = await agent.run({
         <div className="max-w-6xl mx-auto">
           <ScrollFadeHeading>
             <h2 className="text-3xl sm:text-4xl font-bold text-passport-text mb-4 text-center">
-              The Problem {&apos;\u0026&apos;} The Solution
+              The Problem {'\u0026'} The Solution
             </h2>
             <p className="text-passport-muted text-center max-w-xl mx-auto mb-14">
-              Every AI agent deployment faces the same risks. Here&apos;s how Passport solves them.
+              Every AI agent deployment faces the same risks. Here's how Passport solves them.
             </p>
           </ScrollFadeHeading>
 
           <div className="grid md:grid-cols-2 gap-0 relative">
             {/* Animated divider */}
-            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px z-10" style={{ background: &apos;linear-gradient(180deg, transparent 0%, rgba(247,129,102,0.25) 20%, rgba(46,160,67,0.25) 50%, rgba(46,160,67,0.25) 80%, transparent 100%)&apos; }} />
+            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px z-10" style={{ background: 'linear-gradient(180deg, transparent 0%, rgba(247,129,102,0.25) 20%, rgba(46,160,67,0.25) 50%, rgba(46,160,67,0.25) 80%, transparent 100%)' }} />
             <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-passport-green/30 blur-sm animate-pulse-soft z-20" />
 
             {/* Problem */}
-            <div className="rounded-md p-6 md:p-8 relative" style={{ background: &apos;radial-gradient(ellipse at top right, rgba(248,81,73,0.06) 0%, transparent 60%)&apos; }}>
+            <div className="rounded-md p-6 md:p-8 relative" style={{ background: 'radial-gradient(ellipse at top right, rgba(248,81,73,0.06) 0%, transparent 60%)' }}>
               <h3 className="text-xl font-bold text-passport-text mb-2">
                 Your AI Agents Are Unsupervised
               </h3>
               <p className="text-sm text-passport-muted mb-6 leading-relaxed">
-                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won&apos;t know until it&apos;s too late.
+                Without enforcement, AI agents with API keys can delete databases, leak customer data, and rack up $10K bills — and you won't know until it's too late.
               </p>
               <ul className="space-y-4">
                 {[
-                  &apos;Agents with API keys have unrestricted access&apos;,
-                  &apos;No audit trail of what agents actually did&apos;,
-                  &apos;Policy changes require code deployments&apos;,
+                  'Agents with API keys have unrestricted access',
+                  'No audit trail of what agents actually did',
+                  'Policy changes require code deployments',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-passport-muted">
                     <span className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 rounded-full bg-passport-red/10">
@@ -580,7 +580,7 @@ const result = await agent.run({
             </div>
 
             {/* Solution */}
-            <div className="rounded-md p-6 md:p-8 relative" style={{ background: &apos;radial-gradient(ellipse at top left, rgba(46,160,67,0.06) 0%, transparent 60%)&apos; }}>
+            <div className="rounded-md p-6 md:p-8 relative" style={{ background: 'radial-gradient(ellipse at top left, rgba(46,160,67,0.06) 0%, transparent 60%)' }}>
               <h3 className="text-xl font-bold text-passport-text mb-2">
                 Intercept. Verify. Log. BEFORE Execution.
               </h3>
@@ -589,9 +589,9 @@ const result = await agent.run({
               </p>
               <ul className="space-y-4">
                 {[
-                  &apos;Pre-execution policy enforcement in &lt; 50ms&apos;,
-                  &apos;Immutable audit log with cryptographic signatures&apos;,
-                  &apos;Update policies without touching agent code&apos;,
+                  'Pre-execution policy enforcement in &lt; 50ms',
+                  'Immutable audit log with cryptographic signatures',
+                  'Update policies without touching agent code',
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-passport-muted">
                     <span className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5 rounded-full bg-passport-green/10">
@@ -624,12 +624,12 @@ const result = await agent.run({
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
-              { icon: <Shield size={20} className="text-passport-green" />, title: &apos;Agent Passports&apos;, desc: &apos;Cryptographically signed credentials that prove agent identity across any system.&apos;, borderClass: &apos;hover:border-passport-green/40&apos;, bgClass: &apos;bg-passport-green/10 border-passport-green/20&apos; },
-              { icon: <Lock size={20} className="text-passport-azure" />, title: &apos;Policy Enforcement&apos;, desc: &apos;Real-time intent evaluation with gateway tickets. Deny dangerous actions before they execute.&apos;, borderClass: &apos;hover:border-passport-azure/40&apos;, bgClass: &apos;bg-passport-azure/10 border-passport-azure/20&apos; },
-              { icon: <Eye size={20} className="text-passport-coral" />, title: &apos;Full Audit Trail&apos;, desc: &apos;Every action logged with cryptographic integrity. Timeline views and run traces included.&apos;, borderClass: &apos;hover:border-passport-coral/40&apos;, bgClass: &apos;bg-passport-coral/10 border-passport-coral/20&apos; },
-              { icon: <Zap size={20} className="text-passport-amber" />, title: &apos;Stateless Scaling&apos;, desc: &apos;No session state. JWT auth, horizontal scaling, and sub-50ms enforcement latency.&apos;, borderClass: &apos;hover:border-passport-amber/40&apos;, bgClass: &apos;bg-passport-amber/10 border-passport-amber/20&apos; },
-              { icon: <Key size={20} className="text-passport-green" />, title: &apos;Secret Rotation&apos;, desc: &apos;Automatic key rotation with zero-downtime revocation. Agents re-authenticate seamlessly.&apos;, borderClass: &apos;hover:border-passport-green/40&apos;, bgClass: &apos;bg-passport-green/10 border-passport-green/20&apos; },
-              { icon: <FileCheck size={20} className="text-passport-azure" />, title: &apos;Compliance Ready&apos;, desc: &apos;Built-in GDPR/CCPA data handling, audit exports, and policy versioning for regulated industries.&apos;, borderClass: &apos;hover:border-passport-azure/40&apos;, bgClass: &apos;bg-passport-azure/10 border-passport-azure/20&apos; },
+              { icon: <Shield size={20} className="text-passport-green" />, title: 'Agent Passports', desc: 'Cryptographically signed credentials that prove agent identity across any system.', borderClass: 'hover:border-passport-green/40', bgClass: 'bg-passport-green/10 border-passport-green/20' },
+              { icon: <Lock size={20} className="text-passport-azure" />, title: 'Policy Enforcement', desc: 'Real-time intent evaluation with gateway tickets. Deny dangerous actions before they execute.', borderClass: 'hover:border-passport-azure/40', bgClass: 'bg-passport-azure/10 border-passport-azure/20' },
+              { icon: <Eye size={20} className="text-passport-coral" />, title: 'Full Audit Trail', desc: 'Every action logged with cryptographic integrity. Timeline views and run traces included.', borderClass: 'hover:border-passport-coral/40', bgClass: 'bg-passport-coral/10 border-passport-coral/20' },
+              { icon: <Zap size={20} className="text-passport-amber" />, title: 'Stateless Scaling', desc: 'No session state. JWT auth, horizontal scaling, and sub-50ms enforcement latency.', borderClass: 'hover:border-passport-amber/40', bgClass: 'bg-passport-amber/10 border-passport-amber/20' },
+              { icon: <Key size={20} className="text-passport-green" />, title: 'Secret Rotation', desc: 'Automatic key rotation with zero-downtime revocation. Agents re-authenticate seamlessly.', borderClass: 'hover:border-passport-green/40', bgClass: 'bg-passport-green/10 border-passport-green/20' },
+              { icon: <FileCheck size={20} className="text-passport-azure" />, title: 'Compliance Ready', desc: 'Built-in GDPR/CCPA data handling, audit exports, and policy versioning for regulated industries.', borderClass: 'hover:border-passport-azure/40', bgClass: 'bg-passport-azure/10 border-passport-azure/20' },
             ].map((feature, i) => (
               <GlassCard
                 key={feature.title}
@@ -689,11 +689,11 @@ const result = await agent.run({
                 Agents need order/CRM access but must never touch payments, delete data, or leak PII.
               </p>
               <p className="text-sm leading-relaxed mb-4 flex-1">
-                Passport allows{&apos; &apos;}
-                <span className="font-mono text-passport-green">lookup_order</span>,{&apos; &apos;}
-                <span className="font-mono text-passport-green">read_customer</span>,{&apos; &apos;}
+                Passport allows{' '}
+                <span className="font-mono text-passport-green">lookup_order</span>,{' '}
+                <span className="font-mono text-passport-green">read_customer</span>,{' '}
                 <span className="font-mono text-passport-green">send_email</span>
-                {&apos; &apos;}— blocks everything else.
+                {' '}— blocks everything else.
               </p>
               <div className="pt-4 border-t border-passport-border">
                 <div className="font-mono text-2xl font-bold text-passport-green">
@@ -837,27 +837,27 @@ const result = await agent.run({
 
           <div className="grid md:grid-cols-3 gap-6 relative">
             {/* Connector line (desktop only) */}
-            <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5" style={{ background: &apos;linear-gradient(90deg, rgba(46,160,67,0.4), rgba(46,160,67,0.2), rgba(46,160,67,0.4))&apos; }} />
+            <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-0.5" style={{ background: 'linear-gradient(90deg, rgba(46,160,67,0.4), rgba(46,160,67,0.2), rgba(46,160,67,0.4))' }} />
             <div className="hidden md:block absolute top-12 left-[50%] w-3 h-3 rounded-full bg-passport-green animate-connect-line -translate-x-1/2 -translate-y-1/2" />
 
             {[
               {
-                stepNum: &apos;01&apos;,
+                stepNum: '01',
                 icon: <ShieldCheck size={28} className="text-passport-green" />,
-                title: &apos;Create Policies&apos;,
-                desc: &apos;Define allowed tools, domains, cost limits, and PII rules in the dashboard or via the SDK.&apos;,
+                title: 'Create Policies',
+                desc: 'Define allowed tools, domains, cost limits, and PII rules in the dashboard or via the SDK.',
               },
               {
-                stepNum: &apos;02&apos;,
+                stepNum: '02',
                 icon: <UserPlus size={28} className="text-passport-azure" />,
-                title: &apos;Register Agents&apos;,
-                desc: &apos;Issue scoped credentials with automatic secret rotation and expiration.&apos;,
+                title: 'Register Agents',
+                desc: 'Issue scoped credentials with automatic secret rotation and expiration.',
               },
               {
-                stepNum: &apos;03&apos;,
+                stepNum: '03',
                 icon: <Zap size={28} className="text-passport-amber" />,
-                title: &apos;Enforce Automatically&apos;,
-                desc: &apos;Every tool call is intercepted and evaluated in real-time with zero config.&apos;,
+                title: 'Enforce Automatically',
+                desc: 'Every tool call is intercepted and evaluated in real-time with zero config.',
               },
             ].map((step, idx) => (
               <StepCard key={step.title} step={step} index={idx} />
@@ -879,21 +879,21 @@ const result = await agent.run({
           <div className="flex items-center justify-between mb-4">
             <div className="flex gap-2">
               <button
-                onClick={() => setCodeTab(&apos;sdk&apos;)}
+                onClick={() => setCodeTab('sdk')}
                 className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  codeTab === &apos;sdk&apos;
-                    ? &apos;bg-passport-green/10 text-passport-green border border-passport-green/30&apos;
-                    : &apos;text-passport-muted hover:text-passport-text border border-transparent&apos;
+                  codeTab === 'sdk'
+                    ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
+                    : 'text-passport-muted hover:text-passport-text border border-transparent'
                 }`}
               >
                 SDK
               </button>
               <button
-                onClick={() => setCodeTab(&apos;curl&apos;)}
+                onClick={() => setCodeTab('curl')}
                 className={`px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  codeTab === &apos;curl&apos;
-                    ? &apos;bg-passport-green/10 text-passport-green border border-passport-green/30&apos;
-                    : &apos;text-passport-muted hover:text-passport-text border border-transparent&apos;
+                  codeTab === 'curl'
+                    ? 'bg-passport-green/10 text-passport-green border border-passport-green/30'
+                    : 'text-passport-muted hover:text-passport-text border border-transparent'
                 }`}
               >
                 cURL
@@ -908,7 +908,7 @@ const result = await agent.run({
             </Link>
           </div>
 
-          {codeTab === &apos;sdk&apos; ? <CodeBlock code={sdkCode} lang="typescript" /> : <CodeBlock code={curlCode} lang="bash" />}
+          {codeTab === 'sdk' ? <CodeBlock code={sdkCode} lang="typescript" /> : <CodeBlock code={curlCode} lang="bash" />}
         </div>
       </section>
 
@@ -958,7 +958,7 @@ const result = await agent.run({
             As seen on
           </div>
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 opacity-30">
-            {[&apos;Hacker News&apos;, &apos;Product Hunt&apos;, &apos;Reddit r/MachineLearning&apos;, &apos;GitHub Trending&apos;].map((name) => (
+            {['Hacker News', 'Product Hunt', 'Reddit r/MachineLearning', 'GitHub Trending'].map((name) => (
               <span key={name} className="text-passport-muted font-semibold text-xs sm:text-sm">
                 {name}
               </span>
@@ -979,22 +979,22 @@ const result = await agent.run({
           <div className="grid md:grid-cols-3 gap-5">
             {[
               {
-                quote: &apos;We caught an agent trying to delete a production database before it happened.&apos;,
-                name: &apos;Sarah Chen&apos;,
-                title: &apos;Engineering Lead, SaaS Co&apos;,
-                company: &apos;Acme AI&apos;,
+                quote: 'We caught an agent trying to delete a production database before it happened.',
+                name: 'Sarah Chen',
+                title: 'Engineering Lead, SaaS Co',
+                company: 'Acme AI',
               },
               {
-                quote: &apos;Set up enforcement in 10 minutes. Sleep better at night.&apos;,
-                name: &apos;Marcus Johnson&apos;,
-                title: &apos;CTO, Fintech Startup&apos;,
-                company: &apos;DataVault&apos;,
+                quote: 'Set up enforcement in 10 minutes. Sleep better at night.',
+                name: 'Marcus Johnson',
+                title: 'CTO, Fintech Startup',
+                company: 'DataVault',
               },
               {
-                quote: &apos;The audit trail alone saved us during our SOC 2 review.&apos;,
-                name: &apos;Aisha Patel&apos;,
-                title: &apos;Security Engineer&apos;,
-                company: &apos;ByteForge&apos;,
+                quote: 'The audit trail alone saved us during our SOC 2 review.',
+                name: 'Aisha Patel',
+                title: 'Security Engineer',
+                company: 'ByteForge',
               },
             ].map((t, i) => (
               <GlassCard key={i} delay={0.05 * (i + 1)} className="flex flex-col h-full hover:border-passport-green/20 hover:shadow-[0_0_24px_rgba(46,160,67,0.06)] transition-all duration-300">
@@ -1025,28 +1025,28 @@ const result = await agent.run({
               <div
                 className="absolute top-0.5 bottom-0.5 rounded bg-passport-green/15 transition-all duration-300 ease-in-out"
                 style={{
-                  left: billingCycle === &apos;monthly&apos; ? &apos;2px&apos; : &apos;calc(50% + 1px)&apos;,
-                  width: &apos;calc(50% - 3px)&apos;,
+                  left: billingCycle === 'monthly' ? '2px' : 'calc(50% + 1px)',
+                  width: 'calc(50% - 3px)',
                 }}
               />
               <button
-                onClick={() => setBillingCycle(&apos;monthly&apos;)}
+                onClick={() => setBillingCycle('monthly')}
                 className={`relative z-10 px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  billingCycle === &apos;monthly&apos; ? &apos;text-passport-green&apos; : &apos;text-passport-muted hover:text-passport-text&apos;
+                  billingCycle === 'monthly' ? 'text-passport-green' : 'text-passport-muted hover:text-passport-text'
                 }`}
               >
                 Monthly
               </button>
               <button
-                onClick={() => setBillingCycle(&apos;annual&apos;)}
+                onClick={() => setBillingCycle('annual')}
                 className={`relative z-10 px-4 py-1.5 rounded text-xs font-mono font-semibold transition-colors ${
-                  billingCycle === &apos;annual&apos; ? &apos;text-passport-green&apos; : &apos;text-passport-muted hover:text-passport-text&apos;
+                  billingCycle === 'annual' ? 'text-passport-green' : 'text-passport-muted hover:text-passport-text'
                 }`}
               >
                 Annual
               </button>
             </div>
-            {billingCycle === &apos;annual&apos; && (
+            {billingCycle === 'annual' && (
               <p className="text-xs text-passport-green mt-2 animate-fade-in">2 months free with annual billing</p>
             )}
           </div>
@@ -1057,7 +1057,7 @@ const result = await agent.run({
               <div className="label-text mb-2">Free</div>
               <div className="text-3xl font-bold text-passport-text mb-6">$0<span className="text-base font-normal text-passport-muted">/month</span></div>
               <ul className="space-y-3 mb-8 flex-1">
-                {[&apos;1 organization&apos;, &apos;3 agents&apos;, &apos;100 enforcements/month&apos;, &apos;Basic policies&apos;, &apos;Community support&apos;].map((f) => (
+                {['1 organization', '3 agents', '100 enforcements/month', 'Basic policies', 'Community support'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-passport-muted">
                     <Check size={14} className="text-passport-green shrink-0" />
                     {f}
@@ -1075,11 +1075,11 @@ const result = await agent.run({
               </div>
               <div className="label-text mb-2">Pro</div>
               <div className="text-3xl font-bold text-passport-text mb-6">
-                ${billingCycle === &apos;annual&apos; ? &apos;24&apos; : &apos;29&apos;}
+                ${billingCycle === 'annual' ? '24' : '29'}
                 <span className="text-base font-normal text-passport-muted">/month</span>
               </div>
               <ul className="space-y-3 mb-8 flex-1">
-                {[&apos;Unlimited agents&apos;, &apos;10,000 enforcements/month&apos;, &apos;Advanced policies + webhooks&apos;, &apos;Team members&apos;, &apos;Priority email support&apos;].map((f) => (
+                {['Unlimited agents', '10,000 enforcements/month', 'Advanced policies + webhooks', 'Team members', 'Priority email support'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-passport-muted">
                     <Check size={14} className="text-passport-green shrink-0" />
                     {f}
@@ -1089,14 +1089,14 @@ const result = await agent.run({
               <button
                 onClick={async () => {
                   if (!isLoggedIn()) {
-                    window.location.href = &apos;/register&apos;
+                    window.location.href = '/register'
                     return
                   }
                   try {
-                    const { url } = await createCheckoutSession(&apos;pro&apos;)
+                    const { url } = await createCheckoutSession('pro')
                     if (url) window.location.href = url
                   } catch (e: any) {
-                    alert(e.message || &apos;Checkout failed&apos;)
+                    alert(e.message || 'Checkout failed')
                   }
                 }}
                 className="btn-primary w-full text-center"
@@ -1111,7 +1111,7 @@ const result = await agent.run({
               <div className="label-text mb-2">Enterprise</div>
               <div className="text-3xl font-bold text-passport-text mb-6">Custom</div>
               <ul className="space-y-3 mb-8 flex-1">
-                {[&apos;Unlimited everything&apos;, &apos;SSO/SAML&apos;, &apos;Custom contracts&apos;, &apos;Dedicated support&apos;, &apos;On-premise option&apos;].map((f) => (
+                {['Unlimited everything', 'SSO/SAML', 'Custom contracts', 'Dedicated support', 'On-premise option'].map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-passport-muted">
                     <Check size={14} className="text-passport-green shrink-0" />
                     {f}
@@ -1119,7 +1119,7 @@ const result = await agent.run({
                 ))}
               </ul>
               <Link href="/register" className="btn-secondary w-full text-center">Contact Sales</Link>
-              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">Custom pricing {&apos;\u0026&apos;} SLAs</p>
+              <p className="text-[10px] text-passport-dim text-center mt-3 font-mono">Custom pricing {'\u0026'} SLAs</p>
             </GlassCard>
           </div>
         </div>
@@ -1139,7 +1139,7 @@ const result = await agent.run({
               id="faq-1"
               defaultOpen
               question="What is AI Agent Passport?"
-              answer="It&apos;s like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
+              answer="It's like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
             />
             <FaqItem
               id="faq-2"
@@ -1149,7 +1149,7 @@ const result = await agent.run({
             <FaqItem
               id="faq-3"
               question="Can I use this with OpenAI, Anthropic, or custom agents?"
-              answer="Yes, the SDK works with any agent framework. Whether you&apos;re using LangChain, CrewAI, or a custom Python agent, you wrap tool calls with our enforcement layer."
+              answer="Yes, the SDK works with any agent framework. Whether you're using LangChain, CrewAI, or a custom Python agent, you wrap tool calls with our enforcement layer."
             />
             <FaqItem
               id="faq-4"
@@ -1168,7 +1168,7 @@ const result = await agent.run({
       {/* ─── Final CTA ─── */}
       <section id="cta" className="py-24 px-4 sm:px-6 lg:px-8 scroll-mt-20 relative">
         <div className="section-divider mb-24" />
-        <div className="absolute inset-0 pointer-events-none" style={{ background: &apos;radial-gradient(ellipse at center, rgba(46,160,67,0.06) 0%, transparent 70%)&apos; }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at center, rgba(46,160,67,0.06) 0%, transparent 70%)' }} />
         <div className="absolute inset-0 pointer-events-none animate-cta-glow opacity-50" />
         <div className="max-w-3xl mx-auto text-center relative z-10">
           <GlassCard className="p-10 sm:p-14" hover={false}>
@@ -1216,7 +1216,7 @@ const result = await agent.run({
 
       {/* Footer */}
       <footer id="footer" className="py-12 px-4 sm:px-6 lg:px-8 relative">
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: &apos;linear-gradient(90deg, transparent, rgba(46,160,67,0.15), transparent)&apos; }} />
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(46,160,67,0.15), transparent)' }} />
         <div className="max-w-5xl mx-auto pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div>
@@ -1265,10 +1265,10 @@ const result = await agent.run({
           </div>
           <div className="text-center border-t border-passport-border/50 pt-6">
             <p className="font-mono text-[10px] text-passport-dim tracking-wider mb-2">
-              {&apos;\u00A9&apos;} {currentYear} Passport Agent {&apos;\u00B7&apos;} Built by J. Rabinowitz
+              {'\u00A9'} {currentYear} Passport Agent {'\u00B7'} Built by J. Rabinowitz
             </p>
             <p className="font-mono text-[9px] text-passport-dim/60 tracking-wider">
-              v2.1 {&apos;\u00B7&apos;} 2 runtime deps {&apos;\u00B7&apos;} 18 endpoints {&apos;\u00B7&apos;} Zero frameworks
+              v2.1 {'\u00B7'} 2 runtime deps {'\u00B7'} 18 endpoints {'\u00B7'} Zero frameworks
             </p>
           </div>
         </div>
