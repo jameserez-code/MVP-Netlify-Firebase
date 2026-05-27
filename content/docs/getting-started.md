@@ -143,7 +143,7 @@ Copy the generated API key. **You won't see it again.**
 
 ```bash
 curl -X POST http://localhost:3000/enforce \
-  -H "X-API-Key: passport_live_YOUR_KEY_HERE" \
+  -H "X-API-Key: pa_live_YOUR_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "tool": "web_search",
@@ -165,7 +165,7 @@ Now try a blocked action:
 
 ```bash
 curl -X POST http://localhost:3000/enforce \
-  -H "X-API-Key: passport_live_YOUR_KEY_HERE" \
+  -H "X-API-Key: pa_live_YOUR_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "tool": "delete_database",

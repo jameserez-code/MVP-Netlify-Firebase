@@ -1097,7 +1097,7 @@ export default function DocsPage() {
   -d '{"intent":{"tool":"web_search","agentId":"agent_abc"}}'`
 
   const apiKeyExample = `curl -X POST http://localhost:3000/enforce \\
-  -H 'X-API-Key: passport_live_...' \\
+  -H 'X-API-Key: pa_live_...' \\
   -H 'Content-Type: application/json' \\
   -d '{"intent":{"tool":"web_search","agentId":"agent_abc"}}'`
 
@@ -1345,7 +1345,7 @@ export default function DocsPage() {
                   code={`import { AgentControlPlane } from '@passport-agent/sdk'
 
 const agent = new AgentControlPlane({
-  apiKey: 'passport_live_...',
+  apiKey: 'pa_live_...',
   policies: ['safe-web-search', 'read-only-db'],
 })
 
