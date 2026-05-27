@@ -1,15 +1,15 @@
-'use client'
+&apos;use client&apos;
 
-import { useState, useCallback } from 'react'
-import useSWR from 'swr'
-import { swrDashboardConfig } from '@/lib/swr-config'
-import { listApiKeys, createApiKey, deleteApiKey, rotateApiKey } from '@/lib/api'
-import { unwrapApiResponse } from '@/lib/data-utils'
-import GlassCard from '@/components/glass-card'
-import EmptyState from '@/components/empty-state'
-import ConfirmDialog from '@/components/confirm-dialog'
-import CopyButton from '@/components/copy-button'
-import { useToast } from '@/components/toast'
+import { useState, useCallback } from &apos;react&apos;
+import useSWR from &apos;swr&apos;
+import { swrDashboardConfig } from &apos;@/lib/swr-config&apos;
+import { listApiKeys, createApiKey, deleteApiKey, rotateApiKey } from &apos;@/lib/api&apos;
+import { unwrapApiResponse } from &apos;@/lib/data-utils&apos;
+import GlassCard from &apos;@/components/glass-card&apos;
+import EmptyState from &apos;@/components/empty-state&apos;
+import ConfirmDialog from &apos;@/components/confirm-dialog&apos;
+import CopyButton from &apos;@/components/copy-button&apos;
+import { useToast } from &apos;@/components/toast&apos;
 import {
   KeyRound,
   Plus,
@@ -25,12 +25,12 @@ import {
   Eye,
   EyeOff,
   AlertOctagon,
-} from 'lucide-react'
+} from &apos;lucide-react&apos;
 
 const SCOPES = [
-  { value: 'read', label: 'Read' },
-  { value: 'write', label: 'Write' },
-  { value: 'enforce', label: 'Enforce' },
+  { value: &apos;read&apos;, label: &apos;Read&apos; },
+  { value: &apos;write&apos;, label: &apos;Write&apos; },
+  { value: &apos;enforce&apos;, label: &apos;Enforce&apos; },
 ]
 
 interface ApiKey {
@@ -42,15 +42,15 @@ interface ApiKey {
   lastUsedAt?: string | null
   requestCount?: number
   scopes?: string[]
-  status?: 'active' | 'revoked'
+  status?: &apos;active&apos; | &apos;revoked&apos;
 }
 
 function formatDate(d?: string | null): string {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
+  if (!d) return &apos;—&apos;
+  return new Date(d).toLocaleDateString(&apos;en-US&apos;, {
+    month: &apos;short&apos;,
+    day: &apos;numeric&apos;,
+    year: &apos;numeric&apos;,
   })
 }
 
@@ -61,12 +61,12 @@ export default function ApiKeysPage() {
     error: keysError,
     isLoading: keysLoading,
     mutate: mutateKeys,
-  } = useSWR('/api-keys', listApiKeys, swrDashboardConfig)
+  } = useSWR(&apos;/api-keys&apos;, listApiKeys, swrDashboardConfig)
 
   const keys: ApiKey[] = unwrapApiResponse<ApiKey>(keysData)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [keyForm, setKeyForm] = useState({ name: '', scopes: ['read', 'write'] as string[] })
+  const [keyForm, setKeyForm] = useState({ name: &apos;&apos;, scopes: [&apos;read&apos;, &apos;write&apos;] as string[] })
   const [keySubmitting, setKeySubmitting] = useState(false)
   const [newKey, setNewKey] = useState<any>(null)
   const [showSecret, setShowSecret] = useState(false)
@@ -89,11 +89,11 @@ export default function ApiKeysPage() {
   async function handleCreateKey(e: React.FormEvent) {
     e.preventDefault()
     if (!keyForm.name.trim()) {
-      addToast('Key name is required', 'error')
+      addToast(&apos;Key name is required&apos;, &apos;error&apos;)
       return
     }
     if (keyForm.scopes.length === 0) {
-      addToast('Select at least one scope', 'error')
+      addToast(&apos;Select at least one scope&apos;, &apos;error&apos;)
       return
     }
     setKeySubmitting(true)
@@ -101,11 +101,11 @@ export default function ApiKeysPage() {
       const data = await createApiKey({ name: keyForm.name, scopes: keyForm.scopes })
       setNewKey(data)
       setShowCreateModal(false)
-      setKeyForm({ name: '', scopes: ['read', 'write'] })
-      addToast('API key created successfully', 'success')
+      setKeyForm({ name: &apos;&apos;, scopes: [&apos;read&apos;, &apos;write&apos;] })
+      addToast(&apos;API key created successfully&apos;, &apos;success&apos;)
       mutateKeys()
     } catch (err: any) {
-      addToast(err.message || 'Failed to create key', 'error')
+      addToast(err.message || &apos;Failed to create key&apos;, &apos;error&apos;)
     } finally {
       setKeySubmitting(false)
     }
@@ -116,11 +116,11 @@ export default function ApiKeysPage() {
     setRevoking(true)
     try {
       await deleteApiKey(revokeTarget.id)
-      addToast('API key revoked', 'success')
+      addToast(&apos;API key revoked&apos;, &apos;success&apos;)
       setRevokeTarget(null)
       mutateKeys()
     } catch (err: any) {
-      addToast(err.message || 'Failed to revoke key', 'error')
+      addToast(err.message || &apos;Failed to revoke key&apos;, &apos;error&apos;)
     } finally {
       setRevoking(false)
     }
@@ -131,10 +131,10 @@ export default function ApiKeysPage() {
     try {
       const data = await rotateApiKey(id)
       setNewKey(data)
-      addToast('API key rotated successfully', 'success')
+      addToast(&apos;API key rotated successfully&apos;, &apos;success&apos;)
       mutateKeys()
     } catch (err: any) {
-      addToast(err.message || 'Failed to rotate key', 'error')
+      addToast(err.message || &apos;Failed to rotate key&apos;, &apos;error&apos;)
     } finally {
       setRotating(null)
     }
@@ -144,23 +144,23 @@ export default function ApiKeysPage() {
     if (newKey?.key) {
       navigator.clipboard.writeText(newKey.key)
       setCopiedNewKey(true)
-      addToast('Key copied to clipboard', 'success')
+      addToast(&apos;Key copied to clipboard&apos;, &apos;success&apos;)
       setTimeout(() => setCopiedNewKey(false), 2000)
     }
   }
 
   function statusBadge(status?: string) {
     switch (status) {
-      case 'active':
-        return 'bg-passport-green/10 text-passport-green'
-      case 'revoked':
-        return 'bg-passport-red/10 text-passport-red'
+      case &apos;active&apos;:
+        return &apos;bg-passport-green/10 text-passport-green&apos;
+      case &apos;revoked&apos;:
+        return &apos;bg-passport-red/10 text-passport-red&apos;
       default:
-        return 'bg-passport-green/10 text-passport-green'
+        return &apos;bg-passport-green/10 text-passport-green&apos;
     }
   }
 
-  const activeKeys = keys.filter((k) => k.status !== 'revoked')
+  const activeKeys = keys.filter((k) => k.status !== &apos;revoked&apos;)
 
   return (
     <div className="space-y-6">
@@ -173,7 +173,7 @@ export default function ApiKeysPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => mutateKeys()} className="btn-secondary" disabled={keysLoading}>
-            <RefreshCw size={14} className={keysLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={keysLoading ? &apos;animate-spin&apos; : &apos;&apos;} />
             Refresh
           </button>
           <button onClick={() => setShowCreateModal(true)} className="btn-primary">
@@ -191,7 +191,7 @@ export default function ApiKeysPage() {
       {keysError && (
         <div className="p-3 rounded-passport border border-passport-red/30 bg-passport-red/5 flex items-center gap-2">
           <AlertTriangle size={16} className="text-passport-red" />
-          <span className="text-sm text-passport-red flex-1">{(keysError as any)?.message || 'Failed to load keys'}</span>
+          <span className="text-sm text-passport-red flex-1">{(keysError as any)?.message || &apos;Failed to load keys&apos;}</span>
           <button onClick={() => mutateKeys()} className="text-xs text-passport-red underline hover:no-underline">
             Retry
           </button>
@@ -204,7 +204,7 @@ export default function ApiKeysPage() {
             <div className="flex items-center gap-2">
               <CheckCircle size={18} className="text-passport-green" />
               <span className="font-semibold text-passport-text">
-                {newKey.previousKeyId ? 'Key Rotated' : 'Key Created'}
+                {newKey.previousKeyId ? &apos;Key Rotated&apos; : &apos;Key Created&apos;}
               </span>
             </div>
             <button
@@ -227,7 +227,7 @@ export default function ApiKeysPage() {
               </div>
               <div className="flex items-center gap-2">
                 <code className="flex-1 font-mono text-sm text-passport-green break-all">
-                  {showSecret ? newKey.key : '•'.repeat(Math.min(newKey.key?.length || 40, 40))}
+                  {showSecret ? newKey.key : &apos;•&apos;.repeat(Math.min(newKey.key?.length || 40, 40))}
                 </code>
                 <button
                   onClick={() => setShowSecret(!showSecret)}
@@ -246,7 +246,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="mt-3 p-2 rounded-passport bg-passport-red/5 border border-passport-red/20 flex items-center gap-2">
             <AlertTriangle size={14} className="text-passport-red shrink-0" />
-            <span className="text-xs text-passport-red font-medium">Store this securely. You won't see it again.</span>
+            <span className="text-xs text-passport-red font-medium">Store this securely. You won&apos;t see it again.</span>
           </div>
         </div>
       )}
@@ -298,10 +298,10 @@ export default function ApiKeysPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <div className="p-1.5 rounded-passport bg-passport-surface-2">
-                          <KeyRound size={16} className={key.status === 'revoked' ? 'text-passport-red' : 'text-passport-green'} />
+                          <KeyRound size={16} className={key.status === &apos;revoked&apos; ? &apos;text-passport-red&apos; : &apos;text-passport-green&apos;} />
                         </div>
                         <div>
-                          <div className="font-medium text-passport-text text-sm">{key.name || 'Unnamed'}</div>
+                          <div className="font-medium text-passport-text text-sm">{key.name || &apos;Unnamed&apos;}</div>
                           <div className="font-mono text-[10px] text-passport-dim">{key.id}</div>
                         </div>
                       </div>
@@ -324,7 +324,7 @@ export default function ApiKeysPage() {
                     <td className="px-4 py-3 hidden md:table-cell">
                       <span className="font-mono text-[10px] text-passport-dim flex items-center gap-1">
                         <Clock size={10} />
-                        {key.lastUsedAt ? formatDate(key.lastUsedAt) : 'Never'}
+                        {key.lastUsedAt ? formatDate(key.lastUsedAt) : &apos;Never&apos;}
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
@@ -335,12 +335,12 @@ export default function ApiKeysPage() {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${statusBadge(key.status)}`}>
-                        {key.status || 'active'}
+                        {key.status || &apos;active&apos;}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {key.status !== 'revoked' && (
+                        {key.status !== &apos;revoked&apos; && (
                           <>
                             <button
                               onClick={() => handleRotateKey(key.id)}
@@ -348,7 +348,7 @@ export default function ApiKeysPage() {
                               className="p-1.5 rounded-passport text-passport-dim hover:text-passport-azure hover:bg-passport-azure/5 transition-all min-touch-target"
                               aria-label={`Rotate API key ${key.name}`}
                             >
-                              <RefreshCw size={14} className={rotating === key.id ? 'animate-spin' : ''} />
+                              <RefreshCw size={14} className={rotating === key.id ? &apos;animate-spin&apos; : &apos;&apos;} />
                             </button>
                             <button
                               onClick={() => setRevokeTarget(key)}
@@ -414,8 +414,8 @@ export default function ApiKeysPage() {
                         onClick={() => toggleScope(scope.value)}
                         className={`px-2.5 py-1 rounded-passport text-xs font-mono transition-all border ${
                           active
-                            ? 'bg-passport-green/10 text-passport-green border-passport-green/30'
-                            : 'bg-passport-bg text-passport-muted border-passport-border hover:border-passport-border-2'
+                            ? &apos;bg-passport-green/10 text-passport-green border-passport-green/30&apos;
+                            : &apos;bg-passport-bg text-passport-muted border-passport-border hover:border-passport-border-2&apos;
                         }`}
                       >
                         {active && <CheckCircle size={10} className="inline mr-1" />}
@@ -453,7 +453,7 @@ export default function ApiKeysPage() {
         description={
           revokeTarget
             ? `Are you sure you want to revoke "${revokeTarget.name}"? Any integrations using this key will stop working immediately.`
-            : ''
+            : &apos;&apos;
         }
         confirmLabel="Revoke"
         variant="danger"
