@@ -1072,8 +1072,19 @@ app.post('/org/seed', async (request, reply) => {
 
 // GET /org/metrics — org-scoped metrics
 app.get('/org/metrics', async (request, reply) => {
+  const claims = await requireAuth(request, reply)
+  if (!claims) return
+
   const { orgId } = (request.query || {}) as { orgId?: string }
   if (!orgId) return err(reply, 400, 'validation', 'orgId query parameter required')
+
+  // Authorization check: ensure user only accesses their own org's metrics (IDOR protection)
+  const userOrgId = getRequestOrgIdSafe(request)
+  if (userOrgId !== orgId) {
+    log.warn('unauthorized metrics access attempt', { attemptedOrgId: orgId, userOrgId, user: claims.sub })
+    return err(reply, 403, 'forbidden', 'You do not have access to this organization\'s metrics')
+  }
+
   try { return await getOrgMetrics(db, orgId) }
   catch (e: any) { reply.code(500); return { error: { code: 'metrics_failed', message: e.message } } }
 })
