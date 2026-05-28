@@ -166,6 +166,7 @@
         <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Admin Console</h1>
         <p class="text-xs mb-8" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">secure terminal // restricted access</p>
         <div class="w-full space-y-4">
+          <label for="gateInput" class="sr-only">Access Code</label>
           <input id="gateInput" type="password" placeholder="Access Code" class="input" />
           <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
           <p id="gateError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
@@ -216,9 +217,9 @@
         <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
         <h2 class="section-title">Admin Sign In</h2>
         <div>
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
+          <label for="loginEmail" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
           <input id="loginEmail" type="email" class="input mb-3" placeholder="admin@example.com" required />
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
+          <label for="loginPassword" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
           <input id="loginPassword" type="password" class="input mb-4" placeholder="••••••••" required />
           <button id="loginBtn" class="btn btn-primary w-full">Sign In</button>
           <p id="loginError" class="text-xs text-center mt-3 hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
@@ -267,6 +268,7 @@
           <div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b" style="border-color:rgba(59,75,55,0.2);">
             <h3 class="section-title mb-0">Application Registry</h3>
             <div class="flex items-center gap-3">
+              <label for="filterInput" class="sr-only">Filter registry</label>
               <input id="filterInput" class="input" style="width:220px;padding:6px 10px;" placeholder="Filter registry..." />
               <button id="seedBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Seed Demo</button>
               <button id="refreshBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
@@ -297,6 +299,7 @@
           <div class="p-6 flex items-center justify-between border-b" style="border-color:rgba(59,75,55,0.2);">
             <h3 class="section-title mb-0">Agent Activity Feed</h3>
             <div class="flex items-center gap-3">
+              <label for="actionFilter" class="sr-only">Filter by decision</label>
               <select id="actionFilter" class="input" style="width:160px;padding:6px 10px;font-size:11px;">
                 <option value="">All decisions</option>
                 <option value="allow">ALLOW</option>
