@@ -246,7 +246,7 @@ export default function ApiKeysPage() {
           </div>
           <div className="mt-3 p-2 rounded-passport bg-passport-red/5 border border-passport-red/20 flex items-center gap-2">
             <AlertTriangle size={14} className="text-passport-red shrink-0" />
-            <span className="text-xs text-passport-red font-medium">Store this securely. You won't see it again.</span>
+            <span className="text-xs text-passport-red font-medium">Store this securely. You won&apos;t see it again.</span>
           </div>
         </div>
       )}
