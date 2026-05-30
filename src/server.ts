@@ -974,6 +974,7 @@ app.patch('/run/:id/fail', async (request, reply) => {
 // GET /audit — paginated with filtering (cached 10s)
 app.get('/audit', {
   handler: withCache(async (request, reply) => {
+    const claims = await requireAuth(request, reply); if (!claims) return
     try {
       const { decision, tool, limit } = request.query as { decision?: string; tool?: string; limit?: string }
       const orgId = getRequestOrgIdSafe(request)
@@ -1026,14 +1027,18 @@ app.get('/sessions/:id', async (request, reply) => {
 
 // GET /diagnostics — full system health (cached 60s)
 app.get('/diagnostics', {
-  handler: withCache(async (_req, reply) => {
+  handler: withCache(async (request, reply) => {
+    const claims = await requireAuth(request, reply); if (!claims) return
+    if (claims.role !== 'org_admin') return err(reply, 403, 'forbidden', 'Admin access required')
     try { return await systemDiagnostics(db) }
     catch (e: any) { reply.code(500); return { error: { code: 'diagnostics_failed', message: e.message } } }
   }, 60),
 })
 
 // GET /consistency — detect bad states
-app.get('/consistency', async (_req, reply) => {
+app.get('/consistency', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
+  if (claims.role !== 'org_admin') return err(reply, 403, 'forbidden', 'Admin access required')
   try { return await checkConsistency(db) }
   catch (e: any) { reply.code(500); return { error: { code: 'consistency_failed', message: e.message } } }
 })
@@ -1052,7 +1057,9 @@ app.post('/repair', async (request, reply) => {
 
 // GET /report — operational summary (cached 120s)
 app.get('/report', {
-  handler: withCache(async (_req, reply) => {
+  handler: withCache(async (request, reply) => {
+    const claims = await requireAuth(request, reply); if (!claims) return
+    if (claims.role !== 'org_admin') return err(reply, 403, 'forbidden', 'Admin access required')
     try { return await generateReport(db) }
     catch (e: any) { reply.code(500); return { error: { code: 'report_failed', message: e.message } } }
   }, 120),
@@ -1072,8 +1079,17 @@ app.post('/org/seed', async (request, reply) => {
 
 // GET /org/metrics — org-scoped metrics
 app.get('/org/metrics', async (request, reply) => {
+  const claims = await requireAuth(request, reply); if (!claims) return
   const { orgId } = (request.query || {}) as { orgId?: string }
   if (!orgId) return err(reply, 400, 'validation', 'orgId query parameter required')
+
+  // Enforce org isolation (only admins can view other orgs)
+  const authedOrgId = getRequestOrgIdSafe(request)
+  if (orgId !== authedOrgId && claims.role !== 'org_admin') {
+    log.warn('IDOR attempt blocked', { sub: claims.sub, requestedOrgId: orgId, actualOrgId: authedOrgId })
+    return err(reply, 403, 'forbidden', 'Cross-organization metrics access denied')
+  }
+
   try { return await getOrgMetrics(db, orgId) }
   catch (e: any) { reply.code(500); return { error: { code: 'metrics_failed', message: e.message } } }
 })
