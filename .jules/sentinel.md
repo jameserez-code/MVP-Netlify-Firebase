@@ -1,0 +1,4 @@
+## 2026-05-30 - Administrative Endpoint Access Control
+**Vulnerability:** Several sensitive administrative and system-level endpoints (`/diagnostics`, `/consistency`, `/report`, `/audit`, `/org/metrics`) were accessible without any authentication or authorization checks.
+**Learning:** In a Fastify application with modular route registration, it's easy to overlook global authentication if it's not applied at the top level or within each route module. Some endpoints were added for "diagnostics" but left open, potentially exposing system state and cross-org data (IDOR).
+**Prevention:** Always verify that every new endpoint explicitly calls authentication and authorization helpers. Use a "deny-by-default" approach and implement automated security tests to check for unauthenticated access to sensitive paths.
