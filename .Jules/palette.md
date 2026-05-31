@@ -1,0 +1,3 @@
+## 2026-05-31 - [A11y Enhancement for Scope Chips]
+**Learning:** Custom interactive elements (like chips/badges used for selection) must be explicitly given appropriate ARIA roles (e.g., `checkbox` or `button`), associated with labels using `aria-labelledby`, and enhanced with keyboard event listeners for `Enter` and `Space` to ensure they are accessible to screen readers and keyboard-only users.
+**Action:** Always check if custom UI components used for selection have appropriate ARIA attributes and keyboard interaction support. ASSOCIATE group containers with their labels using `role="group"` and `aria-labelledby`.
