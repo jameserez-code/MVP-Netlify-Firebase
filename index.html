@@ -515,8 +515,8 @@
             <div id="visaForm" class="hidden">
               <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Attach to Passport</label>
               <select id="passportSelect" class="input mb-3"></select>
-              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Authorization Scopes</label>
-              <div id="scopeChips" class="flex flex-wrap gap-2 mb-4"></div>
+              <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" id="scopeChipsLabel">Authorization Scopes</label>
+              <div id="scopeChips" role="group" aria-labelledby="scopeChipsLabel" class="flex flex-wrap gap-2 mb-4"></div>
               <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Validity Period</label>
               <select id="visaExpiry" class="input mb-4">
                 <option value="24h">24 hours</option>
