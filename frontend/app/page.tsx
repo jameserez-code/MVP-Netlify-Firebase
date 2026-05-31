@@ -546,7 +546,7 @@ const result = await agent.run({
               The Problem {'\u0026'} The Solution
             </h2>
             <p className="text-passport-muted text-center max-w-xl mx-auto mb-14">
-              Every AI agent deployment faces the same risks. Here's how Passport solves them.
+              Every AI agent deployment faces the same risks. Here&apos;s how Passport solves them.
             </p>
           </ScrollFadeHeading>
 
@@ -1139,7 +1139,7 @@ const result = await agent.run({
               id="faq-1"
               defaultOpen
               question="What is AI Agent Passport?"
-              answer="It's like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
+              answer="It&apos;s like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
             />
             <FaqItem
               id="faq-2"
