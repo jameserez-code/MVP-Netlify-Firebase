@@ -546,7 +546,7 @@ const result = await agent.run({
               The Problem {'\u0026'} The Solution
             </h2>
             <p className="text-passport-muted text-center max-w-xl mx-auto mb-14">
-              Every AI agent deployment faces the same risks. Here's how Passport solves them.
+              Every AI agent deployment faces the same risks. Here&apos;s how Passport solves them.
             </p>
           </ScrollFadeHeading>
 
