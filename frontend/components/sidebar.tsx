@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Shield,
   LayoutDashboard,
@@ -46,6 +46,7 @@ export default function Sidebar({
   collapsed?: boolean
   onToggle?: () => void
 }) {
+  const router = useRouter()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [loggedIn, setLoggedIn] = useState(false)
@@ -112,6 +113,22 @@ export default function Sidebar({
       document.body.style.overflow = ''
     }
   }, [mobileOpen])
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Use Alt key instead of Cmd/Ctrl to avoid hijacking browser tab shortcuts
+      if (e.altKey && /^[1-9]$/.test(e.key)) {
+        const index = parseInt(e.key) - 1
+        const item = navItems[index]
+        if (item) {
+          e.preventDefault()
+          router.push(item.href)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [router])
 
   function handleLogout() {
     clearToken()
@@ -198,7 +215,7 @@ export default function Sidebar({
 
         {/* Nav */}
         <nav className="flex-1 p-2 space-y-0.5" aria-label="Dashboard navigation">
-          {navItems.map((item, idx) => {
+          {navItems.map((item) => {
             const active = pathname === item.href
             const Icon = item.icon
             return (
@@ -225,7 +242,7 @@ export default function Sidebar({
                       <span className="ml-auto w-1.5 h-1.5 rounded-full bg-passport-green animate-pulse-soft" aria-hidden="true" />
                     )}
                     <span className="ml-auto">
-                      <kbd className="kbd text-[9px]">{'\u2318'}{item.shortcut}</kbd>
+                      <kbd className="kbd text-[9px]">Alt+{item.shortcut}</kbd>
                     </span>
                   </>
                 )}
@@ -263,6 +280,7 @@ export default function Sidebar({
                       onClick={() => { setActiveOrg(org); setOrgOpen(false) }}
                       className="flex items-center gap-2 px-3 py-2 w-full text-xs text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all"
                       role="option"
+                      aria-selected={activeOrg === org}
                     >
                       <Building2 size={12} />
                       <span>{org}</span>
