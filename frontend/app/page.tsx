@@ -1139,7 +1139,7 @@ const result = await agent.run({
               id="faq-1"
               defaultOpen
               question="What is AI Agent Passport?"
-              answer="It's like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
+              answer="It&apos;s like OAuth for AI agents. Instead of giving agents unrestricted API keys, you issue scoped credentials and define policies that enforce what they can and cannot do."
             />
             <FaqItem
               id="faq-2"
@@ -1149,7 +1149,7 @@ const result = await agent.run({
             <FaqItem
               id="faq-3"
               question="Can I use this with OpenAI, Anthropic, or custom agents?"
-              answer="Yes, the SDK works with any agent framework. Whether you're using LangChain, CrewAI, or a custom Python agent, you wrap tool calls with our enforcement layer."
+              answer="Yes, the SDK works with any agent framework. Whether you&apos;re using LangChain, CrewAI, or a custom Python agent, you wrap tool calls with our enforcement layer."
             />
             <FaqItem
               id="faq-4"
