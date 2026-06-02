@@ -161,14 +161,15 @@
       <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
       <div class="flex flex-col items-center text-center">
         <div class="w-16 h-16 border-2 border-[#00e639] flex items-center justify-center mb-6" style="box-shadow:0 0 20px rgba(0,230,57,0.15);">
-          <span class="material-symbols-outlined" style="color:#00e639;font-size:36px;">security</span>
+          <span class="material-symbols-outlined" aria-hidden="true" style="color:#00e639;font-size:36px;">security</span>
         </div>
         <h1 class="text-sm font-bold uppercase tracking-[4px] mb-1" style="color:#00e639;font-family:'JetBrains Mono',monospace;animation:text-glow 3s ease-in-out infinite;">Admin Console</h1>
         <p class="text-xs mb-8" style="color:rgba(185,204,178,0.5);font-family:'JetBrains Mono',monospace;">secure terminal // restricted access</p>
         <div class="w-full space-y-4">
+          <label for="gateInput" class="sr-only">Access Code</label>
           <input id="gateInput" type="password" placeholder="Access Code" class="input" />
           <button id="gateBtn" class="btn btn-primary w-full" disabled>Authenticate</button>
-          <p id="gateError" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
+          <p id="gateError" role="alert" class="text-xs text-center hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;">ACCESS DENIED</p>
         </div>
       </div>
     </div>
@@ -191,16 +192,16 @@
       </div>
       <div class="flex-1 py-4">
         <a class="flex items-center gap-4 px-6 py-4 border-l-4 text-xs uppercase tracking-tighter font-bold" style="color:#00e639;background:rgba(0,230,57,0.08);border-color:#00e639;font-family:'JetBrains Mono',monospace;" href="#">
-          <span class="material-symbols-outlined">terminal</span> TERMINAL
+          <span class="material-symbols-outlined" aria-hidden="true">terminal</span> TERMINAL
         </a>
         <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
-          <span class="material-symbols-outlined">database</span> REGISTRY
+          <span class="material-symbols-outlined" aria-hidden="true">database</span> REGISTRY
         </a>
         <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
-          <span class="material-symbols-outlined">rss_feed</span> ACTIVITY
+          <span class="material-symbols-outlined" aria-hidden="true">rss_feed</span> ACTIVITY
         </a>
         <a class="flex items-center gap-4 px-6 py-4 text-xs uppercase tracking-tighter transition-colors hover:underline" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;" href="#">
-          <span class="material-symbols-outlined">vpn_key</span> GATEWAY
+          <span class="material-symbols-outlined" aria-hidden="true">vpn_key</span> GATEWAY
         </a>
       </div>
       <div class="p-4 mt-auto">
@@ -216,12 +217,12 @@
         <div class="shimmer-bar absolute top-0 left-0 w-full" style="height:2px;"></div>
         <h2 class="section-title">Admin Sign In</h2>
         <div>
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
+          <label for="loginEmail" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Email</label>
           <input id="loginEmail" type="email" class="input mb-3" placeholder="admin@example.com" required />
-          <label class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
+          <label for="loginPassword" class="block text-[10px] uppercase tracking-[2px] mb-1" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Password</label>
           <input id="loginPassword" type="password" class="input mb-4" placeholder="••••••••" required />
           <button id="loginBtn" class="btn btn-primary w-full">Sign In</button>
-          <p id="loginError" class="text-xs text-center mt-3 hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
+          <p id="loginError" role="alert" class="text-xs text-center mt-3 hidden" style="color:#ffb4ab;font-family:'JetBrains Mono',monospace;"></p>
         </div>
       </div>
     </div>
@@ -235,28 +236,28 @@
             <div class="shimmer-bar absolute top-0 left-0 w-full opacity-30" style="height:2px;"></div>
             <div class="flex justify-between items-start mb-4">
               <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Total Records</span>
-              <span class="material-symbols-outlined text-sm" style="color:#00e639;">verified</span>
+              <span class="material-symbols-outlined text-sm" aria-hidden="true" style="color:#00e639;">verified</span>
             </div>
             <p id="statTotal" class="text-3xl font-bold" style="color:#00e639;">---</p>
           </div>
           <div class="glass-panel p-5 relative overflow-hidden">
             <div class="flex justify-between items-start mb-4">
               <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Pending</span>
-              <span class="material-symbols-outlined text-sm" style="color:#f7be00;">pending</span>
+              <span class="material-symbols-outlined text-sm" aria-hidden="true" style="color:#f7be00;">pending</span>
             </div>
             <p id="statPending" class="text-3xl font-bold" style="color:#f7be00;">---</p>
           </div>
           <div class="glass-panel p-5 relative overflow-hidden">
             <div class="flex justify-between items-start mb-4">
               <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Passports Issued</span>
-              <span class="material-symbols-outlined text-sm" style="color:#00c8fe;">digital_wellbeing</span>
+              <span class="material-symbols-outlined text-sm" aria-hidden="true" style="color:#00c8fe;">digital_wellbeing</span>
             </div>
             <p id="statApproved" class="text-3xl font-bold" style="color:#00c8fe;">---</p>
           </div>
           <div class="glass-panel p-5 relative overflow-hidden">
             <div class="flex justify-between items-start mb-4">
               <span class="text-[10px] uppercase tracking-[2px]" style="color:rgba(185,204,178,0.6);font-family:'JetBrains Mono',monospace;">Rejected</span>
-              <span class="material-symbols-outlined text-sm" style="color:#ffb4ab;">gpp_bad</span>
+              <span class="material-symbols-outlined text-sm" aria-hidden="true" style="color:#ffb4ab;">gpp_bad</span>
             </div>
             <p id="statRejected" class="text-3xl font-bold" style="color:#ffb4ab;">---</p>
           </div>
@@ -267,6 +268,7 @@
           <div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b" style="border-color:rgba(59,75,55,0.2);">
             <h3 class="section-title mb-0">Application Registry</h3>
             <div class="flex items-center gap-3">
+              <label for="filterInput" class="sr-only">Filter registry</label>
               <input id="filterInput" class="input" style="width:220px;padding:6px 10px;" placeholder="Filter registry..." />
               <button id="seedBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Seed Demo</button>
               <button id="refreshBtn" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Refresh</button>
