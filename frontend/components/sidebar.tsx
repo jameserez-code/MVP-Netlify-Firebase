@@ -263,6 +263,7 @@ export default function Sidebar({
                       onClick={() => { setActiveOrg(org); setOrgOpen(false) }}
                       className="flex items-center gap-2 px-3 py-2 w-full text-xs text-passport-muted hover:text-passport-text hover:bg-passport-surface-2 transition-all"
                       role="option"
+                      aria-selected={org === activeOrg}
                     >
                       <Building2 size={12} />
                       <span>{org}</span>
