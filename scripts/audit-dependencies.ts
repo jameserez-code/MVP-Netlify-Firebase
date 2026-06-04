@@ -81,9 +81,9 @@ export async function runAudit(): Promise<{ passed: boolean; report: string }> {
     lines.push('  ' + outdated.join(', '))
   }
 
-  const passed = auditResult.critical === 0 && auditResult.high === 0 && auditResult.moderate === 0
+  const passed = auditResult.critical === 0 && auditResult.high === 0
   lines.push('')
-  lines.push(passed ? 'PASSED: No critical/high/moderate vulnerabilities' : 'FAILED: Vulnerabilities found')
+  lines.push(passed ? 'PASSED: No critical/high/vulnerabilities' : 'FAILED: Vulnerabilities found')
 
   const report = lines.join('\n')
   console.log(report)

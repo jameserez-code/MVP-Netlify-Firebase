@@ -1,57 +1,52 @@
-// Update Application Status API Endpoint
-exports.handler = async function(event, context) {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'PATCH, OPTIONS',
-    'Content-Type': 'application/json'
-  };
+'use strict';
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
+const { verifyOrgApiKey, ok, error, handleOptions } = require('../src/lib/auth');
+
+// Update Application Status API Endpoint
+// Requires Org API Key (Bearer token)
+exports.handler = async function(event, context) {
+  if (event.httpMethod === 'OPTIONS') return handleOptions();
 
   if (event.httpMethod !== 'PATCH') {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method Not Allowed' }) };
+    return error('METHOD_NOT_ALLOWED', 'Use PATCH', 405);
+  }
+
+  // --- AUTH: verify administrative access ---
+  const auth = await verifyOrgApiKey(event);
+  if (auth.error) {
+    return error(auth.error.code, auth.error.message, 401);
   }
 
   try {
     const body = JSON.parse(event.body || '{}');
 
     if (!body.id) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Application ID is required' }) };
+      return error('VALIDATION_ERROR', 'Application ID is required', 400);
     }
 
     const validStatuses = ['pending', 'approved', 'rejected', 'issued'];
     if (!body.status || !validStatuses.includes(body.status)) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` })
-      };
+      return error(
+        'VALIDATION_ERROR',
+        `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        400
+      );
     }
 
     // In production: update Firestore document
     // For MVP: return success (frontend handles localStorage persistence)
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        message: `Application ${body.id} status updated to ${body.status}`,
-        id: body.id,
-        status: body.status,
-        updatedAt: new Date().toISOString()
-      })
-    };
+    return ok({
+      success: true,
+      message: `Application ${body.id} status updated to ${body.status}`,
+      id: body.id,
+      status: body.status,
+      orgId: auth.org.id,
+      updatedAt: new Date().toISOString()
+    });
 
-  } catch (error) {
-    console.error('Error updating application status:', error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Internal Server Error', message: 'Failed to update application status' })
-    };
+  } catch (err) {
+    console.error('Error updating application status:', err);
+    return error('INTERNAL_ERROR', 'Failed to update application status', 500);
   }
 };
