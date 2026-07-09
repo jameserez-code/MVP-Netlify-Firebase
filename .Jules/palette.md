@@ -1,0 +1,3 @@
+## 2025-05-15 - [Form Accessibility Improvements]
+**Learning:** In highly customized, themed UIs (like "terminal" or "neon" dashboards), accessibility is often sacrificed for visual style. Form controls often lack semantic labels or keyboard support for custom components like chips.
+**Action:** Always include a `.sr-only` utility for visually hidden but semantically necessary labels. Ensure custom interactive elements have appropriate ARIA roles (`checkbox`, `group`) and handle keyboard events (Enter/Space). Add `aria-live` regions to dynamic update areas like toast containers or result messages.
